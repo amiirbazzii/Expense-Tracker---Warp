@@ -5,6 +5,7 @@ import { ConvexProvider } from "@/providers/ConvexProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { OfflineProvider } from "@/contexts/OfflineContext";
 import { Toaster } from "sonner";
+import { NetworkStatusIndicator } from "@/components/NetworkStatusIndicator";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -33,23 +34,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js')
-                    .then(function(registration) {
-                      console.log('SW registered: ', registration);
-                    })
-                    .catch(function(registrationError) {
-                      console.log('SW registration failed: ', registrationError);
-                    });
-                });
-              }
-            `,
-          }}
-        />
+
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
@@ -58,6 +43,7 @@ export default function RootLayout({
           <AuthProvider>
             <OfflineProvider>
               {children}
+              <NetworkStatusIndicator />
               <Toaster position="top-center" />
             </OfflineProvider>
           </AuthProvider>

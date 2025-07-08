@@ -1,17 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { useOffline } from "@/contexts/OfflineContext";
+import { useOffline, PendingExpense } from "@/contexts/OfflineContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { BottomNav } from "@/components/BottomNav";
-import { OfflineBanner } from "@/components/OfflineBanner";
-import { X, Calendar, DollarSign, Tag, User } from "lucide-react";
+import { X, Calendar, DollarSign, Tag, User, Clock, AlertCircle, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
+import { Id } from "../../../convex/_generated/dataModel";
+
+// A unified type for displaying both online and offline expenses
+type DisplayExpense = {
+  _id: string | Id<"expenses">;
+  _creationTime: number;
+  amount: number;
+  title: string;
+  category: string[];
+  for?: string;
+  date: number;
+  status: 'synced' | 'pending' | 'syncing' | 'failed';
+  isOffline: boolean;
+};
 
 interface ExpenseFormData {
   amount: string;
@@ -23,7 +36,7 @@ interface ExpenseFormData {
 
 export default function ExpensesPage() {
   const { token } = useAuth();
-  const { isOnline, addPendingExpense } = useOffline();
+  const { isOnline, pendingExpenses, addPendingExpense, retryFailedExpense, syncPendingExpenses } = useOffline();
   const [formData, setFormData] = useState<ExpenseFormData>({
     amount: "",
     title: "",
@@ -35,8 +48,32 @@ export default function ExpensesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const createExpenseMutation = useMutation(api.expenses.createExpense);
-  const expenses = useQuery(api.expenses.getExpenses, token ? { token } : "skip");
+  const onlineExpenses = useQuery(api.expenses.getExpenses, token ? { token } : "skip");
   const categories = useQuery(api.expenses.getCategories, token ? { token } : "skip");
+
+  useEffect(() => {
+    if (isOnline) {
+      syncPendingExpenses();
+    }
+  }, [isOnline, syncPendingExpenses]);
+
+  const combinedExpenses: DisplayExpense[] = useMemo(() => {
+    const offline: DisplayExpense[] = pendingExpenses.map(p => ({ ...p, _id: p.id, _creationTime: new Date(p.date).getTime(), isOffline: true }));
+    const online: DisplayExpense[] = onlineExpenses?.map(o => ({ ...o, status: 'synced', isOffline: false })) || [];
+    
+    const all = [...offline, ...online];
+    
+    // Create a set of online expense IDs for efficient lookup
+    const onlineIds = new Set(online.map(o => o._id));
+
+    // Use a Map to handle duplicates, ensuring the online version is preferred
+    const expenseMap = new Map<string | Id<"expenses">, DisplayExpense>();
+    for (const expense of all) {
+      expenseMap.set(expense._id, expense);
+    }
+
+    return Array.from(expenseMap.values()).sort((a, b) => b._creationTime - a._creationTime);
+  }, [pendingExpenses, onlineExpenses]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,7 +193,7 @@ export default function ExpensesPage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-50">
-        <OfflineBanner />
+
         
         <div className="max-w-md mx-auto p-4 pt-8 pb-20">
           <motion.div
@@ -246,7 +283,7 @@ export default function ExpensesPage() {
                     />
                     
                     {/* Suggestions */}
-                    {categoryInput && (suggestedCategories?.length > 0 || wouldCreateNew) && (
+                    {categoryInput && suggestedCategories && (suggestedCategories.length > 0 || wouldCreateNew) && (
                       <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-md shadow-lg z-10 max-h-40 overflow-y-auto">
                         {/* Existing category suggestions */}
                         {suggestedCategories?.slice(0, 5).map((cat) => (
@@ -318,7 +355,7 @@ export default function ExpensesPage() {
           </motion.div>
 
           {/* Recent Expenses */}
-          {expenses && expenses.length > 0 && (
+          {combinedExpenses && combinedExpenses.length > 0 && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -326,16 +363,30 @@ export default function ExpensesPage() {
             >
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Expenses</h2>
               <div className="space-y-3">
-                {expenses.slice(0, 5).map((expense) => (
+                {combinedExpenses.slice(0, 15).map((expense) => (
                   <div key={expense._id} className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
                     <div>
-                      <div className="font-medium text-gray-900">{expense.title}</div>
-                      <div className="text-sm text-gray-600">
-                        {expense.category.join(", ")} • {format(new Date(expense.date), "MMM d")}
+                      <div>
+                        <div className="font-medium text-gray-900 flex items-center">
+                          {expense.title}
+                          {expense.isOffline && expense.status === 'pending' && <span title="Pending Sync"><Clock size={14} className="ml-2 text-gray-500" /></span>}
+                          {expense.isOffline && expense.status === 'syncing' && <span title="Syncing..."><RefreshCw size={14} className="ml-2 text-blue-500 animate-spin" /></span>}
+                          {expense.isOffline && expense.status === 'failed' && <span title="Sync Failed"><AlertCircle size={14} className="ml-2 text-red-500" /></span>}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {expense.category.join(", ")} • {format(new Date(expense.date), "MMM d")}
+                        </div>
                       </div>
                     </div>
-                    <div className="font-semibold text-gray-900">
-                      ${expense.amount.toFixed(2)}
+                    <div className="text-right">
+                      <div className="font-semibold text-gray-900">
+                        ${expense.amount.toFixed(2)}
+                      </div>
+                      {expense.isOffline && expense.status === 'failed' && (
+                        <button onClick={() => retryFailedExpense(expense._id as string)} className="text-xs text-blue-600 hover:underline">
+                          Retry
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
