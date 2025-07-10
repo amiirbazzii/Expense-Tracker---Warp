@@ -196,7 +196,6 @@ export default function ExpensesPage() {
               {/* Amount */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <DollarSign className="inline w-4 h-4 mr-1" />
                   Amount *
                 </label>
                 <input
@@ -252,8 +251,7 @@ export default function ExpensesPage() {
               {/* Date */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Calendar className="inline w-4 h-4 mr-1" />
-                  Date
+                  Date *
                 </label>
                 <input
                   type="date"

@@ -85,12 +85,7 @@ export default function EditExpensePage() {
         date: new Date(formData.date).getTime(),
       });
 
-      toast(
-        <div className="flex items-center gap-2">
-          <CheckCircle className="h-5 w-5 text-green-500" />
-          <span className="text-gray-800 font-medium">Expense updated successfully</span>
-        </div>
-      );
+      toast.success("Expense updated successfully!");
       router.push("/dashboard");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to update expense";
