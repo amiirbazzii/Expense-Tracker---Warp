@@ -6,6 +6,7 @@ export default defineSchema({
     username: v.string(),
     hashedPassword: v.string(),
     tokenIdentifier: v.string(),
+    hasSeenOnboarding: v.optional(v.boolean()),
   }).index("by_username", ["username"]).index("by_token", ["tokenIdentifier"]),
 
   expenses: defineTable({

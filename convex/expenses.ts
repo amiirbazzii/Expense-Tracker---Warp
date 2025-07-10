@@ -106,6 +106,91 @@ export const getExpensesByDateRange = query({
   },
 });
 
+export const updateExpense = mutation({
+  args: {
+    token: v.string(),
+    expenseId: v.id("expenses"),
+    amount: v.number(),
+    title: v.string(),
+    category: v.array(v.string()),
+    for: v.optional(v.string()),
+    date: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken(ctx, args.token);
+
+    // Verify the expense belongs to the user
+    const expense = await ctx.db.get(args.expenseId);
+    if (!expense || expense.userId !== user._id) {
+      throw new ConvexError("Expense not found or not authorized");
+    }
+
+    // Update the expense
+    await ctx.db.patch(args.expenseId, {
+      amount: args.amount,
+      title: args.title,
+      category: args.category,
+      for: args.for,
+      date: args.date,
+    });
+
+    // Add new categories to user's categories if they don't exist
+    for (const categoryName of args.category) {
+      const existingCategory = await ctx.db
+        .query("categories")
+        .withIndex("by_user_name", (q) => q.eq("userId", user._id).eq("name", categoryName))
+        .first();
+
+      if (!existingCategory) {
+        await ctx.db.insert("categories", {
+          name: categoryName,
+          userId: user._id,
+        });
+      }
+    }
+
+    return { success: true };
+  },
+});
+
+export const deleteExpense = mutation({
+  args: {
+    token: v.string(),
+    expenseId: v.id("expenses"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken(ctx, args.token);
+
+    // Verify the expense belongs to the user
+    const expense = await ctx.db.get(args.expenseId);
+    if (!expense || expense.userId !== user._id) {
+      throw new ConvexError("Expense not found or not authorized");
+    }
+
+    // Delete the expense
+    await ctx.db.delete(args.expenseId);
+
+    return { success: true };
+  },
+});
+
+export const getExpenseById = query({
+  args: {
+    token: v.string(),
+    expenseId: v.id("expenses"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken(ctx, args.token);
+
+    const expense = await ctx.db.get(args.expenseId);
+    if (!expense || expense.userId !== user._id) {
+      throw new ConvexError("Expense not found or not authorized");
+    }
+
+    return expense;
+  },
+});
+
 export const getCategories = query({
   args: {
     token: v.string(),

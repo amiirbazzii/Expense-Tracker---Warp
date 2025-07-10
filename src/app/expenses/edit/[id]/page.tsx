@@ -4,28 +4,13 @@ import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
+import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { useOffline, PendingExpense } from "@/contexts/OfflineContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { BottomNav } from "@/components/BottomNav";
-import { X, Calendar, DollarSign, Tag, User, Clock, AlertCircle, RefreshCw, Eye } from "lucide-react";
+import { X, Calendar, DollarSign, Tag, User, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
-import { Id } from "../../../convex/_generated/dataModel";
-import { useRouter } from "next/navigation";
-
-// A unified type for displaying both online and offline expenses
-type DisplayExpense = {
-  _id: string | Id<"expenses">;
-  _creationTime: number;
-  amount: number;
-  title: string;
-  category: string[];
-  for?: string;
-  date: number;
-  status: 'synced' | 'pending' | 'syncing' | 'failed';
-  isOffline: boolean;
-};
+import { Id } from "../../../../../convex/_generated/dataModel";
+import { useRouter, useParams } from "next/navigation";
 
 interface ExpenseFormData {
   amount: string;
@@ -35,10 +20,12 @@ interface ExpenseFormData {
   date: string;
 }
 
-export default function ExpensesPage() {
+export default function EditExpensePage() {
   const { token } = useAuth();
-  const { isOnline, pendingExpenses, addPendingExpense, retryFailedExpense, syncPendingExpenses } = useOffline();
   const router = useRouter();
+  const params = useParams();
+  const expenseId = params.id as Id<"expenses">;
+
   const [formData, setFormData] = useState<ExpenseFormData>({
     amount: "",
     title: "",
@@ -48,34 +35,25 @@ export default function ExpensesPage() {
   });
   const [categoryInput, setCategoryInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const createExpenseMutation = useMutation(api.expenses.createExpense);
-  const onlineExpenses = useQuery(api.expenses.getExpenses, token ? { token } : "skip");
+  const updateExpenseMutation = useMutation(api.expenses.updateExpense);
+  const expense = useQuery(api.expenses.getExpenseById, token ? { token, expenseId } : "skip");
   const categories = useQuery(api.expenses.getCategories, token ? { token } : "skip");
 
+  // Load expense data into form when available
   useEffect(() => {
-    if (isOnline) {
-      syncPendingExpenses();
+    if (expense) {
+      setFormData({
+        amount: expense.amount.toString(),
+        title: expense.title,
+        category: [...expense.category],
+        for: expense.for || "",
+        date: format(new Date(expense.date), "yyyy-MM-dd"),
+      });
+      setIsLoading(false);
     }
-  }, [isOnline, syncPendingExpenses]);
-
-  const combinedExpenses: DisplayExpense[] = useMemo(() => {
-    const offline: DisplayExpense[] = pendingExpenses.map(p => ({ ...p, _id: p.id, _creationTime: new Date(p.date).getTime(), isOffline: true }));
-    const online: DisplayExpense[] = onlineExpenses?.map(o => ({ ...o, status: 'synced', isOffline: false })) || [];
-    
-    const all = [...offline, ...online];
-    
-    // Create a set of online expense IDs for efficient lookup
-    const onlineIds = new Set(online.map(o => o._id));
-
-    // Use a Map to handle duplicates, ensuring the online version is preferred
-    const expenseMap = new Map<string | Id<"expenses">, DisplayExpense>();
-    for (const expense of all) {
-      expenseMap.set(expense._id, expense);
-    }
-
-    return Array.from(expenseMap.values()).sort((a, b) => b._creationTime - a._creationTime);
-  }, [pendingExpenses, onlineExpenses]);
+  }, [expense]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,36 +72,20 @@ export default function ExpensesPage() {
     setIsSubmitting(true);
 
     try {
-      const expenseData = {
+      await updateExpenseMutation({
+        token: token!,
+        expenseId,
         amount,
         title: formData.title,
         category: formData.category,
         for: formData.for || undefined,
         date: new Date(formData.date).getTime(),
-      };
-
-      if (isOnline && token) {
-        await createExpenseMutation({
-          token,
-          ...expenseData,
-        });
-        toast.success("Expense added successfully!");
-      } else {
-        // Add to offline queue
-        addPendingExpense(expenseData);
-        toast.success("Expense saved offline!");
-      }
-
-      // Reset form
-      setFormData({
-        amount: "",
-        title: "",
-        category: [],
-        for: "",
-        date: format(new Date(), "yyyy-MM-dd"),
       });
+
+      toast.success("Expense updated successfully!");
+      router.push("/dashboard");
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Failed to add expense";
+      const message = error instanceof Error ? error.message : "Failed to update expense";
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -192,11 +154,19 @@ export default function ExpensesPage() {
     !formData.category.includes(formattedInput) &&
     !categories?.some(cat => cat.name === formattedInput);
 
+  if (isLoading) {
+    return (
+      <ProtectedRoute>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-lg">Loading...</div>
+        </div>
+      </ProtectedRoute>
+    );
+  }
+
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-50">
-
-        
         <div className="max-w-md mx-auto p-4 pt-8 pb-20">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -204,14 +174,14 @@ export default function ExpensesPage() {
             className="bg-white rounded-lg shadow-sm p-6 mb-6"
           >
             <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-bold text-gray-900">Add Expense</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Edit Expense</h1>
               <motion.button
                 whileTap={{ scale: 0.95 }}
-                onClick={() => router.push("/dashboard")}
+                onClick={() => router.back()}
                 className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                title="View All Expenses"
+                title="Go Back"
               >
-                <Eye size={20} />
+                <ArrowLeft size={20} />
               </motion.button>
             </div>
             
@@ -361,13 +331,11 @@ export default function ExpensesPage() {
                 disabled={isSubmitting || formData.category.length === 0}
                 className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-medium min-h-[44px]"
               >
-                {isSubmitting ? "Adding..." : "Add Expense"}
+                {isSubmitting ? "Updating..." : "Update Expense"}
               </motion.button>
             </form>
           </motion.div>
         </div>
-
-        <BottomNav />
       </div>
     </ProtectedRoute>
   );
