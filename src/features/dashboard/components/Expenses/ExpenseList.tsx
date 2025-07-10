@@ -1,45 +1,35 @@
-import { Expense, ExpenseCard } from "./ExpenseCard";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { Expense, ExpenseCard } from ".";
 import { Receipt } from "lucide-react";
 
 interface ExpenseListProps {
-  expenses: Expense[] | undefined;
-  onExpenseClick: (expense: Expense) => void;
+  expenses: Expense[];
+  onEdit: (expense: Expense) => void;
 }
 
-export function ExpenseList({ expenses, onExpenseClick }: ExpenseListProps) {
-  if (expenses === undefined) {
+export function ExpenseList({ expenses, onEdit }: ExpenseListProps) {
+  if (expenses.length === 0) {
     return (
       <div className="text-center py-8">
-        <div className="text-gray-500">Loading...</div>
+        <Receipt className="mx-auto text-gray-400 mb-4" size={48} />
+        <p className="text-gray-500">No expenses recorded for this period</p>
       </div>
     );
   }
 
-  if (expenses.length === 0) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-lg shadow-sm p-8 text-center"
-      >
-        <Receipt className="mx-auto text-gray-400 mb-4" size={48} />
-        <p className="text-gray-500">No expenses for this period</p>
-      </motion.div>
-    );
-  }
-
   return (
-    <div className="space-y-4">
-      {expenses
-        .sort((a, b) => b._creationTime - a._creationTime)
-        .map((expense, index) => (
-          <ExpenseCard
-            key={expense._id}
-            expense={expense}
-            onClick={onExpenseClick}
-          />
-        ))}
-    </div>
+    <motion.div className="space-y-4">
+      <AnimatePresence>
+        {expenses
+          .sort((a, b) => b._creationTime - a._creationTime)
+          .map((expense) => (
+            <ExpenseCard
+              key={expense._id}
+              expense={expense}
+              onEdit={onEdit}
+            />
+          ))}
+      </AnimatePresence>
+    </motion.div>
   );
 }

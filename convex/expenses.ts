@@ -106,6 +106,7 @@ export const getExpensesByDateRange = query({
     token: v.string(),
     startDate: v.number(),
     endDate: v.number(),
+    key: v.optional(v.number()), // Add a key for cache busting
   },
   handler: async (ctx, args) => {
     const user = await getUserByToken(ctx, args.token);
@@ -178,27 +179,6 @@ export const updateExpense = mutation({
         });
       }
     }
-
-    return { success: true };
-  },
-});
-
-export const deleteExpense = mutation({
-  args: {
-    token: v.string(),
-    expenseId: v.id("expenses"),
-  },
-  handler: async (ctx, args) => {
-    const user = await getUserByToken(ctx, args.token);
-
-    // Verify the expense belongs to the user
-    const expense = await ctx.db.get(args.expenseId);
-    if (!expense || expense.userId !== user._id) {
-      throw new ConvexError("Expense not found or not authorized");
-    }
-
-    // Delete the expense
-    await ctx.db.delete(args.expenseId);
 
     return { success: true };
   },

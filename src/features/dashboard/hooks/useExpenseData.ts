@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
@@ -8,6 +8,9 @@ export function useExpenseData(token: string | null) {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   // Fetch expenses for the current month
+  const [key, setKey] = useState(0); // Add a key to force re-query
+
+  // Fetch expenses for the current month
   const result = useQuery(
     api.expenses.getExpensesByDateRange,
     token
@@ -15,6 +18,7 @@ export function useExpenseData(token: string | null) {
           token,
           startDate: startOfMonth(currentDate).getTime(),
           endDate: endOfMonth(currentDate).getTime(),
+          key, // Add key to dependencies
         }
       : "skip"
   );
@@ -66,6 +70,10 @@ export function useExpenseData(token: string | null) {
     setCurrentDate(addMonths(currentDate, 1));
   };
 
+  const refetchExpenses = useCallback(() => {
+    setKey((prevKey) => prevKey + 1);
+  }, []);
+
   return {
     currentDate,
     expenses,
@@ -73,5 +81,6 @@ export function useExpenseData(token: string | null) {
     isLoading,
     goToPreviousMonth,
     goToNextMonth,
+    refetchExpenses, // Expose the refetch function
   };
 }

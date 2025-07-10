@@ -16,7 +16,7 @@ import { AnalyticsTabs } from "@/features/dashboard/components/AnalyticsTabs";
 import { CategoryBreakdownChart, DailySpendingChart } from "@/features/dashboard/components/Charts";
 import { CategoryList } from "@/features/dashboard/components/CategoryList";
 import { ExpenseList } from "@/features/dashboard/components/Expenses";
-import { ActionModal, DeleteConfirmationModal } from "@/features/dashboard/components/Modals";
+
 
 // Import hooks
 import { useExpenseData } from "@/features/dashboard/hooks/useExpenseData";
@@ -38,31 +38,24 @@ export default function DashboardPage() {
     isLoading,
     goToPreviousMonth,
     goToNextMonth,
+    refetchExpenses,
   } = useExpenseData(token);
 
   const {
     selectedExpense,
-    showActionModal,
-    showDeleteConfirm,
-    isDeleting,
-    handleExpenseClick,
     handleEdit,
-    handleDeleteClick,
-    confirmDelete,
-    closeActionModal,
-    cancelDelete,
-  } = useExpenseActions(token);
+  } = useExpenseActions();
 
   // Handle edit navigation
-  const handleEditNavigation = () => {
-    const expenseId = handleEdit();
+  const handleEditNavigation = (expense: any) => {
+    const expenseId = handleEdit(expense);
     if (expenseId) {
       router.push(`/expenses/edit/${expenseId}`);
     }
   };
 
   return (
-    <ProtectedRoute>
+    <>
       <div className="min-h-screen bg-gray-50">
         <HeaderRow
           left={
@@ -77,24 +70,24 @@ export default function DashboardPage() {
             className="bg-white rounded-lg shadow-sm p-6 mb-6"
           >
             {/* Header Section */}
-            <HeaderSection 
+            <HeaderSection
               currentDate={currentDate}
               onPreviousMonth={goToPreviousMonth}
               onNextMonth={goToNextMonth}
             />
 
             {/* Tabs */}
-            <AnalyticsTabs 
-              activeTab={activeTab} 
-              onTabChange={setActiveTab} 
+            <AnalyticsTabs
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
             />
 
             {/* Summary Cards */}
             {monthlyData ? (
-              <SummaryCards 
-                totalAmount={monthlyData.totalAmount} 
-                totalCount={monthlyData.totalCount} 
-                isLoading={isLoading} 
+              <SummaryCards
+                totalAmount={monthlyData.totalAmount}
+                totalCount={monthlyData.totalCount}
+                isLoading={isLoading}
               />
             ) : expenses === undefined ? (
               <div className="text-center py-8">
@@ -127,31 +120,13 @@ export default function DashboardPage() {
             ) : null
           ) : (
             // Expenses Tab
-            <ExpenseList 
-              expenses={expenses} 
-              onExpenseClick={handleExpenseClick} 
-            />
+            expenses && <ExpenseList expenses={expenses} onEdit={handleEdit} />
           )}
         </div>
 
         <BottomNav />
 
-        {/* Action Modal */}
-        <ActionModal 
-          isOpen={showActionModal}
-          onClose={closeActionModal}
-          onEdit={handleEditNavigation}
-          onDelete={handleDeleteClick}
-        />
-
-        {/* Delete Confirmation Modal */}
-        <DeleteConfirmationModal 
-          isOpen={showDeleteConfirm}
-          onCancel={cancelDelete}
-          onConfirm={confirmDelete}
-          isDeleting={isDeleting}
-        />
       </div>
-    </ProtectedRoute>
+    </>
   );
 }

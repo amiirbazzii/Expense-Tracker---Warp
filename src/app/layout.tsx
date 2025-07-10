@@ -43,6 +43,7 @@ export default function RootLayout({
           <AuthProvider>
             <OfflineProvider>
               {children}
+              <div id="modal-root"></div>
               <NetworkStatusIndicator />
               <Toaster position="top-center" />
             </OfflineProvider>
