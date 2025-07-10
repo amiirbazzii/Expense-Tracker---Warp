@@ -9,7 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useOffline, PendingExpense } from "@/contexts/OfflineContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { BottomNav } from "@/components/BottomNav";
-import { X, Calendar, DollarSign, Tag, User, Clock, AlertCircle, RefreshCw, Eye } from "lucide-react";
+import { X, Calendar, DollarSign, Tag, User, Clock, AlertCircle, RefreshCw, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
 import { Id } from "../../../convex/_generated/dataModel";
 import { useRouter } from "next/navigation";
@@ -211,7 +211,7 @@ export default function ExpensesPage() {
                 className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                 title="View All Expenses"
               >
-                <Eye size={20} />
+                <BarChart3 size={20} />
               </motion.button>
             </div>
             

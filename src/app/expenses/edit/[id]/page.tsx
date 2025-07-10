@@ -174,7 +174,6 @@ export default function EditExpensePage() {
             className="bg-white rounded-lg shadow-sm p-6 mb-6"
           >
             <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-bold text-gray-900">Edit Expense</h1>
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => router.back()}
@@ -183,6 +182,7 @@ export default function EditExpensePage() {
               >
                 <ArrowLeft size={20} />
               </motion.button>
+              <h1 className="text-2xl font-bold text-gray-900">Edit Expense</h1>
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-4">
