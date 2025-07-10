@@ -42,18 +42,21 @@ export function CategoryBreakdownChart({ categoryTotals }: CategoryBreakdownChar
     maintainAspectRatio: false,
     plugins: {
       legend: {
+        display: true,
         position: 'bottom' as const,
         labels: {
-          padding: 10,
+          padding: 20,
           font: {
-            size: 12
-          }
-        }
+            size: 13,
+          },
+          usePointStyle: true,
+          boxWidth: 12,
+        },
+      },
+      tooltip: {
+        enabled: true,
       },
     },
-    layout: {
-      padding: 0
-    }
   };
 
   return (
@@ -68,8 +71,11 @@ export function CategoryBreakdownChart({ categoryTotals }: CategoryBreakdownChar
         <h2 className="text-lg font-semibold text-gray-900">Category Breakdown</h2>
       </div>
       
-      <div className="h-64">
-        <Pie data={chartData} options={options} />
+      <div className="relative mx-auto" style={{ height: '280px', width: '100%' }}>
+        <Pie
+          data={chartData}
+          options={options}
+        />
       </div>
     </motion.div>
   );
