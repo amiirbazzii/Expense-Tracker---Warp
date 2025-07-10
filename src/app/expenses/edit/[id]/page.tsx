@@ -7,7 +7,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { X, Calendar, DollarSign, Tag, User, ArrowLeft } from "lucide-react";
+import { X, Calendar, DollarSign, Tag, User, ArrowLeft, CheckCircle } from "lucide-react";
 import { HeaderRow } from "@/components/HeaderRow";
 import { format } from "date-fns";
 import { Id } from "../../../../../convex/_generated/dataModel";
@@ -85,7 +85,12 @@ export default function EditExpensePage() {
         date: new Date(formData.date).getTime(),
       });
 
-      toast.success("Expense updated successfully!");
+      toast(
+        <div className="flex items-center gap-2">
+          <CheckCircle className="h-5 w-5 text-green-500" />
+          <span className="text-gray-800 font-medium">Expense updated successfully</span>
+        </div>
+      );
       router.push("/dashboard");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to update expense";

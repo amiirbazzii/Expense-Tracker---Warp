@@ -6,6 +6,7 @@ import { useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
+import { CheckCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 export interface Expense {
@@ -61,10 +62,9 @@ export function ExpenseCard({ expense, onEdit, onDeleteSuccess }: ExpenseCardPro
     try {
       // Optimistic UI update can be handled by parent via onDeleteSuccess
       await deleteExpenseMutation({ token, id: expense._id });
-      toast.success("Expense deleted ✅");
+      toast.success("Expense deleted successfully");
       onDeleteSuccess(expense._id); // Notify parent about successful deletion
     } catch (error) {
-      console.error("Failed to delete expense:", error);
       toast.error("Failed to delete expense.");
     }
   };

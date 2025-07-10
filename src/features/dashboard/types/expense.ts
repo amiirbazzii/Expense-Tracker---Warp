@@ -1,5 +1,7 @@
+import { Id } from "../../../../convex/_generated/dataModel";
+
 export interface Expense {
-  _id: string;
+  _id: Id<"expenses">;
   _creationTime: number;
   title: string;
   amount: number;
