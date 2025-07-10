@@ -28,6 +28,14 @@ interface ExpenseFormData {
   date: string;
 }
 
+const capitalizeWords = (str: string) => {
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 export default function ExpensesPage() {
   const { token } = useAuth();
   const { isOnline, pendingExpenses, addPendingExpense, retryFailedExpense, syncPendingExpenses } = useOffline();
@@ -235,6 +243,7 @@ export default function ExpensesPage() {
                 onChange={(newCategories) => setFormData({ ...formData, category: newCategories })}
                 fetchSuggestions={fetchCategorySuggestions}
                 onCreateNew={handleCreateCategory}
+              formatNewItem={capitalizeWords}
                 placeholder="Select or add categories"
               />
 
@@ -246,6 +255,7 @@ export default function ExpensesPage() {
                 onChange={(newFor) => setFormData({ ...formData, for: newFor })}
                 fetchSuggestions={fetchForSuggestions}
                 onCreateNew={handleCreateForValue}
+              formatNewItem={capitalizeWords}
                 placeholder="Select or add a person"
               />
 

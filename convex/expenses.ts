@@ -242,7 +242,11 @@ export const createCategory = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getUserByToken(ctx, args.token);
-    const formattedName = args.name.trim().toLowerCase();
+    const formattedName = args.name
+      .trim()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
 
     if (!formattedName) {
       throw new ConvexError("Category name cannot be empty.");
@@ -271,15 +275,19 @@ export const createForValue = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getUserByToken(ctx, args.token);
-    const trimmedValue = args.value.trim();
+    const formattedValue = args.value
+      .trim()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
 
-    if (!trimmedValue) {
+    if (!formattedValue) {
       throw new ConvexError("'For' value cannot be empty.");
     }
 
     const existingForValue = await ctx.db
       .query("forValues")
-      .withIndex("by_user_value", (q) => q.eq("userId", user._id).eq("value", trimmedValue))
+      .withIndex("by_user_value", (q) => q.eq("userId", user._id).eq("value", formattedValue))
       .first();
 
     if (existingForValue) {
@@ -287,7 +295,7 @@ export const createForValue = mutation({
     }
 
     return await ctx.db.insert("forValues", {
-      value: trimmedValue,
+      value: formattedValue,
       userId: user._id,
     });
   },

@@ -12,7 +12,8 @@ interface SmartSelectInputProps {
   value: string[];
   onChange: (newItems: string[]) => void;
   fetchSuggestions: (query: string) => Promise<string[]>;
-  onCreateNew: (value: string) => Promise<void>;
+  onCreateNew?: (value: string) => Promise<void>;
+  formatNewItem?: (value: string) => string;
   placeholder?: string;
   className?: string;
 }
@@ -25,6 +26,7 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
   onChange,
   fetchSuggestions,
   onCreateNew,
+  formatNewItem,
   placeholder,
   className,
 }) => {
@@ -86,10 +88,10 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
   }, [multiple, value, onChange]);
 
   const handleCreateNew = async () => {
-    if (!inputValue.trim()) return;
-    const newValue = inputValue.trim();
-    await onCreateNew(newValue);
-    handleSelect(newValue);
+    if (!inputValue.trim() || !onCreateNew) return;
+    const valueToCreate = formatNewItem ? formatNewItem(inputValue.trim()) : inputValue.trim();
+    await onCreateNew(valueToCreate);
+    handleSelect(valueToCreate);
   };
 
   const handleRemove = (itemToRemove: string) => {
@@ -124,13 +126,13 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
           } else if (wouldCreateNew) {
             handleCreateNew();
           }
-        } else if (inputValue) {
-            const exactMatch = suggestions.find(s => s.toLowerCase() === inputValue.toLowerCase());
-            if (exactMatch) {
-                handleSelect(exactMatch);
-            } else if(wouldCreateNew) {
-                handleCreateNew();
-            }
+        } else if (inputValue.trim()) {
+          const exactMatch = suggestions.find(s => s.toLowerCase() === inputValue.toLowerCase());
+          if (exactMatch) {
+            handleSelect(exactMatch);
+          } else if (wouldCreateNew) {
+            handleCreateNew();
+          }
         }
         setActiveIndex(-1);
         break;
@@ -144,7 +146,7 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
     }
   };
 
-  const wouldCreateNew = inputValue && !suggestions.some(s => s.toLowerCase() === inputValue.toLowerCase());
+  const wouldCreateNew = onCreateNew && inputValue && !suggestions.some(s => s.toLowerCase() === inputValue.toLowerCase());
 
   const renderSuggestionHighlight = (suggestion: string) => {
     const index = suggestion.toLowerCase().indexOf(inputValue.toLowerCase());
