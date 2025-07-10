@@ -216,14 +216,6 @@ export default function DashboardPage() {
         <HeaderRow
           left={
             <>
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={() => router.push('/expenses')}
-                className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                title="Back to Expenses"
-              >
-                <ArrowLeft size={20} />
-              </motion.button>
               <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
             </>
           }

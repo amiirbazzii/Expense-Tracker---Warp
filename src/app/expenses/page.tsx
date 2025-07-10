@@ -198,16 +198,6 @@ export default function ExpensesPage() {
       <div className="min-h-screen bg-gray-50">
         <HeaderRow
           left={<h1 className="text-xl font-bold text-gray-900">Add Expense</h1>}
-          right={
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => router.push("/dashboard")}
-              className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-              title="Go to Dashboard"
-            >
-              <BarChart3 size={20} />
-            </motion.button>
-          }
         />
         
         <div className="max-w-md mx-auto p-4 pt-24 pb-20">

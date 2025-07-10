@@ -6,6 +6,7 @@ import { useOffline } from "@/contexts/OfflineContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { BottomNav } from "@/components/BottomNav";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { HeaderRow } from "@/components/HeaderRow";
 import { User, LogOut, Wifi, WifiOff, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -40,15 +41,20 @@ export default function SettingsPage() {
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-50">
         <OfflineBanner />
+         <HeaderRow
+                  left={
+                    <>
+                      <h1 className="text-xl font-bold text-gray-900">Settings</h1>
+                    </>
+                  }
+                />
         
-        <div className="max-w-md mx-auto p-4 pt-8 pb-20">
+        <div className="max-w-md mx-auto p-4 pt-24 pb-20">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="bg-white rounded-lg shadow-sm p-6 mb-6"
-          >
-            <h1 className="text-2xl font-bold text-gray-900 mb-6">Settings</h1>
-            
+          >            
             {/* User Profile */}
             <div className="flex items-center space-x-4 mb-6">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
