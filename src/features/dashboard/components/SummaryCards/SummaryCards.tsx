@@ -17,24 +17,40 @@ export function SummaryCards({ totalAmount, totalCount, isLoading }: SummaryCard
   }
 
   return (
-    <div className="grid grid-cols-2 gap-4">
-      <div className="bg-blue-50 p-4 rounded-lg">
-        <div className="flex items-center space-x-2">
-          <DollarSign className="text-blue-600" size={20} />
-          <span className="text-sm text-blue-800">Total</span>
-        </div>
-        <div className="text-2xl font-bold text-blue-900 mt-1">
-          ${totalAmount.toFixed(2)}
+    <div className="flex flex-row gap-4 w-full">
+      <div className="bg-blue-50 p-5 rounded-xl flex-1">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center space-x-2">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <DollarSign className="text-blue-600" size={18} />
+              </div>
+              <div>
+                <span className="text-sm font-medium text-gray-700">Total</span>
+                <div className="text-2xl font-bold text-gray-900">
+                  ${totalAmount.toFixed(2)}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       
-      <div className="bg-green-50 p-4 rounded-lg">
-        <div className="flex items-center space-x-2">
-          <TrendingUp className="text-green-600" size={20} />
-          <span className="text-sm text-green-800">Expenses</span>
-        </div>
-        <div className="text-2xl font-bold text-green-900 mt-1">
-          {totalCount}
+      <div className="bg-green-50 p-5 rounded-xl flex-1">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center space-x-2">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <TrendingUp className="text-green-600" size={18} />
+              </div>
+              <div>
+                <span className="text-sm font-medium text-gray-700">Expenses</span>
+                <div className="text-2xl font-bold text-gray-900">
+                  {totalCount} items
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

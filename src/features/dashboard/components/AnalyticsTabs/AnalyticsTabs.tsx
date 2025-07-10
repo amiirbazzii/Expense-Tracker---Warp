@@ -10,14 +10,14 @@ interface AnalyticsTabsProps {
 
 export function AnalyticsTabs({ activeTab, onTabChange }: AnalyticsTabsProps) {
   return (
-    <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg mb-4">
+    <div className="flex space-x-1 bg-gray-200 p-1 rounded-lg mb-6 border-2 border-gray-200">
       <motion.button
         whileTap={{ scale: 0.98 }}
         onClick={() => onTabChange('analytics')}
-        className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md text-sm font-medium transition-colors min-h-[40px] ${
+        className={`flex-1 flex items-center justify-center py-2.5 px-4 rounded-md text-sm font-medium transition-colors min-h-[44px] ${
           activeTab === 'analytics'
-            ? 'bg-white text-blue-600 shadow-sm'
-            : 'text-gray-600 hover:text-gray-900'
+            ? 'bg-white text-blue-600 shadow-sm font-semibold'
+            : 'text-gray-700 hover:bg-white/80 hover:text-gray-900'
         }`}
         aria-selected={activeTab === 'analytics'}
         aria-label="View analytics"
@@ -28,10 +28,10 @@ export function AnalyticsTabs({ activeTab, onTabChange }: AnalyticsTabsProps) {
       <motion.button
         whileTap={{ scale: 0.98 }}
         onClick={() => onTabChange('expenses')}
-        className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md text-sm font-medium transition-colors min-h-[40px] ${
+        className={`flex-1 flex items-center justify-center py-2.5 px-4 rounded-md text-sm font-medium transition-colors min-h-[44px] ${
           activeTab === 'expenses'
-            ? 'bg-white text-blue-600 shadow-sm'
-            : 'text-gray-600 hover:text-gray-900'
+            ? 'bg-white text-blue-600 shadow-sm font-semibold'
+            : 'text-gray-700 hover:bg-white/80 hover:text-gray-900'
         }`}
         aria-selected={activeTab === 'expenses'}
         aria-label="View expenses"

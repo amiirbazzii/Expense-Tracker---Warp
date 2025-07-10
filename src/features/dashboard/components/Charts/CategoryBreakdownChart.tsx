@@ -43,8 +43,17 @@ export function CategoryBreakdownChart({ categoryTotals }: CategoryBreakdownChar
     plugins: {
       legend: {
         position: 'bottom' as const,
+        labels: {
+          padding: 10,
+          font: {
+            size: 12
+          }
+        }
       },
     },
+    layout: {
+      padding: 0
+    }
   };
 
   return (
