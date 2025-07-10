@@ -196,27 +196,30 @@ export default function ExpensesPage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-50">
-
+        <HeaderRow
+          left={<h1 className="text-xl font-bold text-gray-900">Add Expense</h1>}
+          right={
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => router.push("/dashboard")}
+              className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+              title="Go to Dashboard"
+            >
+              <BarChart3 size={20} />
+            </motion.button>
+          }
+        />
         
-        <div className="max-w-md mx-auto p-4 pt-8 pb-20">
+        <div className="max-w-md mx-auto p-4 pt-24 pb-20">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="bg-white rounded-lg shadow-sm p-6 mb-6"
           >
-            <HeaderRow
-              left={<h1 className="text-xl font-bold text-gray-900">Add Expense</h1>}
-              right={
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => router.push("/dashboard")}
-                  className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                  title="Go to Dashboard"
-                >
-                  <BarChart3 size={20} />
-                </motion.button>
-              }
-            />
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold text-gray-900">Add New Expense</h2>
+              <p className="text-sm text-gray-600">Fill in the details below to track your expense</p>
+            </div>
             
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Amount */}

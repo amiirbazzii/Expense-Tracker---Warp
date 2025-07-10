@@ -168,27 +168,32 @@ export default function EditExpensePage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-50">
-        <div className="max-w-md mx-auto p-4 pt-8 pb-20">
+        <HeaderRow
+          left={
+            <>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => router.back()}
+                className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                title="Go Back"
+              >
+                <ArrowLeft size={20} />
+              </motion.button>
+              <h1 className="text-xl font-bold text-gray-900">Edit Expense</h1>
+            </>
+          }
+        />
+        
+        <div className="max-w-md mx-auto p-4 pt-24 pb-20">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="bg-white rounded-lg shadow-sm p-6 mb-6"
           >
-            <HeaderRow
-              left={
-                <>
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => router.back()}
-                    className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                    title="Go Back"
-                  >
-                    <ArrowLeft size={20} />
-                  </motion.button>
-                  <h1 className="text-xl font-bold text-gray-900">Edit Expense</h1>
-                </>
-              }
-            />
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold text-gray-900">Edit Expense Details</h2>
+              <p className="text-sm text-gray-600">Update the information below</p>
+            </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Amount */}
               <div>
