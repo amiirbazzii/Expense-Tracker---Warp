@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { BottomNav } from "@/components/BottomNav";
 import { ChevronLeft, ChevronRight, DollarSign, TrendingUp, Calendar, PieChart, BarChart3, Receipt, Edit, Trash2, X, ArrowLeft } from "lucide-react";
+import { HeaderRow } from "@/components/HeaderRow";
 import { format, startOfMonth, endOfMonth, addMonths, subMonths } from "date-fns";
 import { toast } from "sonner";
 import { useMutation } from "convex/react";
@@ -214,15 +215,22 @@ export default function DashboardPage() {
       <div className="min-h-screen bg-gray-50">
         
         <div className="max-w-md mx-auto p-4 pt-8 pb-20">
-            {/* Back Button */}
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => router.push('/expenses')}
-              className="p-2 mb-4 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-              title="Back to Expenses"
-            >
-              <ArrowLeft size={20} />
-            </motion.button>
+            <HeaderRow
+              left={
+                <>
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => router.push('/expenses')}
+                    className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                    title="Back to Expenses"
+                  >
+                    <ArrowLeft size={20} />
+                  </motion.button>
+                  <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
+                </>
+              }
+            />
+
           {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}

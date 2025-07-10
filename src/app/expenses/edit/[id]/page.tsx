@@ -8,6 +8,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { X, Calendar, DollarSign, Tag, User, ArrowLeft } from "lucide-react";
+import { HeaderRow } from "@/components/HeaderRow";
 import { format } from "date-fns";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useRouter, useParams } from "next/navigation";
@@ -173,18 +174,21 @@ export default function EditExpensePage() {
             animate={{ opacity: 1, y: 0 }}
             className="bg-white rounded-lg shadow-sm p-6 mb-6"
           >
-            <div className="flex items-center justify-between mb-6">
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={() => router.back()}
-                className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                title="Go Back"
-              >
-                <ArrowLeft size={20} />
-              </motion.button>
-              <h1 className="text-2xl font-bold text-gray-900">Edit Expense</h1>
-            </div>
-            
+            <HeaderRow
+              left={
+                <>
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => router.back()}
+                    className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                    title="Go Back"
+                  >
+                    <ArrowLeft size={20} />
+                  </motion.button>
+                  <h1 className="text-xl font-bold text-gray-900">Edit Expense</h1>
+                </>
+              }
+            />
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Amount */}
               <div>

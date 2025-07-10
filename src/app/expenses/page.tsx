@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useOffline, PendingExpense } from "@/contexts/OfflineContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { BottomNav } from "@/components/BottomNav";
+import { HeaderRow } from "@/components/HeaderRow";
 import { X, Calendar, DollarSign, Tag, User, Clock, AlertCircle, RefreshCw, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
 import { Id } from "../../../convex/_generated/dataModel";
@@ -203,17 +204,19 @@ export default function ExpensesPage() {
             animate={{ opacity: 1, y: 0 }}
             className="bg-white rounded-lg shadow-sm p-6 mb-6"
           >
-            <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-bold text-gray-900">Add Expense</h1>
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={() => router.push("/dashboard")}
-                className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                title="View All Expenses"
-              >
-                <BarChart3 size={20} />
-              </motion.button>
-            </div>
+            <HeaderRow
+              left={<h1 className="text-xl font-bold text-gray-900">Add Expense</h1>}
+              right={
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => router.push("/dashboard")}
+                  className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  title="Go to Dashboard"
+                >
+                  <BarChart3 size={20} />
+                </motion.button>
+              }
+            />
             
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Amount */}
