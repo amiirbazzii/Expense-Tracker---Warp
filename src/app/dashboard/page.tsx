@@ -120,7 +120,7 @@ export default function DashboardPage() {
             ) : null
           ) : (
             // Expenses Tab
-            expenses && <ExpenseList expenses={expenses} onEdit={handleEdit} />
+            expenses && <ExpenseList expenses={expenses} onEdit={handleEditNavigation} onDeleteSuccess={refetchExpenses} />
           )}
         </div>
 

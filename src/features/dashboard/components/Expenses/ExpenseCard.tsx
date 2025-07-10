@@ -2,9 +2,14 @@ import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect } from 'react';
 import { ExpenseActionMenu } from './ExpenseActionMenu';
+import { useMutation } from "convex/react";
+import { api } from "../../../../../convex/_generated/api";
+import { Id } from "../../../../../convex/_generated/dataModel";
+import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface Expense {
-  _id: string;
+  _id: Id<"expenses">; // Use Id type for Convex IDs
   _creationTime: number;
   title: string;
   amount: number;
@@ -16,11 +21,14 @@ export interface Expense {
 interface ExpenseCardProps {
   expense: Expense;
   onEdit: (expense: Expense) => void;
+  onDeleteSuccess: (expenseId: Id<"expenses">) => void; // Callback for successful deletion
 }
 
-export function ExpenseCard({ expense, onEdit }: ExpenseCardProps) {
+export function ExpenseCard({ expense, onEdit, onDeleteSuccess }: ExpenseCardProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  const { token } = useAuth();
+  const deleteExpenseMutation = useMutation(api.expenses.deleteExpense);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -44,7 +52,22 @@ export function ExpenseCard({ expense, onEdit }: ExpenseCardProps) {
     setIsMenuOpen(false);
   };
 
-
+  const handleDelete = async () => {
+    setIsMenuOpen(false);
+    if (!token) {
+      toast.error("Authentication required to delete.");
+      return;
+    }
+    try {
+      // Optimistic UI update can be handled by parent via onDeleteSuccess
+      await deleteExpenseMutation({ token, id: expense._id });
+      toast.success("Expense deleted ✅");
+      onDeleteSuccess(expense._id); // Notify parent about successful deletion
+    } catch (error) {
+      console.error("Failed to delete expense:", error);
+      toast.error("Failed to delete expense.");
+    }
+  };
 
   return (
     <div className="relative" ref={cardRef}>
@@ -79,7 +102,7 @@ export function ExpenseCard({ expense, onEdit }: ExpenseCardProps) {
         </motion.div>
         <AnimatePresence>
             {isMenuOpen && (
-                <ExpenseActionMenu onEdit={handleEdit} />
+                <ExpenseActionMenu onEdit={handleEdit} onDelete={handleDelete} />
             )}
         </AnimatePresence>
     </div>

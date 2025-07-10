@@ -215,6 +215,30 @@ export const getCategories = query({
   },
 });
 
+export const deleteExpense = mutation({
+  args: {
+    token: v.string(),
+    id: v.id("expenses"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken(ctx, args.token);
+
+    const expense = await ctx.db.get(args.id);
+
+    if (!expense) {
+      throw new ConvexError("Expense not found");
+    }
+
+    if (expense.userId !== user._id) {
+      throw new ConvexError("You are not authorized to delete this expense");
+    }
+
+    await ctx.db.delete(args.id);
+
+    return { success: true };
+  },
+});
+
 export const createCategory = mutation({
   args: {
     token: v.string(),

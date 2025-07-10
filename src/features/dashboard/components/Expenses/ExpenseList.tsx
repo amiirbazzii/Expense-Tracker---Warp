@@ -1,13 +1,15 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Expense, ExpenseCard } from ".";
 import { Receipt } from "lucide-react";
+import { Id } from "../../../../../convex/_generated/dataModel"; // Import Id type
 
 interface ExpenseListProps {
   expenses: Expense[];
   onEdit: (expense: Expense) => void;
+  onDeleteSuccess: (expenseId: Id<"expenses">) => void; // Add onDeleteSuccess prop
 }
 
-export function ExpenseList({ expenses, onEdit }: ExpenseListProps) {
+export function ExpenseList({ expenses, onEdit, onDeleteSuccess }: ExpenseListProps) {
   if (expenses.length === 0) {
     return (
       <div className="text-center py-8">
@@ -27,6 +29,7 @@ export function ExpenseList({ expenses, onEdit }: ExpenseListProps) {
               key={expense._id}
               expense={expense}
               onEdit={onEdit}
+              onDeleteSuccess={onDeleteSuccess} // Pass onDeleteSuccess to ExpenseCard
             />
           ))}
       </AnimatePresence>

@@ -1,11 +1,12 @@
 import { motion } from "framer-motion";
-import { Pencil } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 
 interface ExpenseActionMenuProps {
   onEdit: () => void;
+  onDelete: () => void;
 }
 
-export function ExpenseActionMenu({ onEdit }: ExpenseActionMenuProps) {
+export function ExpenseActionMenu({ onEdit, onDelete }: ExpenseActionMenuProps) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -23,7 +24,13 @@ export function ExpenseActionMenu({ onEdit }: ExpenseActionMenuProps) {
           <Pencil className="mr-3 h-4 w-4" />
           Edit
         </button>
-
+        <button
+          onClick={onDelete}
+          className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100 gap-2"
+        >
+          <Trash2 className="mr-3 h-4 w-4" />
+          Delete
+        </button>
       </div>
     </motion.div>
   );
