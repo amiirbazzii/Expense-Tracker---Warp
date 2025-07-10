@@ -13,7 +13,7 @@ export default defineSchema({
     amount: v.number(),
     title: v.string(),
     category: v.array(v.string()),
-    for: v.optional(v.string()),
+    for: v.array(v.string()),
     date: v.number(),
     createdAt: v.number(),
     userId: v.id("users"),
@@ -23,4 +23,9 @@ export default defineSchema({
     name: v.string(),
     userId: v.id("users"),
   }).index("by_user", ["userId"]).index("by_user_name", ["userId", "name"]),
+
+  forValues: defineTable({
+    value: v.string(),
+    userId: v.id("users"),
+  }).index("by_user", ["userId"]).index("by_user_value", ["userId", "value"]),
 });

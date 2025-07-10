@@ -6,33 +6,25 @@ import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { Doc } from "convex/_generated/dataModel";
 import { useOffline, PendingExpense } from "@/contexts/OfflineContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { BottomNav } from "@/components/BottomNav";
 import { HeaderRow } from "@/components/HeaderRow";
+import { SmartSelectInput } from "@/components/SmartSelectInput";
 import { X, Calendar, DollarSign, Tag, User, Clock, AlertCircle, RefreshCw, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
 import { Id } from "../../../convex/_generated/dataModel";
 import { useRouter } from "next/navigation";
 
 // A unified type for displaying both online and offline expenses
-type DisplayExpense = {
-  _id: string | Id<"expenses">;
-  _creationTime: number;
-  amount: number;
-  title: string;
-  category: string[];
-  for?: string;
-  date: number;
-  status: 'synced' | 'pending' | 'syncing' | 'failed';
-  isOffline: boolean;
-};
+type DisplayExpense = (Omit<Doc<"expenses">, 'userId'> & { isOffline?: false; status: 'synced' }) | (PendingExpense & { isOffline: true; _id: string; _creationTime: number });
 
 interface ExpenseFormData {
   amount: string;
   title: string;
   category: string[];
-  for: string;
+  for: string[];
   date: string;
 }
 
@@ -44,15 +36,18 @@ export default function ExpensesPage() {
     amount: "",
     title: "",
     category: [],
-    for: "",
+    for: [],
     date: format(new Date(), "yyyy-MM-dd"),
   });
-  const [categoryInput, setCategoryInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const createExpenseMutation = useMutation(api.expenses.createExpense);
+  const createCategoryMutation = useMutation(api.expenses.createCategory);
+  const createForValueMutation = useMutation(api.expenses.createForValue);
+
   const onlineExpenses = useQuery(api.expenses.getExpenses, token ? { token } : "skip");
   const categories = useQuery(api.expenses.getCategories, token ? { token } : "skip");
+  const forValues = useQuery(api.expenses.getForValues, token ? { token } : "skip");
 
   useEffect(() => {
     if (isOnline) {
@@ -61,7 +56,7 @@ export default function ExpensesPage() {
   }, [isOnline, syncPendingExpenses]);
 
   const combinedExpenses: DisplayExpense[] = useMemo(() => {
-    const offline: DisplayExpense[] = pendingExpenses.map(p => ({ ...p, _id: p.id, _creationTime: new Date(p.date).getTime(), isOffline: true }));
+    const offline: DisplayExpense[] = pendingExpenses.map(p => ({ ...p, isOffline: true, _id: p.id, _creationTime: p.date, for: Array.isArray(p.for) ? p.for : [p.for] }));
     const online: DisplayExpense[] = onlineExpenses?.map(o => ({ ...o, status: 'synced', isOffline: false })) || [];
     
     const all = [...offline, ...online];
@@ -99,7 +94,7 @@ export default function ExpensesPage() {
         amount,
         title: formData.title,
         category: formData.category,
-        for: formData.for || undefined,
+        for: Array.isArray(formData.for) ? formData.for : formData.for ? [formData.for] : [],
         date: new Date(formData.date).getTime(),
       };
 
@@ -120,7 +115,7 @@ export default function ExpensesPage() {
         amount: "",
         title: "",
         category: [],
-        for: "",
+        for: [],
         date: format(new Date(), "yyyy-MM-dd"),
       });
     } catch (error: unknown) {
@@ -131,73 +126,61 @@ export default function ExpensesPage() {
     }
   };
 
-  // Format category name according to rules:
-  // - lowercase
-  // - no leading/trailing spaces
-  // - hyphens between words
-  const formatCategoryName = (name: string): string => {
-    return name
-      .trim() // Remove leading/trailing spaces
-      .toLowerCase() // Convert to lowercase
-      .replace(/\s+/g, '-') // Replace spaces with hyphens
-      .replace(/[^a-z0-9-]/g, '') // Remove special characters except hyphens
-      .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
-      .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+  const fetchCategorySuggestions = async (query: string): Promise<string[]> => {
+    if (!categories) return [];
+    return categories
+      .filter(cat => cat.name.toLowerCase().includes(query.toLowerCase()))
+      .map(cat => cat.name);
   };
 
-  const addCategory = (categoryName: string) => {
-    const formatted = formatCategoryName(categoryName);
-    if (formatted && !formData.category.includes(formatted)) {
-      setFormData({
-        ...formData,
-        category: [...formData.category, formatted],
-      });
+  const handleCreateCategory = async (name: string): Promise<void> => {
+    if (!token) {
+      toast.error("Authentication required");
+      return;
     }
-    setCategoryInput("");
-  };
-
-  // Function specifically for selecting from dropdown (no formatting needed)
-  const selectCategoryFromDropdown = (categoryName: string) => {
-    if (categoryName && !formData.category.includes(categoryName)) {
-      setFormData({
-        ...formData,
-        category: [...formData.category, categoryName],
-      });
-    }
-    setCategoryInput("");
-  };
-
-  const removeCategory = (index: number) => {
-    setFormData({
-      ...formData,
-      category: formData.category.filter((_, i) => i !== index),
-    });
-  };
-
-  const handleCategoryKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" || e.key === ",") {
-      e.preventDefault();
-      addCategory(categoryInput);
+    try {
+      await createCategoryMutation({ token, name });
+    } catch (error) {
+      toast.error("Failed to create category.");
+      console.error(error);
     }
   };
 
-  const suggestedCategories = categories?.filter(
-    (cat) =>
-      !formData.category.includes(cat.name) &&
-      cat.name.toLowerCase().includes(categoryInput.toLowerCase())
-  );
+  const fetchForSuggestions = async (query: string): Promise<string[]> => {
+    if (!forValues) return [];
+    return forValues
+      .filter(f => f.value.toLowerCase().includes(query.toLowerCase()))
+      .map(f => f.value);
+  };
 
-  // Check if the current input would create a new category
-  const formattedInput = formatCategoryName(categoryInput);
-  const wouldCreateNew = formattedInput && 
-    !formData.category.includes(formattedInput) &&
-    !categories?.some(cat => cat.name === formattedInput);
+  const handleCreateForValue = async (value: string): Promise<void> => {
+    if (!token) {
+      toast.error("Authentication required");
+      return;
+    }
+    try {
+      await createForValueMutation({ token, value });
+    } catch (error) {
+      toast.error("Failed to add 'for' value.");
+      console.error(error);
+    }
+  };
 
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-50">
         <HeaderRow
           left={<h1 className="text-xl font-bold text-gray-900">Add Expense</h1>}
+          right={
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => router.push("/dashboard")}
+              className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+              title="Go to Dashboard"
+            >
+              <BarChart3 size={20} />
+            </motion.button>
+          }
         />
         
         <div className="max-w-md mx-auto p-4 pt-24 pb-20">
@@ -244,97 +227,27 @@ export default function ExpensesPage() {
                 />
               </div>
 
-              {/* Categories */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Tag className="inline w-4 h-4 mr-1" />
-                  Categories *
-                </label>
-                <div className="space-y-2">
-                  {/* Selected categories */}
-                  {formData.category.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {formData.category.map((cat, index) => (
-                        <motion.span
-                          key={index}
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
-                        >
-                          {cat}
-                          <button
-                            type="button"
-                            onClick={() => removeCategory(index)}
-                            className="ml-1 text-blue-600 hover:text-blue-800"
-                          >
-                            <X size={14} />
-                          </button>
-                        </motion.span>
-                      ))}
-                    </div>
-                  )}
-                  
-                  {/* Category input */}
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={categoryInput}
-                      onChange={(e) => setCategoryInput(e.target.value)}
-                      onKeyPress={handleCategoryKeyPress}
-                      onBlur={() => {
-                        if (categoryInput.trim()) {
-                          addCategory(categoryInput);
-                        }
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
-                      placeholder="Type category and press Enter"
-                    />
-                    
-                    {/* Suggestions */}
-                    {categoryInput && suggestedCategories && (suggestedCategories.length > 0 || wouldCreateNew) && (
-                      <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-md shadow-lg z-10 max-h-40 overflow-y-auto">
-                        {/* Existing category suggestions */}
-                        {suggestedCategories?.slice(0, 5).map((cat) => (
-                          <button
-                            key={cat._id}
-                            type="button"
-                            onClick={() => selectCategoryFromDropdown(cat.name)}
-                            className="w-full text-left px-3 py-2 bg-white text-gray-900 hover:bg-gray-100 text-sm"
-                          >
-                            {cat.name}
-                          </button>
-                        ))}
-                        
-                        {/* Create new category option */}
-                        {wouldCreateNew && (
-                          <button
-                            type="button"
-                            onClick={() => addCategory(categoryInput)}
-                            className="w-full text-left px-3 py-2 bg-white text-blue-600 hover:bg-blue-50 text-sm font-medium border-t border-gray-200"
-                          >
-                            Create "{formattedInput}"
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <SmartSelectInput
+                name="category"
+                label="Categories *"
+                multiple
+                value={formData.category}
+                onChange={(newCategories) => setFormData({ ...formData, category: newCategories })}
+                fetchSuggestions={fetchCategorySuggestions}
+                onCreateNew={handleCreateCategory}
+                placeholder="Select or add categories"
+              />
 
-              {/* For */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <User className="inline w-4 h-4 mr-1" />
-                  For (optional)
-                </label>
-                <input
-                  type="text"
-                  value={formData.for}
-                  onChange={(e) => setFormData({ ...formData, for: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
-                  placeholder="Family, Personal, etc."
-                />
-              </div>
+              <SmartSelectInput
+                name="for"
+                label="For (optional)"
+                multiple={false}
+                value={formData.for}
+                onChange={(newFor) => setFormData({ ...formData, for: newFor })}
+                fetchSuggestions={fetchForSuggestions}
+                onCreateNew={handleCreateForValue}
+                placeholder="Select or add a person"
+              />
 
               {/* Date */}
               <div>

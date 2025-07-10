@@ -66,19 +66,19 @@ export default function DashboardPage() {
     const totalCount = expenses.length;
 
     // Category breakdown
-    const categoryTotals = expenses.reduce((acc, expense) => {
+    const categoryTotals = expenses.reduce<Record<string, number>>((acc, expense) => {
       expense.category.forEach((cat) => {
         acc[cat] = (acc[cat] || 0) + expense.amount;
       });
       return acc;
-    }, {} as Record<string, number>);
+    }, {});
 
     // Daily breakdown
-    const dailyTotals = expenses.reduce((acc, expense) => {
+    const dailyTotals = expenses.reduce<Record<string, number>>((acc, expense) => {
       const day = format(new Date(expense.date), "MMM d");
       acc[day] = (acc[day] || 0) + expense.amount;
       return acc;
-    }, {} as Record<string, number>);
+    }, {});
 
     return {
       totalAmount,

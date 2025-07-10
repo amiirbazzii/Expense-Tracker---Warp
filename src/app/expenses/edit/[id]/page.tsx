@@ -17,7 +17,7 @@ interface ExpenseFormData {
   amount: string;
   title: string;
   category: string[];
-  for: string;
+  for: string[];
   date: string;
 }
 
@@ -31,16 +31,18 @@ export default function EditExpensePage() {
     amount: "",
     title: "",
     category: [],
-    for: "",
+    for: [],
     date: format(new Date(), "yyyy-MM-dd"),
   });
   const [categoryInput, setCategoryInput] = useState("");
+  const [forInput, setForInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const updateExpenseMutation = useMutation(api.expenses.updateExpense);
   const expense = useQuery(api.expenses.getExpenseById, token ? { token, expenseId } : "skip");
   const categories = useQuery(api.expenses.getCategories, token ? { token } : "skip");
+  const forValues = useQuery(api.expenses.getForValues, token ? { token } : "skip");
 
   // Load expense data into form when available
   useEffect(() => {
@@ -48,8 +50,8 @@ export default function EditExpensePage() {
       setFormData({
         amount: expense.amount.toString(),
         title: expense.title,
-        category: [...expense.category],
-        for: expense.for || "",
+        category: expense.category,
+        for: Array.isArray(expense.for) ? expense.for : (expense.for ? [expense.for] : []),
         date: format(new Date(expense.date), "yyyy-MM-dd"),
       });
       setIsLoading(false);
@@ -79,7 +81,7 @@ export default function EditExpensePage() {
         amount,
         title: formData.title,
         category: formData.category,
-        for: formData.for || undefined,
+        for: formData.for,
         date: new Date(formData.date).getTime(),
       });
 
@@ -136,12 +138,45 @@ export default function EditExpensePage() {
     });
   };
 
-  const handleCategoryKeyPress = (e: React.KeyboardEvent) => {
+  const handleCategoryKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
       addCategory(categoryInput);
     }
   };
+
+  // Functions for handling "For" input
+  const handleForSelect = (value: string) => {
+    if (!formData.for.includes(value)) {
+      setFormData({ ...formData, for: [...formData.for, value] });
+    }
+    setForInput("");
+  };
+
+  const handleForKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (forInput.trim()) {
+        handleForSelect(forInput.trim());
+      }
+    }
+  };
+
+  const handleForBlur = () => {
+    if (forInput.trim()) {
+      handleForSelect(forInput.trim());
+    }
+  };
+
+  const suggestedForValues = forValues?.filter(
+    (forValue) =>
+      !formData.for.includes(forValue.value) &&
+      forValue.value.toLowerCase().includes(forInput.toLowerCase())
+  );
+
+  const wouldCreateNewFor = forInput.trim() &&
+    !formData.for.includes(forInput.trim()) &&
+    !forValues?.some(forValue => forValue.value === forInput.trim());
 
   const suggestedCategories = categories?.filter(
     (cat) =>
@@ -274,7 +309,7 @@ export default function EditExpensePage() {
                     />
                     
                     {/* Suggestions */}
-                    {categoryInput && suggestedCategories && (suggestedCategories.length > 0 || wouldCreateNew) && (
+                    {categoryInput && ((suggestedCategories && suggestedCategories.length > 0) || wouldCreateNew) && (
                       <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-md shadow-lg z-10 max-h-40 overflow-y-auto">
                         {/* Existing category suggestions */}
                         {suggestedCategories?.slice(0, 5).map((cat) => (
@@ -310,38 +345,91 @@ export default function EditExpensePage() {
                   <User className="inline w-4 h-4 mr-1" />
                   For (optional)
                 </label>
-                <input
-                  type="text"
-                  value={formData.for}
-                  onChange={(e) => setFormData({ ...formData, for: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
-                  placeholder="Family, Personal, etc."
-                />
+                <div className="space-y-2">
+                  {/* Selected "for" value */}
+                  {formData.for.length > 0 && (
+                    <div className="flex items-center px-3 py-2 bg-green-100 text-green-800 text-sm rounded-md">
+                      <span className="flex-1">{formData.for.join(', ')}</span>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, for: [] })}
+                        className="ml-2 text-green-600 hover:text-green-800"
+                        title="Clear selection"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* For input */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={forInput}
+                      onChange={(e) => setForInput(e.target.value)}
+                      onKeyPress={handleForKeyPress}
+                      onBlur={handleForBlur}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
+                      placeholder={formData.for.length > 0 ? "Change selection..." : "Type name and press Enter"}
+                    />
+                    
+                    {/* Suggestions */}
+                    {forInput && ((suggestedForValues && suggestedForValues.length > 0) || wouldCreateNewFor) && (
+                      <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-md shadow-lg z-10 max-h-40 overflow-y-auto">
+                        {/* Existing for value suggestions */}
+                        {suggestedForValues?.slice(0, 5).map((forValue) => (
+                          <button
+                            key={forValue._id}
+                            type="button"
+                            onClick={() => handleForSelect(forValue.value)}
+                            className="w-full text-left px-3 py-2 bg-white text-gray-900 hover:bg-gray-100 text-sm"
+                          >
+                            {forValue.value}
+                          </button>
+                        ))}
+                        
+                        {/* Create new for value option */}
+                        {wouldCreateNewFor && (
+                          <button
+                            type="button"
+                            onClick={() => handleForSelect(forInput.trim())}
+                            className="w-full text-left px-3 py-2 bg-white text-blue-600 hover:bg-blue-50 text-sm font-medium border-t border-gray-200"
+                          >
+                            Add "{forInput.trim()}"
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Date */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Calendar className="inline w-4 h-4 mr-1" />
-                  Date
+                  Date *
                 </label>
                 <input
                   type="date"
                   value={formData.date}
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
+                  required
                 />
               </div>
 
-              {/* Submit */}
-              <motion.button
-                whileTap={{ scale: 0.98 }}
-                type="submit"
-                disabled={isSubmitting || formData.category.length === 0}
-                className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-medium min-h-[44px]"
-              >
-                {isSubmitting ? "Updating..." : "Update Expense"}
-              </motion.button>
+              {/* Submit button */}
+              <div className="pt-4">
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300 transition-colors min-h-[44px]"
+                >
+                  {isSubmitting ? "Updating..." : "Update Expense"}
+                </motion.button>
+              </div>
             </form>
           </motion.div>
         </div>

@@ -13,7 +13,7 @@ export interface PendingExpense {
   amount: number;
   title: string;
   category: string[];
-  for?: string;
+  for: string[];
   date: number;
   status: ExpenseStatus;
 }

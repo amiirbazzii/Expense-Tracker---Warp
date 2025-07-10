@@ -22,7 +22,7 @@ export const createExpense = mutation({
     amount: v.number(),
     title: v.string(),
     category: v.array(v.string()),
-    for: v.optional(v.string()),
+    for: v.array(v.string()),
     date: v.number(),
   },
   handler: async (ctx, args) => {
@@ -48,6 +48,21 @@ export const createExpense = mutation({
       if (!existingCategory) {
         await ctx.db.insert("categories", {
           name: categoryName,
+          userId: user._id,
+        });
+      }
+    }
+
+    // Add "for" values to user's forValues if they don't exist
+    for (const forValue of args.for) {
+      const existingForValue = await ctx.db
+        .query("forValues")
+        .withIndex("by_user_value", (q) => q.eq("userId", user._id).eq("value", forValue))
+        .first();
+
+      if (!existingForValue) {
+        await ctx.db.insert("forValues", {
+          value: forValue,
           userId: user._id,
         });
       }
@@ -113,7 +128,7 @@ export const updateExpense = mutation({
     amount: v.number(),
     title: v.string(),
     category: v.array(v.string()),
-    for: v.optional(v.string()),
+    for: v.array(v.string()),
     date: v.number(),
   },
   handler: async (ctx, args) => {
@@ -144,6 +159,21 @@ export const updateExpense = mutation({
       if (!existingCategory) {
         await ctx.db.insert("categories", {
           name: categoryName,
+          userId: user._id,
+        });
+      }
+    }
+
+    // Add "for" values to user's forValues if they don't exist
+    for (const forValue of args.for) {
+      const existingForValue = await ctx.db
+        .query("forValues")
+        .withIndex("by_user_value", (q) => q.eq("userId", user._id).eq("value", forValue))
+        .first();
+
+      if (!existingForValue) {
+        await ctx.db.insert("forValues", {
+          value: forValue,
           userId: user._id,
         });
       }
@@ -200,6 +230,78 @@ export const getCategories = query({
 
     return await ctx.db
       .query("categories")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+  },
+});
+
+export const createCategory = mutation({
+  args: {
+    token: v.string(),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken(ctx, args.token);
+    const formattedName = args.name.trim().toLowerCase();
+
+    if (!formattedName) {
+      throw new ConvexError("Category name cannot be empty.");
+    }
+
+    const existingCategory = await ctx.db
+      .query("categories")
+      .withIndex("by_user_name", (q) => q.eq("userId", user._id).eq("name", formattedName))
+      .first();
+
+    if (existingCategory) {
+      return existingCategory._id;
+    }
+
+    return await ctx.db.insert("categories", {
+      name: formattedName,
+      userId: user._id,
+    });
+  },
+});
+
+export const createForValue = mutation({
+  args: {
+    token: v.string(),
+    value: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken(ctx, args.token);
+    const trimmedValue = args.value.trim();
+
+    if (!trimmedValue) {
+      throw new ConvexError("'For' value cannot be empty.");
+    }
+
+    const existingForValue = await ctx.db
+      .query("forValues")
+      .withIndex("by_user_value", (q) => q.eq("userId", user._id).eq("value", trimmedValue))
+      .first();
+
+    if (existingForValue) {
+      return existingForValue._id;
+    }
+
+    return await ctx.db.insert("forValues", {
+      value: trimmedValue,
+      userId: user._id,
+    });
+  },
+});
+
+export const getForValues = query({
+  args: {
+    token: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken(ctx, args.token);
+
+    return await ctx.db
+      .query("forValues")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
   },
