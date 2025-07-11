@@ -1,6 +1,17 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalQuery } from "./_generated/server";
 import { ConvexError } from "convex/values";
+import { Doc, Id } from "./_generated/dataModel";
+
+export const getUserByToken = async ({ ctx, token }: { ctx: any; token: string }): Promise<Doc<"users"> | null> => {
+  if (!token) {
+    return null;
+  }
+  return await ctx.db
+    .query("users")
+    .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", token))
+    .first();
+};
 
 // Helper function to hash password (simple version for demo)
 function hashPassword(password: string): string {
