@@ -147,7 +147,7 @@ export default function EditExpensePage() {
       });
 
       toast.success("Expense updated successfully!");
-      router.push("/dashboard");
+      router.push("/expenses");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to update expense";
       toast.error(message);
