@@ -124,6 +124,27 @@ export const getIncome = query({
   },
 });
 
+export const getIncomeByDateRange = query({
+  args: {
+    token: v.string(),
+    startDate: v.number(),
+    endDate: v.number(),
+    key: v.optional(v.number()), // Add a key for cache busting
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken(ctx, args.token);
+
+    const income = await ctx.db
+      .query("income")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    return income.filter(incomeRecord => 
+      incomeRecord.date >= args.startDate && incomeRecord.date <= args.endDate
+    );
+  },
+});
+
 export const getUniqueIncomeCategories = query({
   args: {
     token: v.string(),

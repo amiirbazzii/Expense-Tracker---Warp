@@ -13,10 +13,14 @@ import { SmartSelectInput } from "@/components/SmartSelectInput";
 import { 
   CreditCard, 
   Receipt, 
-  Calendar,
+  Calendar
 } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
+import { useTimeFramedData } from "@/hooks/useTimeFramedData";
+import { DateFilterHeader } from "@/components/DateFilterHeader";
+import { Doc } from "../../../convex/_generated/dataModel";
+import { ExpenseCard } from '@/components/cards/ExpenseCard';
 
 interface ExpenseFormData {
   amount: string;
@@ -26,8 +30,6 @@ interface ExpenseFormData {
   date: string;
   cardId: string;
 }
-
-
 
 const capitalizeWords = (str: string) => {
   return str
@@ -60,10 +62,14 @@ export default function ExpensesPage() {
   const categories = useQuery(api.expenses.getCategories, token ? { token } : "skip");
   const forValues = useQuery(api.expenses.getForValues, token ? { token } : "skip");
 
-  const expenses = useQuery(
-    api.expenses.getExpenses, 
-    token ? { token } : "skip"
-  );
+  const { 
+    currentDate, 
+    data: expenses, 
+    isLoading,
+    goToPreviousMonth, 
+    goToNextMonth, 
+    refetch 
+  } = useTimeFramedData('expense', token);
 
   // Check if user needs to set up cards first
   useEffect(() => {
@@ -112,6 +118,7 @@ export default function ExpensesPage() {
       });
 
       toast.success("Expense added successfully!");
+      refetch(); // Refetch expenses after adding a new one
       
       // Reset form
       setFormData({
@@ -129,8 +136,6 @@ export default function ExpensesPage() {
       setIsSubmitting(false);
     }
   };
-
-
 
   const fetchCategorySuggestions = async (query: string): Promise<string[]> => {
     if (!categories) return [];
@@ -172,6 +177,12 @@ export default function ExpensesPage() {
     }
   };
 
+  // Create a map of card IDs to card names for quick lookup
+  const cardMap = cards?.reduce((acc, card) => {
+    acc[card._id] = card.name;
+    return acc;
+  }, {} as Record<string, string>) || {};
+
   if (cards === undefined) {
     return (
       <ProtectedRoute>
@@ -202,6 +213,7 @@ export default function ExpensesPage() {
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Form fields... */}
               {/* Amount */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -304,6 +316,39 @@ export default function ExpensesPage() {
               </motion.button>
             </form>
           </motion.div>
+
+          {/* Expenses History Section */}
+          <div className="mt-8">
+            <DateFilterHeader 
+              currentDate={currentDate} 
+              onPreviousMonth={goToPreviousMonth} 
+              onNextMonth={goToNextMonth} 
+              title="Expenses History"
+            />
+
+            {isLoading ? (
+              <div className="text-center py-8 text-gray-500">Loading...</div>
+            ) : expenses && expenses.length > 0 ? (
+              <div className="space-y-4 mt-4">
+                {(expenses as Doc<"expenses">[]).map((expense) => (
+                  <ExpenseCard 
+                    key={expense._id} 
+                    expense={expense} 
+                    cardName={cardMap[expense.cardId!] || 'Unknown Card'}
+                    onDelete={refetch}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Receipt className="mx-auto text-gray-400 mb-4" size={48} />
+                <p className="text-gray-500">No expenses found for this month.</p>
+                <p className="text-sm text-gray-400 mt-2">
+                  Add an expense using the form above.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
         <BottomNav />

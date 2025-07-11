@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useQuery, useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -10,9 +10,12 @@ import { BottomNav } from "@/components/BottomNav";
 import { HeaderRow } from "@/components/HeaderRow";
 import { SmartSelectInput } from "@/components/SmartSelectInput";
 import { toast } from "sonner";
-import { ArrowLeft, TrendingUp, CreditCard, Calendar, DollarSign, PencilLine } from "lucide-react";
+import { ArrowLeft, ArrowRight, TrendingUp, CreditCard, Calendar, PencilLine } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
+import { useTimeFramedData } from "@/hooks/useTimeFramedData";
+import { DateFilterHeader } from "@/components/DateFilterHeader";
+import { Doc } from "../../../convex/_generated/dataModel";
 
 interface IncomeFormData {
   amount: string;
@@ -49,9 +52,17 @@ export default function IncomePage() {
   const createIncomeMutation = useMutation(api.cardsAndIncome.createIncome);
 
   // Queries
-  const income = useQuery(api.cardsAndIncome.getIncome, token ? { token } : "skip");
   const cards = useQuery(api.cardsAndIncome.getMyCards, token ? { token } : "skip");
   const allIncomeCategories = useQuery(api.cardsAndIncome.getUniqueIncomeCategories, token ? { token } : "skip");
+
+  const { 
+    currentDate, 
+    data: income, 
+    isLoading,
+    goToPreviousMonth, 
+    goToNextMonth, 
+    refetch 
+  } = useTimeFramedData('income', token);
 
   // Auto-select first card if available
   useEffect(() => {
@@ -93,6 +104,7 @@ export default function IncomePage() {
       });
 
       toast.success("Income added successfully!");
+      refetch(); // Refetch income after adding a new one
       
       // Reset form
       setFormData({
@@ -121,8 +133,6 @@ export default function IncomePage() {
     acc[card._id] = card.name;
     return acc;
   }, {} as Record<string, string>) || {};
-
-  const sortedIncome = income?.sort((a, b) => b.date - a.date) || [];
 
   return (
     <ProtectedRoute>
@@ -156,6 +166,7 @@ export default function IncomePage() {
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Form fields... */}
               {/* Amount */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -261,65 +272,74 @@ export default function IncomePage() {
             </form>
           </motion.div>
 
-          {/* Income History */}
-          <h2 className="text-lg font-semibold text-gray-900 my-6">Income History</h2>
-          {income === undefined ? (
-            <div className="text-center py-8">
-              <div className="text-gray-500">Loading...</div>
-            </div>
-          ) : sortedIncome.length === 0 ? (
-            <div className="text-center py-8">
-              <TrendingUp className="mx-auto text-gray-400 mb-4" size={48} />
-              <p className="text-gray-500">No income records found</p>
-              <p className="text-sm text-gray-400 mt-2">
-                Start by adding your first income record above.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {sortedIncome.map((incomeRecord) => (
-                <motion.div
-                  key={incomeRecord._id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-lg shadow-sm p-4"
-                >
-                  <div className="flex justify-between items-start mb-3">
+          {/* Income History Section */}
+          <div className="mt-8">
+            <DateFilterHeader 
+              currentDate={currentDate} 
+              onPreviousMonth={goToPreviousMonth} 
+              onNextMonth={goToNextMonth} 
+              title="Income History"
+            />
+
+            {isLoading ? (
+              <div className="text-center py-8 text-gray-500">Loading...</div>
+            ) : income && income.length > 0 ? (
+              <div className="space-y-4 mt-4">
+                {(income as Doc<"income">[]).map((incomeRecord) => (
+                  <motion.div
+                    key={incomeRecord._id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-white rounded-lg shadow-sm p-4 flex items-center justify-between"
+                  >
                     <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 text-lg">
-                        {incomeRecord.source}
-                      </h3>
-                      <div className="flex items-center text-sm text-gray-600 mt-1">
-                        <CreditCard className="w-4 h-4 mr-1" />
-                        <span>{cardMap[incomeRecord.cardId] || "Unknown Card"}</span>
+                      <div className="flex justify-between items-start">
+                        <h3 className="font-semibold text-gray-800 text-md truncate pr-4">
+                          {incomeRecord.source}
+                        </h3>
+                        <p className="font-bold text-green-600 text-md">
+                          +${incomeRecord.amount.toFixed(2)}
+                        </p>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xl font-bold text-green-600">
-                        +${incomeRecord.amount.toFixed(2)}
+                      <div className="text-sm text-gray-500 mt-1">
+                        {format(new Date(incomeRecord.date), "MMM d, yyyy")}
                       </div>
+                      <div className="text-sm text-gray-600 mt-1">
+                        <CreditCard className="inline w-4 h-4 mr-1" />
+                        {cardMap[incomeRecord.cardId] || "Unknown Card"}
+                      </div>
+                      <div className="mt-2">
+                        <span className="bg-gray-100 text-gray-700 px-2 py-1 text-xs rounded-full">
+                          {incomeRecord.category}
+                        </span>
+                      </div>
+                      {incomeRecord.notes && (
+                        <div className="mt-2 text-sm text-gray-600 bg-gray-50 p-2 rounded">
+                          <strong>Notes:</strong> {incomeRecord.notes}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between text-sm text-gray-500">
-                    <div className="flex items-center">
-                      <Calendar className="w-4 h-4 mr-1" />
-                      <span>{format(new Date(incomeRecord.date), "MMM d, yyyy")}</span>
-                    </div>
-                    <div className="bg-gray-100 px-2 py-1 rounded text-xs">
-                      {incomeRecord.category}
-                    </div>
-                  </div>
-                  
-                  {incomeRecord.notes && (
-                    <div className="mt-2 text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                      <strong>Notes:</strong> {incomeRecord.notes}
-                    </div>
-                  )}
-                </motion.div>
-              ))}
-            </div>
-          )}
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => router.push(`/income/edit/${incomeRecord._id}`)}
+                      className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                      aria-label="Edit income"
+                    >
+                      <ArrowRight size={20} />
+                    </motion.button>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <TrendingUp className="mx-auto text-gray-400 mb-4" size={48} />
+                <p className="text-gray-500">No income found for this month.</p>
+                <p className="text-sm text-gray-400 mt-2">
+                  Add an income record using the form above.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
         <BottomNav />
