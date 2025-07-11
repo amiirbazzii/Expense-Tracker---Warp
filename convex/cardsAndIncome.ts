@@ -164,6 +164,55 @@ export const getUniqueIncomeCategories = query({
   },
 });
 
+export const getIncomeById = query({
+  args: {
+    token: v.string(),
+    incomeId: v.id("income"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken(ctx, args.token);
+
+    const income = await ctx.db.get(args.incomeId);
+    if (!income || income.userId !== user._id) {
+      throw new ConvexError("Income not found or not authorized");
+    }
+
+    return income;
+  },
+});
+
+export const updateIncome = mutation({
+  args: {
+    token: v.string(),
+    incomeId: v.id("income"),
+    amount: v.number(),
+    source: v.string(),
+    category: v.string(),
+    date: v.number(),
+    cardId: v.id("cards"),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken(ctx, args.token);
+
+    const income = await ctx.db.get(args.incomeId);
+    if (!income || income.userId !== user._id) {
+      throw new ConvexError("Income not found or not authorized");
+    }
+
+    await ctx.db.patch(args.incomeId, {
+      amount: args.amount,
+      source: args.source,
+      category: args.category,
+      date: args.date,
+      cardId: args.cardId,
+      notes: args.notes,
+    });
+
+    return { success: true };
+  },
+});
+
 export const deleteIncome = mutation({
   args: {
     token: v.string(),
