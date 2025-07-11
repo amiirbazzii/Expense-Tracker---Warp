@@ -5,11 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useMutation } from 'convex/react';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+// import { format } from 'date-fns'; // Replaced by useUserSettings
 import { CreditCard, Trash2, Edit } from 'lucide-react';
 import { api } from '../../../convex/_generated/api';
 import { Doc } from '../../../convex/_generated/dataModel';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserSettings } from '@/contexts/UserSettingsContext';
 
 interface IncomeCardProps {
   income: Doc<"income">;
@@ -19,6 +20,7 @@ interface IncomeCardProps {
 
 export function IncomeCard({ income, cardName, onDelete }: IncomeCardProps) {
   const { token } = useAuth();
+  const { formatCurrency, formatDate } = useUserSettings();
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const deleteIncomeMutation = useMutation(api.cardsAndIncome.deleteIncome);
@@ -69,8 +71,8 @@ export function IncomeCard({ income, cardName, onDelete }: IncomeCardProps) {
           </div>
         </div>
         <div className="text-right flex flex-col items-end">
-          <p className="font-bold text-green-500 text-md">+${income.amount.toFixed(2)}</p>
-          <p className="text-xs text-gray-400 mt-1">{format(new Date(income.date), "MMM d, yyyy")}</p>
+          <p className="font-bold text-green-500 text-md">{formatCurrency(income.amount)}</p>
+          <p className="text-xs text-gray-400 mt-1">{formatDate(income.date)}</p>
         </div>
       </div>
       <AnimatePresence>

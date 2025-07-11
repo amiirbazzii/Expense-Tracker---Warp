@@ -1,7 +1,9 @@
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import type { TooltipItem } from 'chart.js';
 import { PieChart } from "lucide-react";
 import { motion } from "framer-motion";
+import { useUserSettings } from "@/contexts/UserSettingsContext";
 
 // Register ChartJS components
 ChartJS.register(ArcElement, Tooltip, Legend);
@@ -11,7 +13,10 @@ interface CategoryBreakdownChartProps {
 }
 
 export function CategoryBreakdownChart({ categoryTotals }: CategoryBreakdownChartProps) {
-  if (!categoryTotals || Object.keys(categoryTotals).length === 0) {
+  const { formatCurrency, isLoadingSettings } = useUserSettings();
+
+  if (isLoadingSettings || !categoryTotals || Object.keys(categoryTotals).length === 0) {
+    // Optionally show a loading state or return null
     return null;
   }
 
@@ -55,6 +60,20 @@ export function CategoryBreakdownChart({ categoryTotals }: CategoryBreakdownChar
       },
       tooltip: {
         enabled: true,
+        callbacks: {
+          label: function(context: TooltipItem<"pie">) {
+            let label = context.label || '';
+            if (label) {
+              label += ': ';
+            }
+            if (context.parsed !== null) {
+              // Assuming context.raw is the number value
+              const value = typeof context.raw === 'number' ? context.raw : 0;
+              label += formatCurrency(value);
+            }
+            return label;
+          }
+        }
       },
     },
   };

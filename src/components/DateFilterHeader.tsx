@@ -1,9 +1,10 @@
-import { format } from "date-fns";
+// import { format } from "date-fns"; // Replaced by useUserSettings
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useUserSettings } from "@/contexts/UserSettingsContext";
 
 interface DateFilterHeaderProps {
-  currentDate: Date;
+  currentDate: Date; // This is a Date object
   onPreviousMonth: () => void;
   onNextMonth: () => void;
   title: string;
@@ -15,6 +16,8 @@ export function DateFilterHeader({
   onNextMonth, 
   title 
 }: DateFilterHeaderProps) {
+  const { formatMonthYear } = useUserSettings();
+
   return (
     <div className="flex items-center justify-between mb-4 bg-white p-4 rounded-lg shadow-sm">
       <motion.button
@@ -28,7 +31,7 @@ export function DateFilterHeader({
       
       <div className="text-center">
         <h2 className="text-lg font-semibold text-gray-800">
-          {format(currentDate, "MMMM yyyy")}
+          {formatMonthYear(currentDate.getTime())}
         </h2>
         <p className="text-sm text-gray-500">{title}</p>
       </div>

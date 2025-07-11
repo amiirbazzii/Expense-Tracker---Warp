@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+// import { format } from "date-fns"; // Replaced by useUserSettings
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect } from 'react';
 import { ExpenseActionMenu } from './ExpenseActionMenu';
@@ -8,6 +8,7 @@ import { Id } from "../../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { CheckCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserSettings } from "@/contexts/UserSettingsContext";
 
 export interface Expense {
   _id: Id<"expenses">; // Use Id type for Convex IDs
@@ -29,6 +30,7 @@ export function ExpenseCard({ expense, onEdit, onDeleteSuccess }: ExpenseCardPro
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const { token } = useAuth();
+  const { formatCurrency, formatDate } = useUserSettings();
   const deleteExpenseMutation = useMutation(api.expenses.deleteExpense);
 
   useEffect(() => {
@@ -76,7 +78,7 @@ export function ExpenseCard({ expense, onEdit, onDeleteSuccess }: ExpenseCardPro
           animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-lg shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow"
           onClick={handleCardClick}
-          aria-label={`Expense: ${expense.title} for $${expense.amount.toFixed(2)}`}
+          aria-label={`Expense: ${expense.title} for ${formatCurrency(expense.amount)}`}
         >
           <div className="flex justify-between items-start mb-2">
             <div className="flex-1">
@@ -87,7 +89,7 @@ export function ExpenseCard({ expense, onEdit, onDeleteSuccess }: ExpenseCardPro
             </div>
             <div className="text-right">
               <span className="text-lg font-bold text-gray-900">
-                ${expense.amount.toFixed(2)}
+                {formatCurrency(expense.amount)}
               </span>
             </div>
           </div>
@@ -96,7 +98,7 @@ export function ExpenseCard({ expense, onEdit, onDeleteSuccess }: ExpenseCardPro
               {Array.isArray(expense.category) ? expense.category.join(', ') : expense.category}
             </div>
             <div className="text-gray-500">
-              {format(new Date(expense.date), 'EEEE, MMMM d, yyyy')}
+              {formatDate(expense.date)}
             </div>
           </div>
         </motion.div>

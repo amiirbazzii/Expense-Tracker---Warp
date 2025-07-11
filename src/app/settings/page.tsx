@@ -7,14 +7,39 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { BottomNav } from "@/components/BottomNav";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { HeaderRow } from "@/components/HeaderRow";
-import { User, LogOut, Wifi, WifiOff, RefreshCw, CreditCard, ChevronRight } from "lucide-react";
+import { User, LogOut, Wifi, WifiOff, RefreshCw, CreditCard, ChevronRight, Settings, CalendarDays, Landmark } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useUserSettings, UserSettings } from "@/contexts/UserSettingsContext";
+import { SelectInput } from "@/components/SelectInput"; // New SelectInput component
+
+const currencyOptions = [
+  { value: "USD", label: "USD ($)" },
+  { value: "EUR", label: "EUR (€)" },
+  { value: "GBP", label: "GBP (£)" },
+  { value: "IRR", label: "IRR (T)" },
+];
+
+const calendarOptions = [
+  { value: "gregorian", label: "Gregorian (میلادی)" },
+  { value: "jalali", label: "Jalali (شمسی)" },
+];
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
   const { isOnline, pendingExpenses, syncPendingExpenses } = useOffline();
+  const { settings, updateSettings, isLoadingSettings } = useUserSettings();
   const router = useRouter();
+
+  const handleSettingChange = async (type: "currency" | "calendar", value: string) => {
+    try {
+      await updateSettings({ [type]: value });
+      toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} updated successfully`);
+    } catch (error) {
+      toast.error(`Failed to update ${type}`);
+      console.error(`Failed to update ${type}:`, error);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -143,6 +168,36 @@ export default function SettingsPage() {
                 <ChevronRight className="text-gray-400" size={20} />
               </motion.button>
             </div>
+
+            {/* App Settings */}
+            <div className="my-6 space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <Settings size={22} className="mr-2 text-blue-600" /> App Settings
+              </h3>
+
+              <SelectInput
+                name="currency"
+                label="Currency"
+                value={settings?.currency || ""}
+                options={currencyOptions}
+                onChange={(value) => handleSettingChange("currency", value)}
+                disabled={isLoadingSettings}
+                placeholder={isLoadingSettings ? "Loading..." : "Select Currency"}
+                className="min-h-[44px]"
+              />
+
+              <SelectInput
+                name="calendar"
+                label="Calendar System"
+                value={settings?.calendar || ""}
+                options={calendarOptions}
+                onChange={(value) => handleSettingChange("calendar", value)}
+                disabled={isLoadingSettings}
+                placeholder={isLoadingSettings ? "Loading..." : "Select Calendar"}
+                className="min-h-[44px]"
+              />
+            </div>
+
 
             {/* Actions */}
             <div className="space-y-4">
