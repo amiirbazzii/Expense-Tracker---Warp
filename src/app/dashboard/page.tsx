@@ -12,10 +12,10 @@ import { Calendar, Receipt } from "lucide-react";
 // Import components
 import { HeaderSection } from "@/features/dashboard/components/Header";
 import { SummaryCards } from "@/features/dashboard/components/SummaryCards";
-import { AnalyticsTabs } from "@/features/dashboard/components/AnalyticsTabs";
+
 import { CategoryBreakdownChart, DailySpendingChart } from "@/features/dashboard/components/Charts";
 import { CategoryList } from "@/features/dashboard/components/CategoryList";
-import { ExpenseList } from "@/features/dashboard/components/Expenses";
+
 import { CardBalances } from "@/features/dashboard/components/CardBalances";
 
 
@@ -24,12 +24,12 @@ import { useExpenseData } from "@/features/dashboard/hooks/useExpenseData";
 import { useExpenseActions } from "@/features/dashboard/hooks/useExpenseActions";
 
 // Import types
-import { TabType } from "@/features/dashboard/types";
+
 
 export default function DashboardPage() {
   const { token } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<TabType>('analytics');
+
 
   // Use custom hooks for data and actions
   const {
@@ -77,11 +77,7 @@ export default function DashboardPage() {
               onNextMonth={goToNextMonth}
             />
 
-            {/* Tabs */}
-            <AnalyticsTabs
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-            />
+
 
             {/* Summary Cards */}
             {monthlyData ? (
@@ -105,27 +101,21 @@ export default function DashboardPage() {
           {/* Card Balances */}
           <CardBalances className="mb-6" />
           
-          {/* Tab Content */}
-          {activeTab === 'analytics' ? (
-            // Analytics Tab
-            monthlyData && Object.keys(monthlyData.categoryTotals).length > 0 ? (
-              <>
-                {/* Category Breakdown Chart */}
-                <CategoryBreakdownChart categoryTotals={monthlyData.categoryTotals} />
+          {/* Analytics Content */}
+          {monthlyData && Object.keys(monthlyData.categoryTotals).length > 0 ? (
+            <>
+              {/* Category Breakdown Chart */}
+              <CategoryBreakdownChart categoryTotals={monthlyData.categoryTotals} />
 
-                {/* Daily Spending Chart */}
-                {Object.keys(monthlyData.dailyTotals).length > 0 && (
-                  <DailySpendingChart dailyTotals={monthlyData.dailyTotals} />
-                )}
+              {/* Daily Spending Chart */}
+              {Object.keys(monthlyData.dailyTotals).length > 0 && (
+                <DailySpendingChart dailyTotals={monthlyData.dailyTotals} />
+              )}
 
-                {/* Category List */}
-                <CategoryList categoryTotals={monthlyData.categoryTotals} />
-              </>
-            ) : null
-          ) : (
-            // Expenses Tab
-            expenses && <ExpenseList expenses={expenses} onEdit={handleEditNavigation} onDeleteSuccess={(_expenseId) => refetchExpenses()} />
-          )}
+              {/* Category List */}
+              <CategoryList categoryTotals={monthlyData.categoryTotals} />
+            </>
+          ) : null}
         </div>
 
         <BottomNav />
