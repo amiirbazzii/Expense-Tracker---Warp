@@ -12,7 +12,7 @@ import { HeaderRow } from "@/components/HeaderRow";
 import { format } from "date-fns";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useRouter, useParams } from "next/navigation";
-import { CreatableSelectInput } from "@/components/CreatableSelectInput";
+import { SmartSelectInput } from "@/components/SmartSelectInput";
 
 interface IncomeFormData {
   amount: string;
@@ -154,7 +154,7 @@ export default function EditIncomePage() {
                   step="0.01"
                   value={formData.amount}
                   onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                   placeholder="0.00"
                   required
                 />
@@ -168,13 +168,13 @@ export default function EditIncomePage() {
                   type="text"
                   value={formData.source}
                   onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                   placeholder="Salary, Freelance, etc."
                   required
                 />
               </div>
 
-              <CreatableSelectInput
+              <SmartSelectInput
                 name="category"
                 label="Category *"
                 multiple={false}
@@ -192,7 +192,7 @@ export default function EditIncomePage() {
                 <select
                   value={formData.cardId}
                   onChange={(e) => setFormData({ ...formData, cardId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                   required
                 >
                   <option value="" disabled>Select a card</option>
@@ -211,7 +211,7 @@ export default function EditIncomePage() {
                   type="date"
                   value={formData.date}
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                   required
                 />
               </div>
@@ -223,7 +223,7 @@ export default function EditIncomePage() {
                 <textarea
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                   placeholder="Add any notes here..."
                   rows={3}
                 />
