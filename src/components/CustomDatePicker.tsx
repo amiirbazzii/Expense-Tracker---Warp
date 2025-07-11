@@ -3,6 +3,7 @@
 import { useSettings } from "@/contexts/SettingsContext";
 import DatePicker, { DateObject } from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
+import gregorian from "react-date-object/calendars/gregorian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import { Calendar } from "lucide-react";
 
@@ -19,7 +20,9 @@ export function CustomDatePicker({ value, onChange, label }: CustomDatePickerPro
 
   const handleChange = (date: DateObject | null) => {
     if (date) {
-      onChange(date.format("YYYY-MM-DD"));
+      // If the date is not in the Gregorian calendar, convert it before formatting.
+      const gregorianDate = date.calendar.name === "gregorian" ? date : date.convert(gregorian);
+      onChange(gregorianDate.format("YYYY-MM-DD"));
     }
   };
 
