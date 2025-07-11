@@ -123,3 +123,50 @@ export const getIncome = query({
       .collect();
   },
 });
+
+export const getCardBalances = query({
+  args: {
+    token: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken(ctx, args.token);
+
+    // Get all cards for the user
+    const cards = await ctx.db
+      .query("cards")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    // Get all income and expenses for the user
+    const income = await ctx.db
+      .query("income")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const expenses = await ctx.db
+      .query("expenses")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    // Calculate balances for each card
+    const cardBalances = cards.map(card => {
+      const cardIncome = income
+        .filter(inc => inc.cardId === card._id)
+        .reduce((sum, inc) => sum + inc.amount, 0);
+
+      const cardExpenses = expenses
+        .filter(exp => exp.cardId === card._id)
+        .reduce((sum, exp) => sum + exp.amount, 0);
+
+      return {
+        cardId: card._id,
+        cardName: card.name,
+        totalIncome: cardIncome,
+        totalExpenses: cardExpenses,
+        balance: cardIncome - cardExpenses,
+      };
+    });
+
+    return cardBalances;
+  },
+});

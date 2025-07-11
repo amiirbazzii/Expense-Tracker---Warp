@@ -16,6 +16,7 @@ import { AnalyticsTabs } from "@/features/dashboard/components/AnalyticsTabs";
 import { CategoryBreakdownChart, DailySpendingChart } from "@/features/dashboard/components/Charts";
 import { CategoryList } from "@/features/dashboard/components/CategoryList";
 import { ExpenseList } from "@/features/dashboard/components/Expenses";
+import { CardBalances } from "@/features/dashboard/components/CardBalances";
 
 
 // Import hooks
@@ -101,6 +102,9 @@ export default function DashboardPage() {
             )}
           </motion.div>
 
+          {/* Card Balances */}
+          <CardBalances className="mb-6" />
+          
           {/* Tab Content */}
           {activeTab === 'analytics' ? (
             // Analytics Tab

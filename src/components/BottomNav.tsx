@@ -3,13 +3,18 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Plus, BarChart3, Settings } from "lucide-react";
+import { Plus, BarChart3, Settings, TrendingUp } from "lucide-react";
 
 const navItems = [
   {
     href: "/expenses",
     icon: Plus,
     label: "Expenses",
+  },
+  {
+    href: "/income",
+    icon: TrendingUp,
+    label: "Income",
   },
   {
     href: "/dashboard",

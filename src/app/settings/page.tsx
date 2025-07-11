@@ -7,12 +7,14 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { BottomNav } from "@/components/BottomNav";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { HeaderRow } from "@/components/HeaderRow";
-import { User, LogOut, Wifi, WifiOff, RefreshCw } from "lucide-react";
+import { User, LogOut, Wifi, WifiOff, RefreshCw, CreditCard, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
   const { isOnline, pendingExpenses, syncPendingExpenses } = useOffline();
+  const router = useRouter();
 
   const handleLogout = async () => {
     try {
@@ -120,6 +122,26 @@ export default function SettingsPage() {
                   <span className="text-green-600 font-medium">Yes</span>
                 </div>
               </div>
+            </div>
+
+            {/* Management */}
+            <div className="mb-6 space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">Management</h3>
+              
+              <motion.button
+                whileTap={{ scale: 0.98 }}
+                onClick={() => router.push('/cards')}
+                className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <div className="flex items-center space-x-3">
+                  <CreditCard className="text-blue-600" size={20} />
+                  <div className="text-left">
+                    <div className="font-medium text-gray-900">My Cards</div>
+                    <div className="text-sm text-gray-600">Manage your payment cards</div>
+                  </div>
+                </div>
+                <ChevronRight className="text-gray-400" size={20} />
+              </motion.button>
             </div>
 
             {/* Actions */}
