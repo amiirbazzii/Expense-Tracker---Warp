@@ -124,6 +124,25 @@ export const getIncome = query({
   },
 });
 
+export const getUniqueIncomeCategories = query({
+  args: {
+    token: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken(ctx, args.token);
+
+    const incomeRecords = await ctx.db
+      .query("income")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const categories = incomeRecords.map((record) => record.category);
+    const uniqueCategories = [...new Set(categories)];
+
+    return uniqueCategories;
+  },
+});
+
 export const getCardBalances = query({
   args: {
     token: v.string(),
