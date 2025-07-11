@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOffline } from "@/contexts/OfflineContext";
 import { useSettings, Currency, Calendar } from "@/contexts/SettingsContext";
-import { SmartSelectInput } from "@/components/SmartSelectInput";
+
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { BottomNav } from "@/components/BottomNav";
 import { OfflineBanner } from "@/components/OfflineBanner";
@@ -134,34 +134,49 @@ export default function SettingsPage() {
                 <div className="text-center text-gray-500">Loading settings...</div>
               ) : (
                 <div className="space-y-4">
-                  <SmartSelectInput
-                    name="currency"
-                    label="Currency"
-                    multiple={false}
-                    value={[settings?.currency || "USD"]}
-                    onChange={async (newItems) => {
-                      if (newItems[0]) {
-                        await updateSettings({ currency: newItems[0] as Currency });
+                  {/* Currency */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Currency *
+                    </label>
+                    <select
+                      value={settings?.currency || "USD"}
+                      onChange={async (e) => {
+                        await updateSettings({ currency: e.target.value as Currency });
                         toast.success("Currency updated");
-                      }
-                    }}
-                    fetchSuggestions={async () => ["USD", "EUR", "GBP", "IRR"]}
-                    placeholder="Select currency"
-                  />
-                  <SmartSelectInput
-                    name="calendar"
-                    label="Calendar System"
-                    multiple={false}
-                    value={[settings?.calendar || "gregorian"]}
-                    onChange={async (newItems) => {
-                      if (newItems[0]) {
-                        await updateSettings({ calendar: newItems[0] as Calendar });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
+                    >
+                      {(["USD", "EUR", "GBP", "IRR"] as Currency[]).map((cur) => (
+                        <option key={cur} value={cur}>
+                          {cur}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Calendar System */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Calendar System *
+                    </label>
+                    <select
+                      value={settings?.calendar || "gregorian"}
+                      onChange={async (e) => {
+                        await updateSettings({ calendar: e.target.value as Calendar });
                         toast.success("Calendar updated");
-                      }
-                    }}
-                    fetchSuggestions={async () => ["gregorian", "jalali"]}
-                    placeholder="Select calendar"
-                  />
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
+                    >
+                      {(["gregorian", "jalali"] as Calendar[]).map((cal) => (
+                        <option key={cal} value={cal}>
+                          {cal}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+
                 </div>
               )}
             </div>
