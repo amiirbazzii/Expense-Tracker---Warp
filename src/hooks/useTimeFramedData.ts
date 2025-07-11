@@ -48,8 +48,14 @@ export function useTimeFramedData(type: DataType, token: string | null) {
       : "skip"
   );
 
-  const data = result as Doc<"expenses">[] | Doc<"income">[] | undefined;
-  const isLoading = data === undefined;
+  const fetchedData = result as Doc<"expenses">[] | Doc<"income">[] | undefined;
+  const isLoading = fetchedData === undefined;
+
+  const data = useMemo(() => {
+    if (!fetchedData) return undefined;
+    // Sort data by date in descending order (most recent first)
+    return [...fetchedData].sort((a, b) => b.date - a.date);
+  }, [fetchedData]);
 
   const monthlyTotal = useMemo(() => {
     if (!data) return 0;
