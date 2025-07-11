@@ -19,9 +19,30 @@ export const formatCurrency = (amount: number, currency: Currency) => {
   return `${symbol}${formattedAmount}`;
 };
 
-export const formatDate = (date: number | Date, calendar: Calendar, formatString = 'yyyy/MM/dd') => {
-  if (calendar === 'jalali') {
-    return moment(date).locale('fa').format('YYYY/MM/DD');
-  } 
+// Simple token conversion from date-fns -> jalali-moment tokens
+const replaceToken = (str: string, token: string, jalali: string) =>
+  str.replace(new RegExp(`(^|[^A-Za-z])${token}`, "g"), (_, p1) => `${p1}${jalali}`);
+
+const convertToJalaliTokens = (fmt: string) => {
+  let out = fmt;
+  // Order matters: replace longer tokens first
+  out = replaceToken(out, "yyyy", "jYYYY");
+  out = replaceToken(out, "MMMM", "jMMMM");
+  out = replaceToken(out, "MMM", "jMMM");
+  out = replaceToken(out, "MM", "jMM");
+  out = replaceToken(out, "dd", "jDD");
+  out = replaceToken(out, "d", "jD");
+  return out;
+};
+
+export const formatDate = (
+  date: number | Date,
+  calendar: Calendar,
+  formatString = "yyyy/MM/dd",
+) => {
+  if (calendar === "jalali") {
+    const jalaliFormat = convertToJalaliTokens(formatString);
+    return moment(date).locale("fa").format(jalaliFormat);
+  }
   return format(date, formatString);
 };
