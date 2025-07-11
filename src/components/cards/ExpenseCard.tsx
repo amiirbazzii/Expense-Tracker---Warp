@@ -52,7 +52,7 @@ export function ExpenseCard({ expense, cardName, onDelete }: ExpenseCardProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="bg-white rounded-lg shadow-sm p-4 cursor-pointer"
+      className="bg-white rounded-lg shadow-sm p-4 cursor-pointer relative"
       onClick={() => setIsMenuOpen(!isMenuOpen)}
     >
       <div className="flex justify-between items-start">
@@ -81,25 +81,26 @@ export function ExpenseCard({ expense, cardName, onDelete }: ExpenseCardProps) {
       <AnimatePresence>
         {isMenuOpen && (
           <motion.div
-            initial={{ opacity: 0, height: 0, marginTop: 0 }}
-            animate={{ opacity: 1, height: 'auto', marginTop: '16px' }}
-            exit={{ opacity: 0, height: 0, marginTop: 0 }}
-            className="flex justify-end gap-2"
+            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+            className="absolute right-4 top-4 mt-2 w-32 bg-white rounded-md shadow-lg z-10 border border-gray-100"
+            onClick={(e) => e.stopPropagation()}
           >
-            <motion.button
+            <button
               onClick={handleEdit}
-              className="flex items-center px-3 py-1 text-sm text-blue-600 bg-blue-100 rounded-md hover:bg-blue-200"
+              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
             >
-              <Edit size={14} className="mr-1.5" />
+              <Edit size={14} className="mr-2" />
               Edit
-            </motion.button>
-            <motion.button
+            </button>
+            <button
               onClick={handleDelete}
-              className="flex items-center px-3 py-1 text-sm text-red-600 bg-red-100 rounded-md hover:bg-red-200"
+              className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
             >
-              <Trash2 size={14} className="mr-1.5" />
+              <Trash2 size={14} className="mr-2" />
               Delete
-            </motion.button>
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
