@@ -164,6 +164,30 @@ export const getUniqueIncomeCategories = query({
   },
 });
 
+export const deleteIncome = mutation({
+  args: {
+    token: v.string(),
+    incomeId: v.id("income"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken(ctx, args.token);
+
+    const income = await ctx.db.get(args.incomeId);
+
+    if (!income) {
+      throw new ConvexError("Income record not found");
+    }
+
+    if (income.userId !== user._id) {
+      throw new ConvexError("You are not authorized to delete this income record");
+    }
+
+    await ctx.db.delete(args.incomeId);
+
+    return { success: true };
+  },
+});
+
 export const getCardBalances = query({
   args: {
     token: v.string(),

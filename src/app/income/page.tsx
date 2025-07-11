@@ -10,12 +10,13 @@ import { BottomNav } from "@/components/BottomNav";
 import { HeaderRow } from "@/components/HeaderRow";
 import { SmartSelectInput } from "@/components/SmartSelectInput";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, TrendingUp, CreditCard, Calendar, PencilLine } from "lucide-react";
+import { ArrowLeft, TrendingUp, CreditCard, Calendar, PencilLine } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useTimeFramedData } from "@/hooks/useTimeFramedData";
 import { DateFilterHeader } from "@/components/DateFilterHeader";
 import { Doc } from "../../../convex/_generated/dataModel";
+import { IncomeCard } from "@/components/cards/IncomeCard";
 
 interface IncomeFormData {
   amount: string;
@@ -286,48 +287,12 @@ export default function IncomePage() {
             ) : income && income.length > 0 ? (
               <div className="space-y-4 mt-4">
                 {(income as Doc<"income">[]).map((incomeRecord) => (
-                  <motion.div
+                  <IncomeCard
                     key={incomeRecord._id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-white rounded-lg shadow-sm p-4 flex items-center justify-between"
-                  >
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start">
-                        <h3 className="font-semibold text-gray-800 text-md truncate pr-4">
-                          {incomeRecord.source}
-                        </h3>
-                        <p className="font-bold text-green-600 text-md">
-                          +${incomeRecord.amount.toFixed(2)}
-                        </p>
-                      </div>
-                      <div className="text-sm text-gray-500 mt-1">
-                        {format(new Date(incomeRecord.date), "MMM d, yyyy")}
-                      </div>
-                      <div className="text-sm text-gray-600 mt-1">
-                        <CreditCard className="inline w-4 h-4 mr-1" />
-                        {cardMap[incomeRecord.cardId] || "Unknown Card"}
-                      </div>
-                      <div className="mt-2">
-                        <span className="bg-gray-100 text-gray-700 px-2 py-1 text-xs rounded-full">
-                          {incomeRecord.category}
-                        </span>
-                      </div>
-                      {incomeRecord.notes && (
-                        <div className="mt-2 text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                          <strong>Notes:</strong> {incomeRecord.notes}
-                        </div>
-                      )}
-                    </div>
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => router.push(`/income/edit/${incomeRecord._id}`)}
-                      className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
-                      aria-label="Edit income"
-                    >
-                      <ArrowRight size={20} />
-                    </motion.button>
-                  </motion.div>
+                    income={incomeRecord}
+                    cardName={cardMap[incomeRecord.cardId] || 'Unknown Card'}
+                    onDelete={refetch}
+                  />
                 ))}
               </div>
             ) : (
