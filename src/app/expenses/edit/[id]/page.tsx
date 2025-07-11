@@ -7,7 +7,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { X, Calendar, DollarSign, Tag, User, ArrowLeft, CheckCircle } from "lucide-react";
+import { X, Calendar, DollarSign, Tag, User, ArrowLeft, CheckCircle, CreditCard } from "lucide-react";
 import { HeaderRow } from "@/components/HeaderRow";
 import { format } from "date-fns";
 import { Id } from "../../../../../convex/_generated/dataModel";
@@ -40,6 +40,7 @@ export default function EditExpensePage() {
   const createForValueMutation = useMutation(api.expenses.createForValue);
   const categories = useQuery(api.expenses.getCategories, token ? { token } : "skip");
   const forValues = useQuery(api.expenses.getForValues, token ? { token } : "skip");
+  const cards = useQuery(api.cardsAndIncome.getMyCards, token ? { token } : "skip");
 
   const fetchCategorySuggestions = async (query: string): Promise<string[]> => {
     if (!categories) return [];
@@ -120,7 +121,7 @@ export default function EditExpensePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.amount || !formData.title || formData.category.length === 0) {
+    if (!formData.amount || !formData.title || formData.category.length === 0 || !formData.cardId) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -345,6 +346,25 @@ export default function EditExpensePage() {
                 formatNewItem={capitalizeWords}
                 placeholder="Select or add a person"
               />
+
+              {/* Card */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <CreditCard className="inline w-4 h-4 mr-1" />
+                  Card *
+                </label>
+                <select
+                  value={formData.cardId}
+                  onChange={(e) => setFormData({ ...formData, cardId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
+                  required
+                >
+                  <option value="" disabled>Select a card</option>
+                  {cards?.map(card => (
+                    <option key={card._id} value={card._id}>{card.name}</option>
+                  ))}
+                </select>
+              </div>
 
               {/* Date */}
               <div>
