@@ -24,6 +24,7 @@ export const createExpense = mutation({
     category: v.array(v.string()),
     for: v.array(v.string()),
     date: v.number(),
+    cardId: v.optional(v.id("cards")),
   },
   handler: async (ctx, args) => {
     const user = await getUserByToken(ctx, args.token);
@@ -36,6 +37,7 @@ export const createExpense = mutation({
       date: args.date,
       createdAt: Date.now(),
       userId: user._id,
+      cardId: args.cardId,
     });
 
     // Add categories to user's categories if they don't exist
@@ -131,6 +133,7 @@ export const updateExpense = mutation({
     category: v.array(v.string()),
     for: v.array(v.string()),
     date: v.number(),
+    cardId: v.optional(v.id("cards")),
   },
   handler: async (ctx, args) => {
     const user = await getUserByToken(ctx, args.token);
@@ -148,6 +151,7 @@ export const updateExpense = mutation({
       category: args.category,
       for: args.for,
       date: args.date,
+      cardId: args.cardId,
     });
 
     // Add new categories to user's categories if they don't exist

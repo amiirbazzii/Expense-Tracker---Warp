@@ -17,7 +17,8 @@ export default defineSchema({
     date: v.number(),
     createdAt: v.number(),
     userId: v.id("users"),
-  }).index("by_user", ["userId"]).index("by_user_date", ["userId", "date"]),
+    cardId: v.optional(v.id("cards")),
+  }).index("by_user", ["userId"]).index("by_user_date", ["userId", "date"]).index("by_card", ["cardId"]),
 
   categories: defineTable({
     name: v.string(),
@@ -28,4 +29,21 @@ export default defineSchema({
     value: v.string(),
     userId: v.id("users"),
   }).index("by_user", ["userId"]).index("by_user_value", ["userId", "value"]),
+
+  cards: defineTable({
+    name: v.string(),
+    userId: v.id("users"),
+    createdAt: v.number(),
+  }).index("by_user", ["userId"]).index("by_user_name", ["userId", "name"]),
+
+  income: defineTable({
+    amount: v.number(),
+    cardId: v.id("cards"),
+    date: v.number(),
+    source: v.string(),
+    category: v.string(),
+    notes: v.optional(v.string()),
+    userId: v.id("users"),
+    createdAt: v.number(),
+  }).index("by_user", ["userId"]).index("by_user_date", ["userId", "date"]).index("by_card", ["cardId"]),
 });

@@ -28,6 +28,7 @@ interface ExpenseFormData {
   category: string[];
   for: string[];
   date: string;
+  cardId: string;
 }
 
 export default function EditExpensePage() {
@@ -91,6 +92,7 @@ export default function EditExpensePage() {
     category: [],
     for: [],
     date: format(new Date(), "yyyy-MM-dd"),
+    cardId: "",
   });
   const [categoryInput, setCategoryInput] = useState("");
   const [forInput, setForInput] = useState("");
@@ -109,6 +111,7 @@ export default function EditExpensePage() {
         category: expense.category,
         for: Array.isArray(expense.for) ? expense.for : (expense.for ? [expense.for] : []),
         date: format(new Date(expense.date), "yyyy-MM-dd"),
+        cardId: expense.cardId || "",
       });
       setIsLoading(false);
     }
@@ -139,6 +142,7 @@ export default function EditExpensePage() {
         category: formData.category,
         for: formData.for,
         date: new Date(formData.date).getTime(),
+        cardId: formData.cardId ? (formData.cardId as any) : undefined,
       });
 
       toast.success("Expense updated successfully!");
