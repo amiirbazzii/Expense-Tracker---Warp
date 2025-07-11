@@ -1,5 +1,6 @@
 import { DollarSign, TrendingUp } from "lucide-react";
-import { motion } from "framer-motion";
+import { useSettings } from "@/contexts/SettingsContext";
+import { formatCurrency } from "@/lib/formatters";
 
 interface SummaryCardsProps {
   totalAmount: number;
@@ -8,6 +9,8 @@ interface SummaryCardsProps {
 }
 
 export function SummaryCards({ totalAmount, totalCount, isLoading }: SummaryCardsProps) {
+  const { settings } = useSettings();
+
   if (isLoading) {
     return (
       <div className="text-center py-8">
@@ -28,7 +31,7 @@ export function SummaryCards({ totalAmount, totalCount, isLoading }: SummaryCard
               <div>
                 <span className="text-sm font-medium text-gray-700">Total</span>
                 <div className="text-2xl font-bold text-gray-900">
-                  ${totalAmount.toFixed(2)}
+                  {settings ? formatCurrency(totalAmount, settings.currency) : `$${totalAmount.toFixed(2)}`}
                 </div>
               </div>
             </div>

@@ -46,4 +46,16 @@ export default defineSchema({
     userId: v.id("users"),
     createdAt: v.number(),
   }).index("by_user", ["userId"]).index("by_user_date", ["userId", "date"]).index("by_card", ["cardId"]),
+
+  userSettings: defineTable({
+    userId: v.id("users"),
+    currency: v.union(
+      v.literal("USD"),
+      v.literal("EUR"),
+      v.literal("GBP"),
+      v.literal("IRR")
+    ),
+    calendar: v.union(v.literal("gregorian"), v.literal("jalali")),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
 });

@@ -1,7 +1,9 @@
 import { Bar } from "react-chartjs-2";
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, TooltipItem } from 'chart.js';
 import { TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
+import { useSettings } from "@/contexts/SettingsContext";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 // Register ChartJS components
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
@@ -11,12 +13,14 @@ interface DailySpendingChartProps {
 }
 
 export function DailySpendingChart({ dailyTotals }: DailySpendingChartProps) {
+  const { settings } = useSettings();
+
   if (!dailyTotals || Object.keys(dailyTotals).length === 0) {
     return null;
   }
 
   const chartData = {
-    labels: Object.keys(dailyTotals),
+    labels: Object.keys(dailyTotals).map(date => settings ? formatDate(new Date(date), settings.calendar, 'MMM d') : new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
     datasets: [
       {
         label: "Daily Expenses",
@@ -33,8 +37,23 @@ export function DailySpendingChart({ dailyTotals }: DailySpendingChartProps) {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'bottom' as const,
+        display: false,
       },
+      tooltip: {
+        callbacks: {
+          label: function(context: TooltipItem<'bar'>) {
+            let label = context.dataset.label || '';
+            if (label) {
+              label += ': ';
+            }
+            const value = context.raw as number;
+            if (context.raw !== null) {
+              label += settings ? formatCurrency(value, settings.currency) : `$${value.toFixed(2)}`;
+            }
+            return label;
+          }
+        }
+      }
     },
     scales: {
       y: {
@@ -44,7 +63,7 @@ export function DailySpendingChart({ dailyTotals }: DailySpendingChartProps) {
           drawBorder: false,
         },
         ticks: {
-          callback: (value: string | number) => `$${value}`,
+          callback: (value: string | number) => settings ? formatCurrency(Number(value), settings.currency) : `$${value}`,
         },
       },
       x: {

@@ -21,6 +21,7 @@ import { useTimeFramedData } from "@/hooks/useTimeFramedData";
 import { DateFilterHeader } from "@/components/DateFilterHeader";
 import { Doc } from "../../../convex/_generated/dataModel";
 import { ExpenseCard } from '@/components/cards/ExpenseCard';
+import { CustomDatePicker } from "@/components/CustomDatePicker";
 
 interface ExpenseFormData {
   amount: string;
@@ -291,19 +292,11 @@ export default function ExpensesPage() {
               />
 
               {/* Date */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Calendar className="inline w-4 h-4 mr-1" />
-                  Date *
-                </label>
-                <input
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
-                  required
-                />
-              </div>
+              <CustomDatePicker
+                label="Date *"
+                value={formData.date}
+                onChange={(date) => setFormData({ ...formData, date })}
+              />
 
               {/* Submit Button */}
               <motion.button

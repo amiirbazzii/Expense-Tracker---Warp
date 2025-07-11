@@ -3,6 +3,8 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { CreditCard, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
+import { useSettings } from "@/contexts/SettingsContext";
+import { formatCurrency } from "@/lib/formatters";
 
 interface CardBalancesProps {
   className?: string;
@@ -10,6 +12,7 @@ interface CardBalancesProps {
 
 export function CardBalances({ className }: CardBalancesProps) {
   const { token } = useAuth();
+  const { settings } = useSettings();
   const cardBalances = useQuery(api.cardsAndIncome.getCardBalances, token ? { token } : "skip");
 
   if (cardBalances === undefined) {
@@ -76,20 +79,18 @@ export function CardBalances({ className }: CardBalancesProps) {
                 <div className="text-xs text-gray-500 flex items-center space-x-3">
                   <span className="flex items-center">
                     <TrendingUp className="w-3 h-3 mr-1 text-green-600" />
-                    ${card.totalIncome.toFixed(2)}
+                    {settings ? formatCurrency(card.totalIncome, settings.currency) : `$${card.totalIncome.toFixed(2)}`}
                   </span>
                   <span className="flex items-center">
                     <TrendingDown className="w-3 h-3 mr-1 text-red-600" />
-                    ${card.totalExpenses.toFixed(2)}
+                    {settings ? formatCurrency(card.totalExpenses, settings.currency) : `$${card.totalExpenses.toFixed(2)}`}
                   </span>
                 </div>
               </div>
             </div>
             <div className="text-right">
-              <div className={`text-lg font-bold ${
-                card.balance >= 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                ${card.balance.toFixed(2)}
+              <div className={`text-lg font-bold ${card.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {settings ? formatCurrency(card.balance, settings.currency) : `$${card.balance.toFixed(2)}`}
               </div>
               <div className="text-xs text-gray-500">Balance</div>
             </div>

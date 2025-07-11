@@ -1,10 +1,14 @@
 import { motion } from "framer-motion";
+import { useSettings } from "@/contexts/SettingsContext";
+import { formatCurrency } from "@/lib/formatters";
 
 interface CategoryListProps {
   categoryTotals: Record<string, number>;
 }
 
 export function CategoryList({ categoryTotals }: CategoryListProps) {
+  const { settings } = useSettings();
+
   if (!categoryTotals || Object.keys(categoryTotals).length === 0) {
     return null;
   }
@@ -24,7 +28,7 @@ export function CategoryList({ categoryTotals }: CategoryListProps) {
             <div key={category} className="flex justify-between items-center">
               <span className="text-gray-700">{category}</span>
               <span className="font-semibold text-gray-900">
-                ${amount.toFixed(2)}
+                {settings ? formatCurrency(amount, settings.currency) : `$${amount.toFixed(2)}`}
               </span>
             </div>
           ))}

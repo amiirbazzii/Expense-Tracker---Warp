@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useRouter, useParams } from "next/navigation";
 import { SmartSelectInput } from "@/components/SmartSelectInput";
+import { CustomDatePicker } from "@/components/CustomDatePicker";
 
 interface IncomeFormData {
   amount: string;
@@ -202,19 +203,11 @@ export default function EditIncomePage() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Calendar className="inline w-4 h-4 mr-1" />
-                  Date *
-                </label>
-                <input
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                  required
-                />
-              </div>
+              <CustomDatePicker
+                label="Date"
+                value={formData.date}
+                onChange={(date) => setFormData({ ...formData, date })}
+              />
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">

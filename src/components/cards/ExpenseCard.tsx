@@ -5,11 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useMutation } from 'convex/react';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
 import { CreditCard, Trash2, Edit } from 'lucide-react';
 import { api } from '../../../convex/_generated/api';
 import { Doc } from '../../../convex/_generated/dataModel';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSettings } from '@/contexts/SettingsContext';
+import { formatCurrency, formatDate } from '@/lib/formatters';
 
 interface ExpenseCardProps {
   expense: Doc<"expenses">;
@@ -19,6 +20,7 @@ interface ExpenseCardProps {
 
 export function ExpenseCard({ expense, cardName, onDelete }: ExpenseCardProps) {
   const { token } = useAuth();
+  const { settings } = useSettings();
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const deleteExpenseMutation = useMutation(api.expenses.deleteExpense);
@@ -74,8 +76,12 @@ export function ExpenseCard({ expense, cardName, onDelete }: ExpenseCardProps) {
           </div>
         </div>
         <div className="text-right flex flex-col items-end">
-          <p className="font-bold text-red-500 text-md">-${expense.amount.toFixed(2)}</p>
-          <p className="text-xs text-gray-400 mt-1">{format(new Date(expense.date), "MMM d, yyyy")}</p>
+          <p className="font-bold text-red-500 text-md">
+            -{settings ? formatCurrency(expense.amount, settings.currency) : expense.amount.toFixed(2)}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            {settings ? formatDate(expense.date, settings.calendar, 'MMM d, yyyy') : new Date(expense.date).toLocaleDateString()}
+          </p>
         </div>
       </div>
       <AnimatePresence>

@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { ConvexProvider } from "@/providers/ConvexProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { SettingsProvider } from "@/contexts/SettingsContext";
 import { OfflineProvider } from "@/contexts/OfflineContext";
 import { Toaster } from "sonner";
 import { NetworkStatusIndicator } from "@/components/NetworkStatusIndicator";
@@ -41,12 +42,14 @@ export default function RootLayout({
       >
         <ConvexProvider>
           <AuthProvider>
-            <OfflineProvider>
-              {children}
-              <div id="modal-root"></div>
-              <NetworkStatusIndicator />
-              <Toaster position="top-center" />
-            </OfflineProvider>
+            <SettingsProvider>
+              <OfflineProvider>
+                {children}
+                <div id="modal-root"></div>
+                <NetworkStatusIndicator />
+                <Toaster position="top-center" />
+              </OfflineProvider>
+            </SettingsProvider>
           </AuthProvider>
         </ConvexProvider>
       </body>

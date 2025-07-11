@@ -3,6 +3,8 @@
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOffline } from "@/contexts/OfflineContext";
+import { useSettings, Currency, Calendar } from "@/contexts/SettingsContext";
+import { SmartSelectInput } from "@/components/SmartSelectInput";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { BottomNav } from "@/components/BottomNav";
 import { OfflineBanner } from "@/components/OfflineBanner";
@@ -14,6 +16,7 @@ import { useRouter } from "next/navigation";
 export default function SettingsPage() {
   const { user, logout } = useAuth();
   const { isOnline, pendingExpenses, syncPendingExpenses } = useOffline();
+  const { settings, updateSettings, loading: settingsLoading } = useSettings();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -125,6 +128,44 @@ export default function SettingsPage() {
             </div>
 
             {/* Management */}
+            <div className="mb-6 space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">Preferences</h3>
+              {settingsLoading ? (
+                <div className="text-center text-gray-500">Loading settings...</div>
+              ) : (
+                <div className="space-y-4">
+                  <SmartSelectInput
+                    name="currency"
+                    label="Currency"
+                    multiple={false}
+                    value={[settings?.currency || "USD"]}
+                    onChange={async (newItems) => {
+                      if (newItems[0]) {
+                        await updateSettings({ currency: newItems[0] as Currency });
+                        toast.success("Currency updated");
+                      }
+                    }}
+                    fetchSuggestions={async () => ["USD", "EUR", "GBP", "IRR"]}
+                    placeholder="Select currency"
+                  />
+                  <SmartSelectInput
+                    name="calendar"
+                    label="Calendar System"
+                    multiple={false}
+                    value={[settings?.calendar || "gregorian"]}
+                    onChange={async (newItems) => {
+                      if (newItems[0]) {
+                        await updateSettings({ calendar: newItems[0] as Calendar });
+                        toast.success("Calendar updated");
+                      }
+                    }}
+                    fetchSuggestions={async () => ["gregorian", "jalali"]}
+                    placeholder="Select calendar"
+                  />
+                </div>
+              )}
+            </div>
+
             <div className="mb-6 space-y-4">
               <h3 className="text-lg font-semibold text-gray-900">Management</h3>
               
