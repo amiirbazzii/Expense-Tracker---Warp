@@ -8,6 +8,7 @@ import { api } from "../../../convex/_generated/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { HeaderRow } from "@/components/HeaderRow";
+import { CurrencyInput } from "@/components/CurrencyInput";
 import { CreditCard, Plus, X, ArrowLeft, Trash2, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -196,11 +197,9 @@ export default function CardsPage() {
                   ))}
                 </select>
               </div>
-              <input
-                type="number"
+              <CurrencyInput
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
+                onChangeValue={(val) => setAmount(val)}
                 placeholder="Amount"
               />
               <motion.button

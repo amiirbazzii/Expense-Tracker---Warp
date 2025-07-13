@@ -18,6 +18,7 @@ import { DateFilterHeader } from "@/components/DateFilterHeader";
 import { Doc } from "../../../convex/_generated/dataModel";
 import { IncomeCard } from "@/components/cards/IncomeCard";
 import { CustomDatePicker } from "@/components/CustomDatePicker";
+import { CurrencyInput } from "@/components/CurrencyInput";
 
 interface IncomeFormData {
   amount: string;
@@ -174,12 +175,9 @@ export default function IncomePage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Amount *
                 </label>
-                <input
-                  type="number"
-                  step="0.01"
+                <CurrencyInput
                   value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
+                  onChangeValue={(val) => setFormData({ ...formData, amount: val })}
                   placeholder="0.00"
                   required
                 />

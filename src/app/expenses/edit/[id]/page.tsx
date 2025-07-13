@@ -14,6 +14,7 @@ import { Id } from "../../../../../convex/_generated/dataModel";
 import { useRouter, useParams } from "next/navigation";
 import { SmartSelectInput } from "@/components/SmartSelectInput";
 import { CustomDatePicker } from "@/components/CustomDatePicker";
+import { CurrencyInput } from "@/components/CurrencyInput";
 
 const capitalizeWords = (str: string) => {
   return str
@@ -298,12 +299,9 @@ export default function EditExpensePage() {
                   <DollarSign className="inline w-4 h-4 mr-1" />
                   Amount *
                 </label>
-                <input
-                  type="number"
-                  step="0.01"
+                <CurrencyInput
                   value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
+                  onChangeValue={(val) => setFormData({ ...formData, amount: val })}
                   placeholder="0.00"
                   required
                 />
