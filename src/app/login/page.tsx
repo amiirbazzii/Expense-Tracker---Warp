@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { ConvexError } from "convex/values";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -34,7 +35,7 @@ export default function LoginPage() {
       toast.success("Welcome back!");
       router.push("/expenses");
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Failed to login";
+      const message = error instanceof ConvexError ? (error.data as { message: string }).message : error instanceof Error ? error.message : "Failed to login";
       if (message.toLowerCase().includes("username not found")) {
         toast.error("Username not found. Please create an account.");
         router.push("/register");

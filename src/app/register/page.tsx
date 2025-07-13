@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { ConvexError } from "convex/values";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -45,7 +46,7 @@ export default function RegisterPage() {
       toast.success("Account created successfully!");
       router.push("/expenses");
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Failed to create account";
+      const message = error instanceof ConvexError ? (error.data as { message: string }).message : error instanceof Error ? error.message : "Failed to create account";
       if (message.toLowerCase().includes("username already exists")) {
         toast.error("Username already exists. Please sign in.");
         router.push("/login");

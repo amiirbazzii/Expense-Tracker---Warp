@@ -48,7 +48,7 @@ export const register = mutation({
       .first();
 
     if (existingUser) {
-      throw new ConvexError("Username already exists");
+      throw new ConvexError({ message: "Username already exists" });
     }
 
     // Create new user
@@ -78,12 +78,12 @@ export const login = mutation({
       .first();
 
     if (!user) {
-      throw new ConvexError("Username not found");
+      throw new ConvexError({ message: "Username not found" });
     }
 
     const hashedPassword = hashPassword(args.password);
     if (user.hashedPassword !== hashedPassword) {
-      throw new ConvexError("Incorrect password");
+      throw new ConvexError({ message: "Incorrect password" });
     }
 
     // Generate new token
