@@ -54,7 +54,26 @@ export function useTimeFramedData(type: DataType, token: string | null) {
   const data = useMemo(() => {
     if (!fetchedData) return undefined;
     // Sort data by date in descending order (most recent first)
-    return [...fetchedData].sort((a, b) => b.date - a.date);
+    const startOfDay = (ts: number) => {
+      const d = new Date(ts);
+      d.setHours(0, 0, 0, 0);
+      return d.getTime();
+    };
+
+    return [...fetchedData].sort((a, b) => {
+      const aDay = startOfDay(a.date);
+      const bDay = startOfDay(b.date);
+
+      // Primary sort: by day (newest day first)
+      if (bDay !== aDay) {
+        return bDay - aDay;
+      }
+
+      // Secondary sort: by creation timestamp (newest first)
+      const aTime = a.createdAt ?? a._creationTime ?? a.date;
+      const bTime = b.createdAt ?? b._creationTime ?? b.date;
+      return bTime - aTime;
+    });
   }, [fetchedData]);
 
   const monthlyTotal = useMemo(() => {

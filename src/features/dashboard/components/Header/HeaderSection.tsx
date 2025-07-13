@@ -21,10 +21,10 @@ export function HeaderSection({
       <motion.button
         whileTap={{ scale: 0.95 }}
         onClick={onPreviousMonth}
-        className="p-2 rounded-full hover:bg-gray-100 min-w-[44px] min-h-[44px] flex items-center justify-center"
+        className="p-2 rounded-full hover:bg-gray-100 text-gray-400 min-w-[44px] min-h-[44px] flex items-center justify-center"
         aria-label="Previous month"
       >
-        <ChevronLeft size={20} />
+        <ChevronLeft size={20}/>
       </motion.button>
       
       <div className="text-center">
@@ -37,7 +37,7 @@ export function HeaderSection({
       <motion.button
         whileTap={{ scale: 0.95 }}
         onClick={onNextMonth}
-        className="p-2 rounded-full hover:bg-gray-100 min-w-[44px] min-h-[44px] flex items-center justify-center"
+        className="p-2 rounded-full hover:bg-gray-100 text-gray-400 min-w-[44px] min-h-[44px] flex items-center justify-center"
         aria-label="Next month"
       >
         <ChevronRight size={20} />
