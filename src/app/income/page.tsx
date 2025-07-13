@@ -272,7 +272,8 @@ export default function IncomePage() {
               currentDate={currentDate} 
               onPreviousMonth={goToPreviousMonth} 
               onNextMonth={goToNextMonth} 
-              title="Income History"
+              subtitle="Income History"
+              variant="card"
             />
 
             {isLoading ? (

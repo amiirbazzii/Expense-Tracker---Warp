@@ -7,19 +7,37 @@ interface DateFilterHeaderProps {
   currentDate: Date;
   onPreviousMonth: () => void;
   onNextMonth: () => void;
-  title: string;
+  subtitle: string;
+  variant?: 'card' | 'default';
+  isMainTitle?: boolean;
 }
 
 export function DateFilterHeader({ 
   currentDate, 
   onPreviousMonth, 
   onNextMonth, 
-  title 
+  subtitle,
+  variant = 'default',
+  isMainTitle = false,
 }: DateFilterHeaderProps) {
   const { settings } = useSettings();
 
+  const containerClasses = variant === 'card'
+    ? "flex items-center justify-between mb-4 bg-white p-4 rounded-lg shadow-sm"
+    : "flex items-center justify-between mb-4";
+
+  const titleClasses = isMainTitle
+    ? "text-xl font-bold text-gray-900"
+    : "text-lg font-semibold text-gray-800";
+  
+  const MainTitleComponent = isMainTitle ? 'h1' : 'h2';
+
+  const formattedDate = settings 
+    ? formatDate(currentDate, settings.calendar, 'MMMM yyyy') 
+    : new Date(currentDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
   return (
-    <div className="flex items-center justify-between mb-4 bg-white p-4 rounded-lg shadow-sm">
+    <div className={containerClasses}>
       <motion.button
         whileTap={{ scale: 0.95 }}
         onClick={onPreviousMonth}
@@ -30,10 +48,10 @@ export function DateFilterHeader({
       </motion.button>
       
       <div className="text-center">
-        <h2 className="text-lg font-semibold text-gray-800">
-          {settings ? formatDate(currentDate, settings.calendar, 'MMMM yyyy') : new Date(currentDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-        </h2>
-        <p className="text-sm text-gray-500">{title}</p>
+        <MainTitleComponent className={titleClasses}>
+          {formattedDate}
+        </MainTitleComponent>
+        <p className="text-sm text-gray-500">{subtitle}</p>
       </div>
       
       <motion.button

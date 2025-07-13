@@ -10,7 +10,7 @@ import { HeaderRow } from "@/components/HeaderRow";
 import { Calendar, Receipt } from "lucide-react";
 
 // Import components
-import { HeaderSection } from "@/features/dashboard/components/Header";
+import { DateFilterHeader } from "@/components/DateFilterHeader";
 import { SummaryCards } from "@/features/dashboard/components/SummaryCards";
 
 import { CategoryBreakdownChart, DailySpendingChart } from "@/features/dashboard/components/Charts";
@@ -71,10 +71,12 @@ export default function DashboardPage() {
             className="bg-white rounded-lg shadow-sm p-2 mb-6"
           >
             {/* Header Section */}
-            <HeaderSection
-              currentDate={currentDate}
-              onPreviousMonth={goToPreviousMonth}
+            <DateFilterHeader 
+              currentDate={currentDate} 
+              onPreviousMonth={goToPreviousMonth} 
               onNextMonth={goToNextMonth}
+              subtitle="Monthly Summary"
+              isMainTitle={true}
             />
 
 

@@ -316,7 +316,8 @@ export default function ExpensesPage() {
               currentDate={currentDate} 
               onPreviousMonth={goToPreviousMonth} 
               onNextMonth={goToNextMonth} 
-              title="Expenses History"
+              subtitle="Expenses History"
+              variant="card"
             />
 
             {isLoading ? (
