@@ -59,6 +59,7 @@ export const register = mutation({
       username: normalizedUsername,
       hashedPassword,
       tokenIdentifier,
+      hasSeenOnboarding: false,
     };
 
     const userId = await ctx.db.insert("users", user);
