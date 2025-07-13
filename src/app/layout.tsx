@@ -7,6 +7,7 @@ import { SettingsProvider } from "@/contexts/SettingsContext";
 import { OfflineProvider } from "@/contexts/OfflineContext";
 import { Toaster } from "sonner";
 import { NetworkStatusIndicator } from "@/components/NetworkStatusIndicator";
+import { Analytics } from "@vercel/analytics/next";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -52,6 +53,7 @@ export default function RootLayout({
             </SettingsProvider>
           </AuthProvider>
         </ConvexProvider>
+        <Analytics />
       </body>
     </html>
   );
