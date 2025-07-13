@@ -3,34 +3,35 @@ import { startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Expense, MonthlyData } from "../types";
+import { Income } from "../types/income";
 
-export function useExpenseData(token: string | null) {
+export function useDashboardData(token: string | null) {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [key, setKey] = useState(0);
 
-  // Fetch expenses for the current month
-  const [key, setKey] = useState(0); // Add a key to force re-query
+  const startDate = startOfMonth(currentDate).getTime();
+  const endDate = endOfMonth(currentDate).getTime();
 
-  // Fetch expenses for the current month
-  const result = useQuery(
+  const expensesResult = useQuery(
     api.expenses.getExpensesByDateRange,
-    token
-      ? {
-          token,
-          startDate: startOfMonth(currentDate).getTime(),
-          endDate: endOfMonth(currentDate).getTime(),
-          key, // Add key to dependencies
-        }
-      : "skip"
+    token ? { token, startDate, endDate, key } : "skip"
   );
+
+  const incomeResult = useQuery(
+    api.cardsAndIncome.getIncomeByDateRange,
+    token ? { token, startDate, endDate, key } : "skip"
+  );
+
+  const expenses = expensesResult as unknown as Expense[] | undefined;
+  const income = incomeResult as unknown as Income[] | undefined;
   
-  const expenses = result as unknown as Expense[] | undefined;
-  const isLoading = result === undefined;
+  const isLoading = expensesResult === undefined || incomeResult === undefined;
 
-  // Process the expense data to get monthly summaries
   const monthlyData = useMemo<MonthlyData | null>(() => {
-    if (!expenses) return null;
+    if (!expenses || !income) return null;
 
-    const totalAmount = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    const totalIncome = income.reduce((sum, item) => sum + item.amount, 0);
     const totalCount = expenses.length;
 
     // Calculate category totals
@@ -54,12 +55,13 @@ export function useExpenseData(token: string | null) {
     }, {});
 
     return {
-      totalAmount,
+      totalExpenses,
+      totalIncome,
       totalCount,
       categoryTotals,
       dailyTotals,
     };
-  }, [expenses]);
+  }, [expenses, income]);
 
   // Navigation functions
   const goToPreviousMonth = () => {

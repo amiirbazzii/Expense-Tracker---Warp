@@ -11,7 +11,8 @@ export interface Expense {
 }
 
 export interface MonthlyData {
-  totalAmount: number;
+  totalExpenses: number;
+  totalIncome: number;
   totalCount: number;
   categoryTotals: Record<string, number>;
   dailyTotals: Record<string, number>;

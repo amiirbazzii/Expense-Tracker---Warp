@@ -20,7 +20,7 @@ import { CardBalances } from "@/features/dashboard/components/CardBalances";
 
 
 // Import hooks
-import { useExpenseData } from "@/features/dashboard/hooks/useExpenseData";
+import { useDashboardData } from "@/features/dashboard/hooks/useDashboardData";
 import { useExpenseActions } from "@/features/dashboard/hooks/useExpenseActions";
 
 // Import types
@@ -40,7 +40,7 @@ export default function DashboardPage() {
     goToPreviousMonth,
     goToNextMonth,
     refetchExpenses,
-  } = useExpenseData(token);
+  } = useDashboardData(token);
 
   const {
     selectedExpense,
@@ -82,8 +82,8 @@ export default function DashboardPage() {
             {/* Summary Cards */}
             {monthlyData ? (
               <SummaryCards
-                totalAmount={monthlyData.totalAmount}
-                totalCount={monthlyData.totalCount}
+                totalIncome={monthlyData.totalIncome}
+                totalExpenses={monthlyData.totalExpenses}
                 isLoading={isLoading}
               />
             ) : expenses === undefined ? (
