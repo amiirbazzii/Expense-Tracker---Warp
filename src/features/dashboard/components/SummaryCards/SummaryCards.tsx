@@ -1,4 +1,4 @@
-import { DollarSign, TrendingUp } from "lucide-react";
+import { TrendingUp, TrendingDown } from "lucide-react";
 import { useSettings } from "@/contexts/SettingsContext";
 import { formatCurrency } from "@/lib/formatters";
 
@@ -26,8 +26,8 @@ export function SummaryCards({ totalIncome, totalExpenses, isLoading }: SummaryC
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center space-x-2">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <DollarSign className="text-green-600" size={18} />
+              <div className="px-2 py-4 bg-gray-50 rounded-lg">
+                <TrendingUp className="text-green-600" size={24} />
               </div>
               <div>
                 <span className="text-sm font-medium text-gray-700">Total Income</span>
@@ -44,11 +44,11 @@ export function SummaryCards({ totalIncome, totalExpenses, isLoading }: SummaryC
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center space-x-2">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <TrendingUp className="text-red-600" size={18} />
+              <div className="px-2 py-4 bg-gray-50 rounded-lg">
+                <TrendingDown className="text-red-600" size={24} />
               </div>
               <div>
-                <span className="text-sm font-medium text-gray-700">Expenses</span>
+                <span className="text-sm font-medium text-gray-700">Total Expenses</span>
                 <div className="text-2xl font-bold text-gray-900">
                 {settings ? formatCurrency(totalExpenses, settings.currency) : `$${totalExpenses.toFixed(2)}`}
                 </div>

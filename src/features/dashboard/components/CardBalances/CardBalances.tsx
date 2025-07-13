@@ -70,29 +70,28 @@ export function CardBalances({ className }: CardBalancesProps) {
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
           >
-            <div className="flex items-center space-x-3">
+            <div className="flex flex-1 items-center space-x-3">
               <div className="p-2 bg-blue-100 rounded-lg">
                 <CreditCard className="text-blue-600" size={16} />
               </div>
-              <div>
-                <div className="font-medium text-gray-900">{card.cardName}</div>
+              <div className="flex flex-col flex-1">
+              <div className="flex items-center justify-between">
+                <div className="font-medium text-gray-900 flex-1">{card.cardName}</div>
+                <div className={`text-lg flex-none font-bold ${card.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {settings ? formatCurrency(card.balance, settings.currency) : `$${card.balance.toFixed(2)}`}
+                </div>
+              </div>
                 <div className="text-xs text-gray-500 flex items-center space-x-3">
                   <span className="flex items-center">
-                    <TrendingUp className="w-3 h-3 mr-1 text-green-600" />
+                    <TrendingUp className="w-3 h-3 mr-1 text-green-600" size={16} />
                     {settings ? formatCurrency(card.totalIncome, settings.currency) : `$${card.totalIncome.toFixed(2)}`}
                   </span>
                   <span className="flex items-center">
-                    <TrendingDown className="w-3 h-3 mr-1 text-red-600" />
+                    <TrendingDown className="w-3 h-3 mr-1 text-red-600" size={16} />
                     {settings ? formatCurrency(card.totalExpenses, settings.currency) : `$${card.totalExpenses.toFixed(2)}`}
                   </span>
                 </div>
               </div>
-            </div>
-            <div className="text-right">
-              <div className={`text-lg font-bold ${card.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {settings ? formatCurrency(card.balance, settings.currency) : `$${card.balance.toFixed(2)}`}
-              </div>
-              <div className="text-xs text-gray-500">Balance</div>
             </div>
           </motion.div>
         ))}
