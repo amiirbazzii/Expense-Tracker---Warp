@@ -97,7 +97,7 @@ export const createIncome = mutation({
   handler: async (ctx, args) => {
     const user = await getUserByToken(ctx, args.token);
 
-    return await ctx.db.insert("income", {
+    const income = await ctx.db.insert("income", {
       amount: args.amount,
       cardId: args.cardId,
       date: args.date,
@@ -107,6 +107,21 @@ export const createIncome = mutation({
       userId: user._id,
       createdAt: Date.now(),
     });
+
+    // Add category to user's incomeCategories table if it doesn't already exist
+    const existingCategory = await ctx.db
+      .query("incomeCategories")
+      .withIndex("by_user_name", (q) => q.eq("userId", user._id).eq("name", args.category))
+      .first();
+
+    if (!existingCategory) {
+      await ctx.db.insert("incomeCategories", {
+        name: args.category,
+        userId: user._id,
+      });
+    }
+
+    return income;
   },
 });
 
@@ -204,6 +219,19 @@ export const updateIncome = mutation({
       cardId: args.cardId,
       notes: args.notes,
     });
+
+    // Ensure the updated category exists in incomeCategories
+    const existingCategory = await ctx.db
+      .query("incomeCategories")
+      .withIndex("by_user_name", (q) => q.eq("userId", user._id).eq("name", args.category))
+      .first();
+
+    if (!existingCategory) {
+      await ctx.db.insert("incomeCategories", {
+        name: args.category,
+        userId: user._id,
+      });
+    }
 
     return { success: true };
   },
