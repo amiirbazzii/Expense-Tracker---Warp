@@ -8,17 +8,22 @@ import { api } from "../../../convex/_generated/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { HeaderRow } from "@/components/HeaderRow";
-import { CreditCard, Plus, X, ArrowLeft, Trash2 } from "lucide-react";
+import { CreditCard, Plus, X, ArrowLeft, Trash2, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function CardsPage() {
   const { token } = useAuth();
   const router = useRouter();
-  const [cardName, setCardName] = useState("");
+    const [cardName, setCardName] = useState("");
+  const [fromCard, setFromCard] = useState("");
+  const [toCard, setToCard] = useState("");
+  const [amount, setAmount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isTransferring, setIsTransferring] = useState(false);
 
   const addCardMutation = useMutation(api.cardsAndIncome.addCard);
   const deleteCardMutation = useMutation(api.cardsAndIncome.deleteCard);
+  const transferFundsMutation = useMutation(api.cardsAndIncome.transferFunds);
   const cards = useQuery(api.cardsAndIncome.getMyCards, token ? { token } : "skip");
 
   const addCard = async () => {
@@ -42,6 +47,42 @@ export default function CardsPage() {
       toast.success("Card deleted successfully!");
     } catch (error: any) {
       toast.error(error.message || "Failed to delete card");
+    }
+  };
+
+  const handleTransfer = async () => {
+    if (!fromCard || !toCard || !amount) {
+      toast.error("Please fill all transfer fields.");
+      return;
+    }
+
+    if (fromCard === toCard) {
+      toast.error("Cannot transfer to the same card.");
+      return;
+    }
+
+    const transferAmount = parseFloat(amount);
+    if (isNaN(transferAmount) || transferAmount <= 0) {
+      toast.error("Invalid transfer amount.");
+      return;
+    }
+
+    setIsTransferring(true);
+    try {
+      await transferFundsMutation({
+        token: token!,
+        fromCardId: fromCard as any,
+        toCardId: toCard as any,
+        amount: transferAmount,
+      });
+      toast.success("Funds transferred successfully!");
+      setFromCard("");
+      setToCard("");
+      setAmount("");
+    } catch (error: any) {
+      toast.error(error.data || "Failed to transfer funds");
+    } finally {
+      setIsTransferring(false);
     }
   };
 
@@ -71,7 +112,7 @@ export default function CardsPage() {
               >
                 <ArrowLeft size={20} />
               </motion.button>
-              <h1 className="text-xl font-bold text-gray-900">My Cards</h1>
+              <h1 className="text-xl font-bold text-gray-900">Manage My Cards</h1>
             </>
           }
         />
@@ -116,7 +157,64 @@ export default function CardsPage() {
             </form>
           </motion.div>
 
-          {/* Cards List */}
+          {/* Manage Cards */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white rounded-lg shadow-sm p-6 mb-6"
+          >
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Transfer Funds</h2>
+              <p className="text-sm text-gray-600">Move money between your cards</p>
+            </div>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <select
+                  value={fromCard}
+                  onChange={(e) => setFromCard(e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
+                >
+                  <option value="">From Card</option>
+                  {cards?.map((card) => (
+                    <option key={card._id} value={card._id}>
+                      {card.name}
+                    </option>
+                  ))}
+                </select>
+                <ArrowRight size={20} className="text-gray-400" />
+                <select
+                  value={toCard}
+                  onChange={(e) => setToCard(e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
+                >
+                  <option value="">To Card</option>
+                  {cards?.map((card) => (
+                    <option key={card._id} value={card._id}>
+                      {card.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <input
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
+                placeholder="Amount"
+              />
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={handleTransfer}
+                disabled={!fromCard || !toCard || !amount || isTransferring}
+                className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] flex items-center justify-center"
+              >
+                {isTransferring ? "Transferring..." : "Transfer"}
+              </motion.button>
+            </div>
+          </motion.div>
+
+          {/* My Cards List */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -124,7 +222,7 @@ export default function CardsPage() {
             className="bg-white rounded-lg shadow-sm p-6"
           >
             <div className="mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Your Cards</h2>
+              <h2 className="text-lg font-semibold text-gray-900">My Cards</h2>
               <p className="text-sm text-gray-600">
                 {cards?.length || 0} card{cards?.length !== 1 ? "s" : ""} added
               </p>

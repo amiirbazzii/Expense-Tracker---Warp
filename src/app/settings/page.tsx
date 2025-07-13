@@ -192,7 +192,7 @@ export default function SettingsPage() {
                 <div className="flex items-center space-x-3">
                   <CreditCard className="text-blue-600" size={20} />
                   <div className="text-left">
-                    <div className="font-medium text-gray-900">My Cards</div>
+                    <div className="font-medium text-gray-900">Manage My Cards</div>
                     <div className="text-sm text-gray-600">Manage your payment cards</div>
                   </div>
                 </div>

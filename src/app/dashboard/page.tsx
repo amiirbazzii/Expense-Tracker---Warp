@@ -68,7 +68,7 @@ export default function DashboardPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-lg shadow-sm p-6 mb-6"
+            className="bg-white rounded-lg shadow-sm p-2 mb-6"
           >
             {/* Header Section */}
             <HeaderSection

@@ -279,3 +279,77 @@ export const getCardBalances = query({
     return cardBalances;
   },
 });
+
+export const transferFunds = mutation({
+  args: {
+    token: v.string(),
+    fromCardId: v.id("cards"),
+    toCardId: v.id("cards"),
+    amount: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken(ctx, args.token);
+
+    if (args.fromCardId === args.toCardId) {
+      throw new ConvexError("Cannot transfer funds to the same card.");
+    }
+
+    if (args.amount <= 0) {
+      throw new ConvexError("Transfer amount must be positive.");
+    }
+
+    const fromCard = await ctx.db.get(args.fromCardId);
+    const toCard = await ctx.db.get(args.toCardId);
+
+    if (!fromCard || fromCard.userId !== user._id || !toCard || toCard.userId !== user._id) {
+      throw new ConvexError("One or both cards not found or not authorized.");
+    }
+
+    // Calculate balance for the 'from' card
+    const income = await ctx.db
+      .query("income")
+      .withIndex("by_card", (q) => q.eq("cardId", args.fromCardId))
+      .collect();
+    const expenses = await ctx.db
+      .query("expenses")
+      .withIndex("by_card", (q) => q.eq("cardId", args.fromCardId))
+      .collect();
+
+    const cardIncome = income.reduce((sum, inc) => sum + inc.amount, 0);
+    const cardExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const balance = cardIncome - cardExpenses;
+
+    if (balance < args.amount) {
+      throw new ConvexError("Insufficient funds for the transfer.");
+    }
+
+    const now = Date.now();
+
+    // Create an expense for the 'from' card
+    await ctx.db.insert("expenses", {
+      amount: args.amount,
+      cardId: args.fromCardId,
+      date: now,
+      title: `Transfer to ${toCard.name}`,
+      category: ["Card Transfer"],
+      for: [],
+      userId: user._id,
+      createdAt: now,
+    });
+
+    // Create an income for the 'to' card
+    await ctx.db.insert("income", {
+      amount: args.amount,
+      cardId: args.toCardId,
+      date: now,
+      source: "Card Transfer",
+      category: "Card Transfer",
+      notes: `Transfer from ${fromCard.name}`,
+      userId: user._id,
+      createdAt: now,
+    });
+
+    return { success: true };
+  },
+});
+

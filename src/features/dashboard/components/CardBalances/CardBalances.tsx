@@ -20,7 +20,7 @@ export function CardBalances({ className }: CardBalancesProps) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`bg-white rounded-lg shadow-sm p-6 ${className}`}
+        className={`bg-white rounded-lg shadow-sm p-2 ${className}`}
       >
         <div className="flex items-center space-x-2 mb-4">
           <CreditCard className="text-gray-600" size={20} />
@@ -36,7 +36,7 @@ export function CardBalances({ className }: CardBalancesProps) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`bg-white rounded-lg shadow-sm p-6 ${className}`}
+        className={`bg-white rounded-lg shadow-sm p-2 ${className}`}
       >
         <div className="flex items-center space-x-2 mb-4">
           <CreditCard className="text-gray-600" size={20} />
@@ -55,7 +55,7 @@ export function CardBalances({ className }: CardBalancesProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3 }}
-      className={`bg-white rounded-lg shadow-sm p-6 ${className}`}
+      className={`bg-white rounded-lg shadow-sm p-4 ${className}`}
     >
       <div className="flex items-center space-x-2 mb-4">
         <CreditCard className="text-gray-600" size={20} />
@@ -77,7 +77,7 @@ export function CardBalances({ className }: CardBalancesProps) {
               <div className="flex flex-col flex-1">
               <div className="flex items-center justify-between">
                 <div className="font-medium text-gray-900 flex-1">{card.cardName}</div>
-                <div className={`text-lg flex-none font-bold ${card.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <div className={`text-base flex-none font-bold ${card.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {settings ? formatCurrency(card.balance, settings.currency) : `$${card.balance.toFixed(2)}`}
                 </div>
               </div>
