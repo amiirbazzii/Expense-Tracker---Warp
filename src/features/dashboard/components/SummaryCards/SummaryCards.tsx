@@ -31,7 +31,7 @@ export function SummaryCards({ totalIncome, totalExpenses, isLoading }: SummaryC
               </div>
               <div>
                 <span className="text-sm font-medium text-gray-700">Total Income</span>
-                <div className="text-2xl font-bold text-gray-900">
+                <div className="text-lg font-bold text-gray-900">
                   {settings ? formatCurrency(totalIncome, settings.currency) : `$${totalIncome.toFixed(2)}`}
                 </div>
               </div>
@@ -49,7 +49,7 @@ export function SummaryCards({ totalIncome, totalExpenses, isLoading }: SummaryC
               </div>
               <div>
                 <span className="text-sm font-medium text-gray-700">Total Expenses</span>
-                <div className="text-2xl font-bold text-gray-900">
+                <div className="text-lg font-bold text-gray-900">
                 {settings ? formatCurrency(totalExpenses, settings.currency) : `$${totalExpenses.toFixed(2)}`}
                 </div>
               </div>
