@@ -46,7 +46,12 @@ export default function RegisterPage() {
       router.push("/expenses");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to create account";
-      toast.error(message);
+      if (message.toLowerCase().includes("username already exists")) {
+        toast.error("Username already exists. Please sign in.");
+        router.push("/login");
+      } else {
+        toast.error(message);
+      }
     } finally {
       setIsLoading(false);
     }

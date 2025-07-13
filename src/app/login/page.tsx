@@ -35,7 +35,14 @@ export default function LoginPage() {
       router.push("/expenses");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to login";
-      toast.error(message);
+      if (message.toLowerCase().includes("username not found")) {
+        toast.error("Username not found. Please create an account.");
+        router.push("/register");
+      } else if (message.toLowerCase().includes("incorrect password")) {
+        toast.error("Incorrect password");
+      } else {
+        toast.error(message);
+      }
     } finally {
       setIsLoading(false);
     }

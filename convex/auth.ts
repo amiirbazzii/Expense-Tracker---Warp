@@ -38,10 +38,13 @@ export const register = mutation({
     password: v.string(),
   },
   handler: async (ctx, args) => {
-    // Check if user already exists
+    // Normalize username to lowercase
+    const normalizedUsername = args.username.toLowerCase();
+
+    // Check if user already exists (case-insensitive because we always store lowercase)
     const existingUser = await ctx.db
       .query("users")
-      .withIndex("by_username", (q) => q.eq("username", args.username))
+      .withIndex("by_username", (q) => q.eq("username", normalizedUsername))
       .first();
 
     if (existingUser) {
@@ -53,7 +56,7 @@ export const register = mutation({
     const tokenIdentifier = generateToken();
 
     const userId = await ctx.db.insert("users", {
-      username: args.username,
+      username: normalizedUsername,
       hashedPassword,
       tokenIdentifier,
     });
@@ -68,18 +71,19 @@ export const login = mutation({
     password: v.string(),
   },
   handler: async (ctx, args) => {
+    const normalizedUsername = args.username.toLowerCase();
     const user = await ctx.db
       .query("users")
-      .withIndex("by_username", (q) => q.eq("username", args.username))
+      .withIndex("by_username", (q) => q.eq("username", normalizedUsername))
       .first();
 
     if (!user) {
-      throw new ConvexError("Invalid username or password");
+      throw new ConvexError("Username not found");
     }
 
     const hashedPassword = hashPassword(args.password);
     if (user.hashedPassword !== hashedPassword) {
-      throw new ConvexError("Invalid username or password");
+      throw new ConvexError("Incorrect password");
     }
 
     // Generate new token
