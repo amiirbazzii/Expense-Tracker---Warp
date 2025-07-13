@@ -151,16 +151,12 @@ export const getUniqueIncomeCategories = query({
   },
   handler: async (ctx, args) => {
     const user = await getUserByToken(ctx, args.token);
+    if (!user) {
+      return [];
+    }
 
-    const incomeRecords = await ctx.db
-      .query("income")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
-
-    const categories = incomeRecords.map((record) => record.category);
-    const uniqueCategories = [...new Set(categories)];
-
-    return uniqueCategories;
+    const categories = await ctx.db.query("incomeCategories").withIndex("by_user", q => q.eq("userId", user._id)).collect();
+    return categories.map(c => c.name);
   },
 });
 

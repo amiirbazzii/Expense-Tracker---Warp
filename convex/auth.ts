@@ -55,11 +55,29 @@ export const register = mutation({
     const hashedPassword = hashPassword(args.password);
     const tokenIdentifier = generateToken();
 
-    const userId = await ctx.db.insert("users", {
+    const user = {
       username: normalizedUsername,
       hashedPassword,
       tokenIdentifier,
-    });
+    };
+
+    const userId = await ctx.db.insert("users", user);
+
+    // Seed default income categories
+    const defaultIncomeCategories = [
+      "Salary",
+      "Freelance",
+      "Investment",
+      "Gift",
+      "Other",
+    ];
+
+    for (const categoryName of defaultIncomeCategories) {
+      await ctx.db.insert("incomeCategories", {
+        name: categoryName,
+        userId: userId,
+      });
+    }
 
     return { userId, token: tokenIdentifier };
   },

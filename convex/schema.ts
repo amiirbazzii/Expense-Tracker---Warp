@@ -58,4 +58,9 @@ export default defineSchema({
     calendar: v.union(v.literal("gregorian"), v.literal("jalali")),
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
+
+  incomeCategories: defineTable({
+    name: v.string(),
+    userId: v.id("users"),
+  }).index("by_user", ["userId"]).index("by_user_name", ["userId", "name"]),
 });
