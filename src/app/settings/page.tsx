@@ -108,25 +108,6 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* App Info */}
-            <div className="mb-6 space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">App Information</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-700">Version</span>
-                  <span className="text-gray-900 font-medium">1.0.0</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-700">PWA Enabled</span>
-                  <span className="text-green-600 font-medium">Yes</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-700">Offline Support</span>
-                  <span className="text-green-600 font-medium">Yes</span>
-                </div>
-              </div>
-            </div>
-
             {/* Management */}
             <div className="mb-6 space-y-4">
               <h3 className="text-lg font-semibold text-gray-900">Preferences</h3>
@@ -181,24 +162,6 @@ export default function SettingsPage() {
               )}
             </div>
 
-            <div className="mb-6 space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">Management</h3>
-              
-              <motion.button
-                whileTap={{ scale: 0.98 }}
-                onClick={() => router.push('/cards')}
-                className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <div className="flex items-center space-x-3">
-                  <CreditCard className="text-blue-600" size={20} />
-                  <div className="text-left">
-                    <div className="font-medium text-gray-900">Manage My Cards</div>
-                    <div className="text-sm text-gray-600">Manage your payment cards</div>
-                  </div>
-                </div>
-                <ChevronRight className="text-gray-400" size={20} />
-              </motion.button>
-            </div>
 
             {/* Actions */}
             <div className="space-y-4">
@@ -214,16 +177,6 @@ export default function SettingsPage() {
               </motion.button>
             </div>
 
-            {/* Future Settings Placeholder */}
-            <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-              <h4 className="font-medium text-gray-900 mb-2">Coming Soon</h4>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li>• Profile editing</li>
-                <li>• Data export</li>
-                <li>• Notification settings</li>
-                <li>• Theme preferences</li>
-              </ul>
-            </div>
           </motion.div>
         </div>
 

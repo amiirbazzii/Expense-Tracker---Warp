@@ -1,26 +1,29 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
 import moment from "jalali-moment";
 import { startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Doc } from "../../convex/_generated/dataModel";
+import { useOnlineStatus } from "./useOnlineStatus";
 
 type DataType = "expense" | "income";
 
 export function useTimeFramedData(type: DataType, token: string | null) {
   const { settings } = useSettings();
   const isJalali = settings?.calendar === "jalali";
+  const isOnline = useOnlineStatus();
 
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [key, setKey] = useState(0); // For cache busting
+  const [key, setKey] = useState(0);
+  const [displayData, setDisplayData] = useState<Doc<"expenses">[] | Doc<"income">[] | undefined>(undefined);
 
   const query = type === 'expense' 
     ? api.expenses.getExpensesByDateRange 
     : api.cardsAndIncome.getIncomeByDateRange;
 
   // Compute month range depending on calendar
-  const calcRange = () => {
+  const calcRange = useCallback(() => {
     if (isJalali) {
       const m = moment(currentDate);
       return {
@@ -32,13 +35,14 @@ export function useTimeFramedData(type: DataType, token: string | null) {
       start: startOfMonth(currentDate).getTime(),
       end: endOfMonth(currentDate).getTime(),
     };
-  };
+  }, [currentDate, isJalali]);
 
   const { start, end } = calcRange();
+  const cacheKey = `time-framed-data-${type}-${start}-${end}`;
 
   const result = useQuery(
     query,
-    token
+    token && isOnline
       ? {
           token,
           startDate: start,
@@ -49,10 +53,29 @@ export function useTimeFramedData(type: DataType, token: string | null) {
   );
 
   const fetchedData = result as Doc<"expenses">[] | Doc<"income">[] | undefined;
-  const isLoading = fetchedData === undefined;
+
+  useEffect(() => {
+    if (isOnline) {
+      if (fetchedData !== undefined) {
+        // Online: data fetched, update state and cache
+        setDisplayData(fetchedData);
+        localStorage.setItem(cacheKey, JSON.stringify(fetchedData));
+      }
+    } else {
+      // Offline: load from cache
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        setDisplayData(JSON.parse(cached));
+      } else {
+        setDisplayData(undefined); // No cache available
+      }
+    }
+  }, [fetchedData, isOnline, cacheKey]);
+
+  const isLoading = displayData === undefined;
 
   const data = useMemo(() => {
-    if (!fetchedData) return undefined;
+    if (!displayData) return undefined;
     // Sort data by date in descending order (most recent first)
     const startOfDay = (ts: number) => {
       const d = new Date(ts);
@@ -60,7 +83,7 @@ export function useTimeFramedData(type: DataType, token: string | null) {
       return d.getTime();
     };
 
-    return [...fetchedData].sort((a, b) => {
+    return [...displayData].sort((a, b) => {
       const aDay = startOfDay(a.date);
       const bDay = startOfDay(b.date);
 
@@ -74,7 +97,7 @@ export function useTimeFramedData(type: DataType, token: string | null) {
       const bTime = b.createdAt ?? b._creationTime ?? b.date;
       return bTime - aTime;
     });
-  }, [fetchedData]);
+  }, [displayData]);
 
   const monthlyTotal = useMemo(() => {
     if (!data) return 0;
