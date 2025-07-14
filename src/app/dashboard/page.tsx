@@ -16,7 +16,7 @@ import { SummaryCards } from "@/features/dashboard/components/SummaryCards";
 import { CategoryBreakdownChart, DailySpendingChart } from "@/features/dashboard/components/Charts";
 import { CategoryList } from "@/features/dashboard/components/CategoryList";
 
-import { CardBalances } from "@/features/dashboard/components/CardBalances";
+import { TotalBalanceCard } from "@/features/dashboard/components/TotalBalanceCard/TotalBalanceCard";
 
 
 // Import hooks
@@ -65,6 +65,8 @@ export default function DashboardPage() {
         />
         
         <div className="max-w-md mx-auto p-4 pt-24 pb-20">
+                    {/* Card Balances */}
+                    <TotalBalanceCard className="mb-6" />
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -100,8 +102,6 @@ export default function DashboardPage() {
             )}
           </motion.div>
 
-          {/* Card Balances */}
-          <CardBalances className="mb-6" />
           
           {/* Analytics Content */}
           {monthlyData && Object.keys(monthlyData.categoryTotals).length > 0 ? (

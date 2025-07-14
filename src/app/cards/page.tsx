@@ -9,13 +9,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { HeaderRow } from "@/components/HeaderRow";
 import { CurrencyInput } from "@/components/CurrencyInput";
-import { CreditCard, Plus, X, ArrowLeft, Trash2, ArrowRight } from "lucide-react";
+import { CreditCard, Plus, X, ArrowLeft, Trash2, ArrowRight, TrendingUp, TrendingDown } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useSettings } from "@/contexts/SettingsContext";
+import { formatCurrency } from "@/lib/formatters";
 
 export default function CardsPage() {
   const { token } = useAuth();
+  const { settings } = useSettings();
   const router = useRouter();
-    const [cardName, setCardName] = useState("");
+  const [cardName, setCardName] = useState("");
   const [fromCard, setFromCard] = useState("");
   const [toCard, setToCard] = useState("");
   const [amount, setAmount] = useState("");
@@ -25,7 +28,7 @@ export default function CardsPage() {
   const addCardMutation = useMutation(api.cardsAndIncome.addCard);
   const deleteCardMutation = useMutation(api.cardsAndIncome.deleteCard);
   const transferFundsMutation = useMutation(api.cardsAndIncome.transferFunds);
-  const cards = useQuery(api.cardsAndIncome.getMyCards, token ? { token } : "skip");
+  const cardBalances = useQuery(api.cardsAndIncome.getCardBalances, token ? { token } : "skip");
 
   const addCard = async () => {
     if (!cardName.trim()) return;
@@ -127,49 +130,43 @@ export default function CardsPage() {
           >
             <div className="mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Add New Card</h2>
-              <p className="text-sm text-gray-600">Add a card to track expenses and income</p>
+              <p className="text-sm text-gray-600">Enter a name for your new card</p>
             </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Card Name
-                </label>
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={cardName}
-                    onChange={(e) => setCardName(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
-                    placeholder="e.g., Chase Visa, Bank of America"
-                  />
-                  <motion.button
-                    type="button"
-                    whileTap={{ scale: 0.95 }}
-                    onClick={addCard}
-                    disabled={!cardName.trim() || isSubmitting}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] flex items-center"
-                  >
-                    <Plus size={20} />
-                  </motion.button>
-                </div>
+            <form onSubmit={handleSubmit} className="flex items-center space-x-2">
+              <div className="relative flex-grow">
+                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <input
+                  type="text"
+                  value={cardName}
+                  onChange={(e) => setCardName(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="e.g., Personal, Work"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
+                />
               </div>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                type="submit"
+                disabled={!cardName.trim() || isSubmitting}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] flex items-center justify-center"
+              >
+                {isSubmitting ? "Adding..." : <Plus size={20} />}
+              </motion.button>
             </form>
           </motion.div>
 
-          {/* Manage Cards */}
+          {/* Transfer Funds */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+            transition={{ delay: 0.05 }}
             className="bg-white rounded-lg shadow-sm p-6 mb-6"
           >
             <div className="mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Transfer Funds</h2>
               <p className="text-sm text-gray-600">Move money between your cards</p>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="flex items-center space-x-2">
                 <select
                   value={fromCard}
@@ -177,9 +174,9 @@ export default function CardsPage() {
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
                 >
                   <option value="">From Card</option>
-                  {cards?.map((card) => (
-                    <option key={card._id} value={card._id}>
-                      {card.name}
+                  {cardBalances?.map((card) => (
+                    <option key={card.cardId} value={card.cardId}>
+                      {card.cardName}
                     </option>
                   ))}
                 </select>
@@ -190,9 +187,9 @@ export default function CardsPage() {
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
                 >
                   <option value="">To Card</option>
-                  {cards?.map((card) => (
-                    <option key={card._id} value={card._id}>
-                      {card.name}
+                  {cardBalances?.map((card) => (
+                    <option key={card.cardId} value={card.cardId}>
+                      {card.cardName}
                     </option>
                   ))}
                 </select>
@@ -223,45 +220,59 @@ export default function CardsPage() {
             <div className="mb-4">
               <h2 className="text-lg font-semibold text-gray-900">My Cards</h2>
               <p className="text-sm text-gray-600">
-                {cards?.length || 0} card{cards?.length !== 1 ? "s" : ""} added
+                {cardBalances?.length || 0} card{cardBalances?.length !== 1 ? "s" : ""} added
               </p>
             </div>
 
-            {cards === undefined ? (
+            {cardBalances === undefined ? (
               <div className="text-center py-8">
                 <div className="text-gray-500">Loading...</div>
               </div>
-            ) : cards?.length === 0 ? (
+            ) : cardBalances?.length === 0 ? (
               <div className="text-center py-8">
                 <CreditCard className="mx-auto text-gray-400 mb-4" size={48} />
                 <p className="text-gray-500">No cards added yet</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {cards?.map((card) => (
+                {cardBalances?.map((card) => (
                   <motion.div
-                    key={card._id}
+                    key={card.cardId}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="flex items-center justify-between bg-gray-50 p-4 rounded-md"
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                   >
-                    <div className="flex items-center space-x-3">
-                      <CreditCard className="text-blue-600" size={24} />
-                      <div>
-                        <span className="text-gray-900 font-medium">{card.name}</span>
-                        <div className="text-sm text-gray-500">
-                          Added {new Date(card.createdAt).toLocaleDateString()}
+                    <div className="flex flex-1 items-center space-x-3">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <CreditCard className="text-blue-600" size={16} />
+                      </div>
+                      <div className="flex flex-col flex-1">
+                        <div className="flex items-center justify-between">
+                          <div className="font-medium text-gray-900 flex-1">{card.cardName}</div>
+                          <div className={`text-base flex-none font-bold ${card.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {settings ? formatCurrency(card.balance, settings.currency) : `$${card.balance.toFixed(2)}`}
+                          </div>
+                        </div>
+                        <div className="text-xs text-gray-500 flex items-center space-x-3">
+                          <span className="flex items-center">
+                            <TrendingUp className="w-3 h-3 mr-1 text-green-600" />
+                            {settings ? formatCurrency(card.totalIncome, settings.currency) : `$${card.totalIncome.toFixed(2)}`}
+                          </span>
+                          <span className="flex items-center">
+                            <TrendingDown className="w-3 h-3 mr-1 text-red-600" />
+                            {settings ? formatCurrency(card.totalExpenses, settings.currency) : `$${card.totalExpenses.toFixed(2)}`}
+                          </span>
                         </div>
                       </div>
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => deleteCard(card.cardId)}
+                        className="text-red-600 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition-colors"
+                        title="Delete card"
+                      >
+                        <Trash2 size={18} />
+                      </motion.button>
                     </div>
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => deleteCard(card._id)}
-                      className="text-red-600 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition-colors"
-                      title="Delete card"
-                    >
-                      <Trash2 size={18} />
-                    </motion.button>
                   </motion.div>
                 ))}
               </div>
