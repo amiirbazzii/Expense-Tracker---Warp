@@ -25,7 +25,7 @@ export default function LoginPage() {
     e.preventDefault();
     
     if (!username.trim() || !password.trim()) {
-      toast.error("Please fill in all fields");
+      toast.error("Please enter your username and password.");
       return;
     }
 
@@ -35,12 +35,12 @@ export default function LoginPage() {
       toast.success("Welcome back!");
       router.push("/expenses");
     } catch (error: unknown) {
-      const message = error instanceof ConvexError ? (error.data as { message: string }).message : error instanceof Error ? error.message : "Failed to login";
+      const message = error instanceof ConvexError ? (error.data as { message: string }).message : error instanceof Error ? error.message : "Login failed. Please try again.";
       if (message.toLowerCase().includes("username not found")) {
-        toast.error("Username not found. Please create an account.");
+        toast.error("Username not found. Please check your entry or create an account.");
         router.push("/register");
       } else if (message.toLowerCase().includes("incorrect password")) {
-        toast.error("Incorrect password");
+        toast.error("The password you entered is incorrect.");
       } else {
         toast.error(message);
       }
@@ -62,15 +62,15 @@ export default function LoginPage() {
       >
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your account
+            Welcome Back
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Or{" "}
+            New here?{" "}
             <Link
               href="/register"
               className="font-medium text-blue-600 hover:text-blue-500"
             >
-              create a new account
+              Create an account
             </Link>
           </p>
         </div>

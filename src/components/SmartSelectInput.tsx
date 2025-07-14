@@ -8,6 +8,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 interface SmartSelectInputProps {
   name: string;
   label: string;
+  icon?: React.ElementType;
   multiple?: boolean;
   value: string[];
   onChange: (newItems: string[]) => void;
@@ -21,6 +22,7 @@ interface SmartSelectInputProps {
 export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
   name,
   label,
+  icon: Icon,
   multiple = false,
   value,
   onChange,
@@ -168,6 +170,7 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
   return (
     <div ref={containerRef} className={`relative ${className || ''}`}>
       <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">
+        {Icon && <Icon className="inline w-4 h-4 mr-1" />}
         {label}
       </label>
       <div 

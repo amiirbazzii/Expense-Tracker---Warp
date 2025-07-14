@@ -35,7 +35,7 @@ export default function OnboardingPage() {
     e.preventDefault();
     
     if (cards.length === 0) {
-      toast.error("Please add at least one card");
+      toast.error("Please add at least one card to continue.");
       return;
     }
 
@@ -47,10 +47,10 @@ export default function OnboardingPage() {
         await addCardMutation({ token: token!, name: cardName });
       }
 
-      toast.success("Cards added successfully!");
+      toast.success("Your cards have been added successfully!");
       router.push("/dashboard");
     } catch (error) {
-      toast.error("Failed to add cards");
+      toast.error("There was an error saving your cards. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -67,7 +67,7 @@ export default function OnboardingPage() {
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-50">
         <HeaderRow
-          left={<h1 className="text-xl font-bold text-gray-900">Setup</h1>}
+          left={<h1 className="text-xl font-bold text-gray-900">Account Setup</h1>}
         />
         
         <div className="max-w-md mx-auto p-4 pt-24 pb-20">
@@ -82,7 +82,7 @@ export default function OnboardingPage() {
                 Add Your Cards
               </h2>
               <p className="text-gray-600">
-                First, let's add the cards you use for expenses and income tracking
+                Add the cards you'll use to track your finances.
               </p>
             </div>
 
@@ -153,7 +153,7 @@ export default function OnboardingPage() {
                   disabled={isSubmitting || cards.length === 0}
                   className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[44px]"
                 >
-                  {isSubmitting ? "Setting up..." : "Continue to Dashboard"}
+                  {isSubmitting ? "Saving your cards..." : "Continue to Dashboard"}
                 </motion.button>
               </div>
             </form>

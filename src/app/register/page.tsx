@@ -26,30 +26,29 @@ export default function RegisterPage() {
     e.preventDefault();
     
     if (!username.trim() || !password.trim() || !confirmPassword.trim()) {
-      toast.error("Please fill in all fields");
+      toast.error("Please fill out all fields to continue.");
       return;
     }
 
     if (password !== confirmPassword) {
-      toast.error("Passwords do not match");
+      toast.error("The passwords you entered do not match. Please try again.");
       return;
     }
 
     if (password.length < 6) {
-      toast.error("Password must be at least 6 characters");
+      toast.error("For security, your password must be at least 6 characters long.");
       return;
     }
 
     setIsLoading(true);
     try {
       await register(username.trim(), password);
-      toast.success("Account created successfully!");
-      router.push("/expenses");
+      toast.success("Welcome! Your account has been created successfully.");
+      router.push("/onboarding");
     } catch (error: unknown) {
-      const message = error instanceof ConvexError ? (error.data as { message: string }).message : error instanceof Error ? error.message : "Failed to create account";
+      const message = error instanceof ConvexError ? (error.data as { message: string }).message : error instanceof Error ? error.message : "Account creation failed. Please try again.";
       if (message.toLowerCase().includes("username already exists")) {
-        toast.error("Username already exists. Please sign in.");
-        router.push("/login");
+        toast.error("This username is already taken. Please choose another or sign in.");
       } else {
         toast.error(message);
       }
@@ -71,15 +70,15 @@ export default function RegisterPage() {
       >
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create your account
+            Create an Account
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Or{" "}
+            Already have an account?{" "}
             <Link
               href="/login"
               className="font-medium text-blue-600 hover:text-blue-500"
             >
-              sign in to your existing account
+              Sign in
             </Link>
           </p>
         </div>
@@ -111,7 +110,7 @@ export default function RegisterPage() {
                 type="password"
                 required
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Password (min 6 characters)"
+                placeholder="Password (at least 6 characters)"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}

@@ -13,7 +13,11 @@ import { SmartSelectInput } from "@/components/SmartSelectInput";
 import { 
   CreditCard, 
   Receipt, 
-  Calendar
+  Calendar,
+  PencilLine,
+  Tag,
+  User,
+  DollarSign
 } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -91,18 +95,18 @@ export default function ExpensesPage() {
     e.preventDefault();
     
     if (!formData.amount || !formData.title || formData.category.length === 0) {
-      toast.error("Please fill in all required fields");
+      toast.error("Please enter the amount, title, and category.");
       return;
     }
     
     if (!formData.cardId) {
-      toast.error("Please select a card");
+      toast.error("Please select the card used for this expense.");
       return;
     }
 
     const amount = parseFloat(formData.amount);
     if (isNaN(amount) || amount <= 0) {
-      toast.error("Please enter a valid amount");
+      toast.error("Please enter a valid expense amount.");
       return;
     }
 
@@ -119,7 +123,7 @@ export default function ExpensesPage() {
         cardId: formData.cardId as any,
       });
 
-      toast.success("Expense added successfully!");
+      toast.success("Your expense has been added.");
       refetch(); // Refetch expenses after adding a new one
       
       // Reset form
@@ -132,7 +136,7 @@ export default function ExpensesPage() {
         cardId: formData.cardId, // Keep the same card selected
       });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Failed to add expense";
+      const message = error instanceof Error ? error.message : "There was an error adding your expense. Please try again.";
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -219,6 +223,7 @@ export default function ExpensesPage() {
               {/* Amount */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <DollarSign className="inline w-4 h-4 mr-1" />
                   Amount *
                 </label>
                 <CurrencyInput
@@ -232,6 +237,7 @@ export default function ExpensesPage() {
               {/* Title */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <PencilLine className="inline w-4 h-4 mr-1" />
                   Title *
                 </label>
                 <input
@@ -266,6 +272,7 @@ export default function ExpensesPage() {
               </div>
 
               <SmartSelectInput
+                icon={Tag}
                 name="category"
                 label="Categories *"
                 multiple
@@ -278,8 +285,9 @@ export default function ExpensesPage() {
               />
 
               <SmartSelectInput
+                icon={User}
                 name="for"
-                label="For (optional)"
+                label="For (Optional)"
                 multiple={false}
                 value={formData.for}
                 onChange={(newFor) => setFormData({ ...formData, for: newFor })}
@@ -303,7 +311,7 @@ export default function ExpensesPage() {
                 disabled={isSubmitting || formData.category.length === 0 || !formData.cardId}
                 className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-medium min-h-[44px]"
               >
-                {isSubmitting ? "Adding..." : "Add Expense"}
+                {isSubmitting ? "Adding Expense..." : "Add Expense"}
               </motion.button>
             </form>
           </motion.div>
@@ -314,12 +322,12 @@ export default function ExpensesPage() {
               currentDate={currentDate} 
               onPreviousMonth={goToPreviousMonth} 
               onNextMonth={goToNextMonth} 
-              subtitle="Expenses History"
+              subtitle="Expense History"
               variant="card"
             />
 
             {isLoading ? (
-              <div className="text-center py-8 text-gray-500">Loading...</div>
+              <div className="text-center py-8 text-gray-500">Loading expenses...</div>
             ) : expenses && expenses.length > 0 ? (
               <div className="space-y-4 mt-4">
                 {(expenses as Doc<"expenses">[]).map((expense) => (
@@ -334,9 +342,9 @@ export default function ExpensesPage() {
             ) : (
               <div className="text-center py-12">
                 <Receipt className="mx-auto text-gray-400 mb-4" size={48} />
-                <p className="text-gray-500">No expenses found for this month.</p>
+                <p className="text-gray-500">You have no expenses recorded for this month.</p>
                 <p className="text-sm text-gray-400 mt-2">
-                  Add an expense using the form above.
+                  Use the form above to add an expense.
                 </p>
               </div>
             )}

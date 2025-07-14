@@ -92,12 +92,12 @@ export default function DashboardPage() {
               />
             ) : expenses === undefined ? (
               <div className="text-center py-8">
-                <div className="text-gray-500">Loading...</div>
+                <div className="text-gray-500">Loading summary...</div>
               </div>
             ) : (
               <div className="text-center py-8">
                 <Calendar className="mx-auto text-gray-400 mb-4" size={48} />
-                <p className="text-gray-500">No expenses for this month</p>
+                <p className="text-gray-500">You have no expenses for this month.</p>
               </div>
             )}
           </motion.div>

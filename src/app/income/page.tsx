@@ -10,7 +10,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { HeaderRow } from "@/components/HeaderRow";
 import { SmartSelectInput } from "@/components/SmartSelectInput";
 import { toast } from "sonner";
-import { ArrowLeft, TrendingUp, CreditCard, Calendar, PencilLine } from "lucide-react";
+import { DollarSign, ArrowLeft, TrendingUp, CreditCard, Calendar, PencilLine, Briefcase, Tag } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useTimeFramedData } from "@/hooks/useTimeFramedData";
@@ -78,18 +78,18 @@ export default function IncomePage() {
     e.preventDefault();
     
     if (!formData.amount || !formData.source || formData.category.length === 0) {
-      toast.error("Please fill in all required fields");
+      toast.error("Please enter the amount, source, and category.");
       return;
     }
     
     if (!formData.cardId) {
-      toast.error("Please select a card");
+      toast.error("Please select the card where you received this income.");
       return;
     }
 
     const amount = parseFloat(formData.amount);
     if (isNaN(amount) || amount <= 0) {
-      toast.error("Please enter a valid amount");
+      toast.error("Please enter a valid income amount.");
       return;
     }
 
@@ -106,7 +106,7 @@ export default function IncomePage() {
         notes: formData.notes,
       });
 
-      toast.success("Income added successfully!");
+      toast.success("Your income has been added.");
       refetch(); // Refetch income after adding a new one
       
       // Reset form
@@ -119,7 +119,7 @@ export default function IncomePage() {
         notes: "",
       });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Failed to add income";
+      const message = error instanceof Error ? error.message : "There was an error adding your income. Please try again.";
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -165,6 +165,7 @@ export default function IncomePage() {
               {/* Amount */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <DollarSign className="inline w-4 h-4 mr-1" />
                   Amount *
                 </label>
                 <CurrencyInput
@@ -178,6 +179,7 @@ export default function IncomePage() {
               {/* Source */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Briefcase className="inline w-4 h-4 mr-1" />
                   Source *
                 </label>
                 <input
@@ -212,6 +214,7 @@ export default function IncomePage() {
               </div>
 
               <SmartSelectInput
+                icon={Tag}
                 name="category"
                 label="Category *"
                 multiple={false}
@@ -234,7 +237,7 @@ export default function IncomePage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <PencilLine className="inline w-4 h-4 mr-1" />
-                  Notes (optional)
+                  Notes (Optional)
                 </label>
                 <textarea
                   value={formData.notes}
@@ -251,7 +254,7 @@ export default function IncomePage() {
                 disabled={isSubmitting || formData.category.length === 0 || !formData.cardId}
                 className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-medium min-h-[44px]"
               >
-                {isSubmitting ? "Adding..." : "Add Income"}
+                {isSubmitting ? "Adding Income..." : "Add Income"}
               </motion.button>
             </form>
           </motion.div>
@@ -267,7 +270,7 @@ export default function IncomePage() {
             />
 
             {isLoading ? (
-              <div className="text-center py-8 text-gray-500">Loading...</div>
+              <div className="text-center py-8 text-gray-500">Loading income...</div>
             ) : income && income.length > 0 ? (
               <div className="space-y-4 mt-4">
                 {(income as Doc<"income">[]).map((incomeRecord) => (
@@ -282,9 +285,9 @@ export default function IncomePage() {
             ) : (
               <div className="text-center py-12">
                 <TrendingUp className="mx-auto text-gray-400 mb-4" size={48} />
-                <p className="text-gray-500">No income found for this month.</p>
+                <p className="text-gray-500">You have no income recorded for this month.</p>
                 <p className="text-sm text-gray-400 mt-2">
-                  Add an income record using the form above.
+                  Use the form above to add an income record.
                 </p>
               </div>
             )}

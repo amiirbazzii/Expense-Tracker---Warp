@@ -7,7 +7,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { ArrowLeft, Calendar, DollarSign, CreditCard } from "lucide-react";
+import { ArrowLeft, Calendar, DollarSign, CreditCard, Briefcase, Tag } from "lucide-react";
 import { HeaderRow } from "@/components/HeaderRow";
 import { format } from "date-fns";
 import { Id } from "../../../../../convex/_generated/dataModel";
@@ -71,14 +71,19 @@ export default function EditIncomePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.amount || !formData.source || formData.category.length === 0 || !formData.cardId) {
-      toast.error("Please fill in all required fields");
+    if (!formData.amount || !formData.source || formData.category.length === 0) {
+      toast.error("Please enter the amount, source, and category.");
+      return;
+    }
+
+    if (!formData.cardId) {
+      toast.error("Please select the card where you received this income.");
       return;
     }
 
     const amount = parseFloat(formData.amount);
     if (isNaN(amount) || amount <= 0) {
-      toast.error("Please enter a valid amount");
+      toast.error("Please enter a valid income amount.");
       return;
     }
 
@@ -96,10 +101,10 @@ export default function EditIncomePage() {
         notes: formData.notes,
       });
 
-      toast.success("Income updated successfully!");
+      toast.success("Your income has been successfully updated.");
       router.push("/income");
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Failed to update income";
+      const message = error instanceof Error ? error.message : "There was an error updating your income. Please try again.";
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -110,7 +115,7 @@ export default function EditIncomePage() {
     return (
       <ProtectedRoute>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-lg">Loading...</div>
+          <div className="text-lg">Loading income details...</div>
         </div>
       </ProtectedRoute>
     );
@@ -143,7 +148,7 @@ export default function EditIncomePage() {
           >
             <div className="mb-6">
               <h2 className="text-lg font-semibold text-gray-900">Edit Income Details</h2>
-              <p className="text-sm text-gray-600">Update the information below</p>
+              <p className="text-sm text-gray-600">Make changes to your income record below.</p>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -161,6 +166,7 @@ export default function EditIncomePage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Briefcase className="inline w-4 h-4 mr-1" />
                   Source *
                 </label>
                 <input
@@ -174,6 +180,7 @@ export default function EditIncomePage() {
               </div>
 
               <SmartSelectInput
+                icon={Tag}
                 name="category"
                 label="Category *"
                 multiple={false}
@@ -209,7 +216,7 @@ export default function EditIncomePage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Notes (optional)
+                  Notes (Optional)
                 </label>
                 <textarea
                   value={formData.notes}
@@ -227,7 +234,7 @@ export default function EditIncomePage() {
                   disabled={isSubmitting}
                   className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300"
                 >
-                  {isSubmitting ? "Updating..." : "Update Income"}
+                  {isSubmitting ? "Updating Income..." : "Update Income"}
                 </motion.button>
               </div>
             </form>

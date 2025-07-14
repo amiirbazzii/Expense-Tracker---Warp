@@ -7,7 +7,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { X, Calendar, DollarSign, Tag, User, ArrowLeft, CheckCircle, CreditCard } from "lucide-react";
+import { X, Calendar, DollarSign, User, ArrowLeft, CheckCircle, CreditCard, PencilLine, Tag } from "lucide-react";
 import { HeaderRow } from "@/components/HeaderRow";
 import { format } from "date-fns";
 import { Id } from "../../../../../convex/_generated/dataModel";
@@ -65,9 +65,9 @@ export default function EditExpensePage() {
     }
     try {
       await createCategoryMutation({ token, name });
-      toast.success(`Category "${name}" created`);
+      toast.success(`The category "${name}" has been created.`);
     } catch (error) {
-      toast.error("Failed to create category");
+      toast.error("There was an error creating the category.");
       console.error(error);
     }
   };
@@ -79,9 +79,9 @@ export default function EditExpensePage() {
     }
     try {
       await createForValueMutation({ token, value });
-      toast.success(`For value "${value}" created`);
+      toast.success(`The value "${value}" has been created for the 'For' field.`);
     } catch (error) {
-      toast.error("Failed to create 'for' value");
+      toast.error("There was an error creating the value for the 'For' field.");
       console.error(error);
     }
   };
@@ -123,14 +123,14 @@ export default function EditExpensePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.amount || !formData.title || formData.category.length === 0 || !formData.cardId) {
-      toast.error("Please fill in all required fields");
+    if (!formData.amount || !formData.title || formData.category.length === 0) {
+      toast.error("Please enter the amount, title, and category.");
       return;
     }
 
     const amount = parseFloat(formData.amount);
     if (isNaN(amount) || amount <= 0) {
-      toast.error("Please enter a valid amount");
+      toast.error("Please enter a valid expense amount.");
       return;
     }
 
@@ -148,11 +148,10 @@ export default function EditExpensePage() {
         cardId: formData.cardId ? (formData.cardId as any) : undefined,
       });
 
-      toast.success("Expense updated successfully!");
+      toast.success("The expense has been successfully updated.");
       router.push("/expenses");
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Failed to update expense";
-      toast.error(message);
+      toast.error("There was an error updating the expense. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -310,6 +309,7 @@ export default function EditExpensePage() {
               {/* Title */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <PencilLine className="inline w-4 h-4 mr-1" />
                   Title *
                 </label>
                 <input
@@ -323,6 +323,7 @@ export default function EditExpensePage() {
               </div>
 
               <SmartSelectInput
+                icon={Tag}
                 name="category"
                 label="Categories *"
                 multiple
@@ -335,8 +336,9 @@ export default function EditExpensePage() {
               />
 
               <SmartSelectInput
+                icon={User}
                 name="for"
-                label="For (optional)"
+                label="For (Optional)"
                 multiple={false}
                 value={formData.for}
                 onChange={(newFor) => setFormData({ ...formData, for: newFor })}
@@ -380,7 +382,7 @@ export default function EditExpensePage() {
                   disabled={isSubmitting}
                   className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300 transition-colors min-h-[44px]"
                 >
-                  {isSubmitting ? "Updating..." : "Update Expense"}
+                  {isSubmitting ? "Updating Expense..." : "Update Expense"}
                 </motion.button>
               </div>
             </form>

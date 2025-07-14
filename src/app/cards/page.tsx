@@ -36,10 +36,10 @@ export default function CardsPage() {
     setIsSubmitting(true);
     try {
       await addCardMutation({ token: token!, name: cardName.trim() });
-      toast.success("Card added successfully!");
+      toast.success("Your card has been added.");
       setCardName("");
     } catch (error) {
-      toast.error("Failed to add card");
+      toast.error("There was an error adding your card. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -48,26 +48,26 @@ export default function CardsPage() {
   const deleteCard = async (cardId: string) => {
     try {
       await deleteCardMutation({ token: token!, cardId: cardId as any });
-      toast.success("Card deleted successfully!");
+      toast.success("The card has been deleted.");
     } catch (error: any) {
-      toast.error(error.message || "Failed to delete card");
+      toast.error(error.message || "There was an error deleting the card.");
     }
   };
 
   const handleTransfer = async () => {
     if (!fromCard || !toCard || !amount) {
-      toast.error("Please fill all transfer fields.");
+      toast.error("Please select both cards and enter an amount.");
       return;
     }
 
     if (fromCard === toCard) {
-      toast.error("Cannot transfer to the same card.");
+      toast.error("Source and destination cards cannot be the same.");
       return;
     }
 
     const transferAmount = parseFloat(amount);
     if (isNaN(transferAmount) || transferAmount <= 0) {
-      toast.error("Invalid transfer amount.");
+      toast.error("Please enter a valid amount to transfer.");
       return;
     }
 
@@ -79,12 +79,12 @@ export default function CardsPage() {
         toCardId: toCard as any,
         amount: transferAmount,
       });
-      toast.success("Funds transferred successfully!");
+      toast.success("Transfer successful.");
       setFromCard("");
       setToCard("");
       setAmount("");
     } catch (error: any) {
-      toast.error(error.data || "Failed to transfer funds");
+      toast.error(error.data || "The transfer could not be completed. Please try again.");
     } finally {
       setIsTransferring(false);
     }
@@ -116,7 +116,7 @@ export default function CardsPage() {
               >
                 <ArrowLeft size={20} />
               </motion.button>
-              <h1 className="text-xl font-bold text-gray-900">Manage My Cards</h1>
+              <h1 className="text-xl font-bold text-gray-900">Manage Cards</h1>
             </>
           }
         />
@@ -218,20 +218,17 @@ export default function CardsPage() {
             className="bg-white rounded-lg shadow-sm p-6"
           >
             <div className="mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">My Cards</h2>
-              <p className="text-sm text-gray-600">
-                {cardBalances?.length || 0} card{cardBalances?.length !== 1 ? "s" : ""} added
-              </p>
+              <h2 className="text-lg font-semibold text-gray-900">Your Cards ({cardBalances?.length || 0})</h2>
             </div>
 
             {cardBalances === undefined ? (
               <div className="text-center py-8">
-                <div className="text-gray-500">Loading...</div>
+                <div className="text-gray-500">Loading your cards...</div>
               </div>
             ) : cardBalances?.length === 0 ? (
               <div className="text-center py-8">
                 <CreditCard className="mx-auto text-gray-400 mb-4" size={48} />
-                <p className="text-gray-500">No cards added yet</p>
+                <p className="text-gray-500">You haven't added any cards yet.</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -268,7 +265,7 @@ export default function CardsPage() {
                         whileTap={{ scale: 0.95 }}
                         onClick={() => deleteCard(card.cardId)}
                         className="text-red-600 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition-colors"
-                        title="Delete card"
+                        title="Delete Card"
                       >
                         <Trash2 size={18} />
                       </motion.button>
