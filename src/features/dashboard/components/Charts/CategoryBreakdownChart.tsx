@@ -19,11 +19,20 @@ export function CategoryBreakdownChart({ categoryTotals }: CategoryBreakdownChar
     return null;
   }
 
+  // Filter out "Card Transfer" category
+  const filteredCategoryTotals = Object.fromEntries(
+    Object.entries(categoryTotals).filter(([category]) => category !== 'Card Transfer')
+  );
+
+  if (Object.keys(filteredCategoryTotals).length === 0) {
+    return null;
+  }
+
   const chartData = {
-    labels: Object.keys(categoryTotals),
+    labels: Object.keys(filteredCategoryTotals),
     datasets: [
       {
-        data: Object.values(categoryTotals),
+        data: Object.values(filteredCategoryTotals),
         backgroundColor: [
           "#3B82F6",
           "#EF4444",

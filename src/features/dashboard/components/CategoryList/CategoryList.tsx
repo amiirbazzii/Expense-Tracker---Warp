@@ -23,6 +23,7 @@ export function CategoryList({ categoryTotals }: CategoryListProps) {
       <h2 className="text-lg font-semibold text-gray-900 mb-4">Categories</h2>
       <div className="space-y-3">
         {Object.entries(categoryTotals)
+          .filter(([category]) => category !== 'Card Transfer')
           .sort(([, a], [, b]) => b - a)
           .map(([category, amount]) => (
             <div key={category} className="flex justify-between items-center">
