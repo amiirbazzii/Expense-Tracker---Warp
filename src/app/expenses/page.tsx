@@ -23,10 +23,21 @@ import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useTimeFramedData } from "@/hooks/useTimeFramedData";
 import { DateFilterHeader } from "@/components/DateFilterHeader";
-import { Doc } from "../../../convex/_generated/dataModel";
+import { Doc, Id } from "../../../convex/_generated/dataModel";
 import { ExpenseCard } from '@/components/cards/ExpenseCard';
 import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { CurrencyInput } from "@/components/CurrencyInput";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useOfflineQueue, OfflineItem } from "@/hooks/useOfflineQueue";
+
+type ExpenseCreationData = {
+  amount: number;
+  title: string;
+  category: string[];
+  for: string[];
+  date: number;
+  cardId: Id<"cards">;
+};
 
 interface ExpenseFormData {
   amount: string;
@@ -57,6 +68,14 @@ export default function ExpensesPage() {
     cardId: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const isOnline = useOnlineStatus();
+  const { 
+    queue: offlineExpenses, 
+    addToQueue, 
+    removeFromQueue, 
+    updateItemStatus 
+  } = useOfflineQueue<ExpenseCreationData>('offline-expenses');
 
   // Mutations
   const createExpenseMutation = useMutation(api.expenses.createExpense);
@@ -76,6 +95,60 @@ export default function ExpensesPage() {
     goToNextMonth, 
     refetch 
   } = useTimeFramedData('expense', token);
+
+  // Sync offline expenses when online
+  useEffect(() => {
+    if (isOnline && offlineExpenses.length > 0 && !isSyncing) {
+      const syncOfflineExpenses = async () => {
+        setIsSyncing(true);
+        const itemsToSync = offlineExpenses.filter(item => item.status === 'pending');
+
+        if (itemsToSync.length === 0) {
+          setIsSyncing(false);
+          return;
+        }
+
+        toast.info(`Syncing ${itemsToSync.length} offline expense(s)...`);
+
+        try {
+          const syncPromises = itemsToSync.map(async (item) => {
+            try {
+              await createExpenseMutation({ token: token!, ...item.data });
+              removeFromQueue(item.id);
+            } catch (error) {
+              console.error(`Failed to sync expense ${item.id}:`, error);
+              updateItemStatus(item.id, 'failed');
+            }
+          });
+
+          await Promise.all(syncPromises);
+
+          toast.success("Sync process completed.");
+          refetch();
+        } finally {
+          setIsSyncing(false);
+        }
+      };
+      syncOfflineExpenses();
+    }
+  }, [isOnline, offlineExpenses, isSyncing, token, createExpenseMutation, removeFromQueue, updateItemStatus, refetch]);
+
+  const handleRetrySync = async (itemId: string) => {
+    const itemToRetry = offlineExpenses.find(item => item.id === itemId);
+    if (!itemToRetry) return;
+
+    toast.info(`Retrying to sync expense: ${itemToRetry.data.title}`);
+    try {
+      await createExpenseMutation({ token: token!, ...itemToRetry.data });
+      removeFromQueue(itemToRetry.id);
+      toast.success("Expense synced successfully!");
+      refetch();
+    } catch (error) {
+      console.error("Failed to sync expense:", error);
+      updateItemStatus(itemToRetry.id, 'failed');
+      toast.error("Sync failed again. Please check your connection or the data.");
+    }
+  };
 
   // Check if user needs to set up cards first
   useEffect(() => {
@@ -112,19 +185,24 @@ export default function ExpensesPage() {
 
     setIsSubmitting(true);
 
-    try {
-      await createExpenseMutation({
-        token: token!,
-        amount,
-        title: formData.title,
-        category: formData.category,
-        for: formData.for,
-        date: new Date(formData.date).getTime(),
-        cardId: formData.cardId as any,
-      });
+    const expenseData: ExpenseCreationData = {
+      amount,
+      title: formData.title,
+      category: formData.category,
+      for: formData.for,
+      date: new Date(formData.date).getTime(),
+      cardId: formData.cardId as any,
+    };
 
-      toast.success("Your expense has been added.");
-      refetch(); // Refetch expenses after adding a new one
+    try {
+      if (isOnline) {
+        await createExpenseMutation({ token: token!, ...expenseData });
+        toast.success("Your expense has been added.");
+        refetch(); // Refetch expenses after adding a new one
+      } else {
+        addToQueue(expenseData);
+        toast.success("You are offline. Expense saved locally and will be synced later.");
+      }
       
       // Reset form
       setFormData({
@@ -136,8 +214,8 @@ export default function ExpensesPage() {
         cardId: formData.cardId, // Keep the same card selected
       });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "There was an error adding your expense. Please try again.";
-      toast.error(message);
+      toast.error("Could not add your expense. Please try again.");
+      console.error(error);
     } finally {
       setIsSubmitting(false);
     }
@@ -188,6 +266,16 @@ export default function ExpensesPage() {
     acc[card._id] = card.name;
     return acc;
   }, {} as Record<string, string>) || {};
+
+  const mappedOfflineExpenses = offlineExpenses.map(item => ({
+    ...item.data,
+    _id: item.id,
+    _creationTime: item.createdAt,
+    userId: '', // This is a mock, userId is not available offline
+    status: item.status,
+  }));
+
+  const combinedExpenses = [...(expenses || []), ...mappedOfflineExpenses].sort((a, b) => b.date - a.date);
 
   if (cards === undefined) {
     return (
@@ -326,16 +414,18 @@ export default function ExpensesPage() {
               variant="card"
             />
 
-            {isLoading ? (
+            {isLoading && combinedExpenses.length === 0 ? (
               <div className="text-center py-8 text-gray-500">Loading expenses...</div>
-            ) : expenses && expenses.length > 0 ? (
+            ) : combinedExpenses.length > 0 ? (
               <div className="space-y-4 mt-4">
-                {(expenses as Doc<"expenses">[]).map((expense) => (
+                {combinedExpenses.map((expense) => (
                   <ExpenseCard 
                     key={expense._id} 
-                    expense={expense} 
+                    expense={expense as any} 
                     cardName={cardMap[expense.cardId!] || 'Unknown Card'}
                     onDelete={refetch}
+                    status={(expense as any).status}
+                    onRetry={handleRetrySync}
                   />
                 ))}
               </div>

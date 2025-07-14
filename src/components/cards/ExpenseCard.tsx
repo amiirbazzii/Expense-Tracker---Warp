@@ -5,20 +5,27 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useMutation } from 'convex/react';
 import { toast } from 'sonner';
-import { CreditCard, Trash2, Edit } from 'lucide-react';
+import { CreditCard, Trash2, Edit, RefreshCw, AlertCircle } from 'lucide-react';
 import { api } from '../../../convex/_generated/api';
-import { Doc } from '../../../convex/_generated/dataModel';
+import { Doc, Id } from '../../../convex/_generated/dataModel';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 
+type ExpenseItem = (Doc<"expenses"> | Omit<Doc<"expenses">, '_id' | 'userId'>) & {
+  status?: 'pending' | 'failed';
+  _id: string | Id<"expenses">;
+};
+
 interface ExpenseCardProps {
-  expense: Doc<"expenses">;
+  expense: ExpenseItem;
   cardName: string;
   onDelete: () => void;
+  onRetry?: (id: string) => void;
+  status?: 'pending' | 'failed';
 }
 
-export function ExpenseCard({ expense, cardName, onDelete }: ExpenseCardProps) {
+export function ExpenseCard({ expense, cardName, onDelete, onRetry, status }: ExpenseCardProps) {
   const { token } = useAuth();
   const { settings } = useSettings();
   const router = useRouter();
@@ -32,7 +39,7 @@ export function ExpenseCard({ expense, cardName, onDelete }: ExpenseCardProps) {
       return;
     }
     try {
-      await deleteExpenseMutation({ token, expenseId: expense._id });
+      await deleteExpenseMutation({ token, expenseId: expense._id as Id<"expenses"> });
       toast.success("Expense deleted successfully!");
       onDelete();
     } catch (error) {
@@ -45,6 +52,15 @@ export function ExpenseCard({ expense, cardName, onDelete }: ExpenseCardProps) {
     e.stopPropagation();
     router.push(`/expenses/edit/${expense._id}`);
   };
+
+  const handleRetry = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onRetry && typeof expense._id === 'string') {
+      onRetry(expense._id);
+    }
+  };
+
+  const isOffline = !!status;
 
   const forText = expense.for && expense.for.length > 0 ? ` for ${expense.for.join(', ')}` : '';
 
@@ -75,17 +91,32 @@ export function ExpenseCard({ expense, cardName, onDelete }: ExpenseCardProps) {
             ))}
           </div>
         </div>
+
         <div className="text-right flex flex-col items-end">
           <p className="font-bold text-red-500 text-md">
             -{settings ? formatCurrency(expense.amount, settings.currency) : expense.amount.toFixed(2)}
           </p>
-          <p className="text-xs text-gray-400 mt-1">
-            {settings ? formatDate(expense.date, settings.calendar, 'MMM d, yyyy') : new Date(expense.date).toLocaleDateString()}
-          </p>
+          <div className="flex flex-col items-end mt-1">
+            <p className="text-xs text-gray-400">
+              {settings ? formatDate(expense.date, settings.calendar, 'MMM d, yyyy') : new Date(expense.date).toLocaleDateString()}
+            </p>
+            <div className="h-5 mt-1 flex items-center">
+              {status === 'pending' && (
+                <span title="Syncing...">
+                  <RefreshCw className="w-4 h-4 text-gray-400 animate-spin" />
+                </span>
+              )}
+              {status === 'failed' && onRetry && (
+                <button onClick={handleRetry} title="Sync failed. Click to retry.">
+                  <AlertCircle className="w-5 h-5 text-red-500" />
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
       <AnimatePresence>
-        {isMenuOpen && (
+        {isMenuOpen && !isOffline && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: -10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
