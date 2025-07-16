@@ -1,13 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { BottomNav } from "@/components/BottomNav";
 import { HeaderRow } from "@/components/HeaderRow";
-import { Calendar, Receipt } from "lucide-react";
+import { Calendar } from "lucide-react";
 
 // Import components
 import { DateFilterHeader } from "@/components/DateFilterHeader";
@@ -65,8 +63,8 @@ export default function DashboardPage() {
         />
         
         <div className="max-w-md mx-auto p-4 pt-24 pb-20">
-                    {/* Card Balances */}
-                    <TotalBalanceCard className="mb-6" />
+          {/* Card Balances */}
+           <TotalBalanceCard className="mb-6" />
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
