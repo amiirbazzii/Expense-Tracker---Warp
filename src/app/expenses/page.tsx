@@ -183,6 +183,12 @@ export default function ExpensesPage() {
       return;
     }
 
+    const parsedDate = new Date(formData.date);
+    if (isNaN(parsedDate.getTime())) {
+      toast.error("Please enter a valid date.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     const expenseData: ExpenseCreationData = {
@@ -190,7 +196,7 @@ export default function ExpensesPage() {
       title: formData.title,
       category: formData.category,
       for: formData.for,
-      date: new Date(formData.date).getTime(),
+      date: parsedDate.getTime(),
       cardId: formData.cardId as any,
     };
 

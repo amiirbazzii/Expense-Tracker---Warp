@@ -41,7 +41,10 @@ export function CustomDatePicker({ value, onChange, label }: CustomDatePickerPro
   }, [value, isJalali]);
 
   const handleChange = (dateObj: DateObject | null) => {
-    if (!dateObj) return;
+    if (!dateObj) {
+      onChange("");
+      return;
+    }
     // Convert the selected date to Gregorian calendar first
     const gregorianDate = dateObj.convert(gregorian);
     // `toDate()` gives a native JS `Date` object which we then format with `date-fns`
