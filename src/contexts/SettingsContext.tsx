@@ -12,7 +12,7 @@ export type Calendar = Doc<"userSettings">["calendar"];
 interface SettingsContextType {
   settings: Doc<"userSettings"> | null | undefined;
   updateSettings: (args: { currency?: Currency; calendar?: Calendar }) => Promise<void>;
-  loading: boolean;
+  isLoading: boolean;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -40,7 +40,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       value={{
         settings,
         updateSettings,
-        loading: settings === undefined,
+        isLoading: settings === undefined,
       }}
     >
       {children}

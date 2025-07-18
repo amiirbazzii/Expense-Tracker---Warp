@@ -2,9 +2,10 @@ import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useSettings } from "@/contexts/SettingsContext";
 import { formatDate } from "@/lib/formatters";
+import DateObject from "react-date-object";
 
 interface DateFilterHeaderProps {
-  currentDate: Date;
+  currentDate: DateObject;
   onPreviousMonth: () => void;
   onNextMonth: () => void;
   subtitle: string;
@@ -33,8 +34,8 @@ export function DateFilterHeader({
   const MainTitleComponent = isMainTitle ? 'h1' : 'h2';
 
   const formattedDate = settings 
-    ? formatDate(currentDate, settings.calendar, 'MMMM yyyy') 
-    : new Date(currentDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    ? formatDate(currentDate.toDate(), settings.calendar, 'MMMM yyyy') 
+    : currentDate.format('MMMM YYYY');
 
   return (
     <div className={containerClasses}>

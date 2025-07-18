@@ -1,16 +1,27 @@
-import { useMemo, useState, useCallback } from "react";
-import { startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Expense, MonthlyData } from "../types";
 import { Income } from "../types/income";
+import { useSettings } from "@/contexts/SettingsContext";
+import DateObject from "react-date-object";
+import jalali from "react-date-object/calendars/jalali";
+import gregorian from "react-date-object/calendars/gregorian";
 
 export function useDashboardData(token: string | null) {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const { settings } = useSettings();
+  const isJalali = settings?.calendar === "jalali";
+
+  const [currentDate, setCurrentDate] = useState(new DateObject());
   const [key, setKey] = useState(0);
 
-  const startDate = startOfMonth(currentDate).getTime();
-  const endDate = endOfMonth(currentDate).getTime();
+  // Adjust calendar for currentDate when settings change
+  useEffect(() => {
+    setCurrentDate(currentDate.convert(isJalali ? jalali : gregorian));
+  }, [isJalali]);
+
+  const startDate = new DateObject(currentDate).toFirstOfMonth().toUnix() * 1000;
+  const endDate = new DateObject(currentDate).toLastOfMonth().toUnix() * 1000;
 
   const expensesResult = useQuery(
     api.expenses.getExpensesByDateRange,
@@ -48,8 +59,8 @@ export function useDashboardData(token: string | null) {
 
     // Calculate daily totals
     const dailyTotals = expenses.reduce<Record<string, number>>((acc, expense) => {
-      const date = new Date(expense.date);
-      const dayKey = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const date = new DateObject({ date: expense.date, calendar: isJalali ? jalali : gregorian });
+      const dayKey = date.format("YYYY-MM-DD");
       acc[dayKey] = (acc[dayKey] || 0) + expense.amount;
       return acc;
     }, {});
@@ -65,11 +76,11 @@ export function useDashboardData(token: string | null) {
 
   // Navigation functions
   const goToPreviousMonth = () => {
-    setCurrentDate(subMonths(currentDate, 1));
+    setCurrentDate(currentDate.subtract(1, "month"));
   };
 
   const goToNextMonth = () => {
-    setCurrentDate(addMonths(currentDate, 1));
+    setCurrentDate(currentDate.add(1, "month"));
   };
 
   const refetchExpenses = useCallback(() => {

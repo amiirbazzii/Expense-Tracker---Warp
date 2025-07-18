@@ -1,52 +1,44 @@
 import { useMemo, useState, useCallback, useEffect } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
-import moment from "jalali-moment";
-import { startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Doc } from "../../convex/_generated/dataModel";
 import { useOnlineStatus } from "./useOnlineStatus";
+import DateObject from "react-date-object";
+import jalali from "react-date-object/calendars/jalali";
+import gregorian from "react-date-object/calendars/gregorian";
 
 type DataType = "expense" | "income";
 
 export function useTimeFramedData(type: DataType, token: string | null) {
-  const { settings } = useSettings();
+  const { settings, isLoading: areSettingsLoading } = useSettings();
   const isJalali = settings?.calendar === "jalali";
   const isOnline = useOnlineStatus();
 
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(new DateObject());
   const [key, setKey] = useState(0);
   const [displayData, setDisplayData] = useState<Doc<"expenses">[] | Doc<"income">[] | undefined>(undefined);
+
+  // Adjust calendar for currentDate when settings change
+  useEffect(() => {
+    setCurrentDate(new DateObject(currentDate).convert(isJalali ? jalali : gregorian));
+  }, [isJalali]);
 
   const query = type === 'expense' 
     ? api.expenses.getExpensesByDateRange 
     : api.cardsAndIncome.getIncomeByDateRange;
 
-  // Compute month range depending on calendar
-  const calcRange = useCallback(() => {
-    if (isJalali) {
-      const m = moment(currentDate);
-      return {
-        start: m.clone().startOf("jMonth").toDate().getTime(),
-        end: m.clone().endOf("jMonth").toDate().getTime(),
-      };
-    }
-    return {
-      start: startOfMonth(currentDate).getTime(),
-      end: endOfMonth(currentDate).getTime(),
-    };
-  }, [currentDate, isJalali]);
-
-  const { start, end } = calcRange();
-  const cacheKey = `time-framed-data-${type}-${start}-${end}`;
+  const startDate = new DateObject(currentDate).toFirstOfMonth().toUnix() * 1000;
+  const endDate = new DateObject(currentDate).toLastOfMonth().toUnix() * 1000;
+  const cacheKey = `time-framed-data-${type}-${startDate}-${endDate}`;
 
   const result = useQuery(
     query,
     token && isOnline
       ? {
           token,
-          startDate: start,
-          endDate: end,
+          startDate,
+          endDate,
           key,
         }
       : "skip"
@@ -72,7 +64,7 @@ export function useTimeFramedData(type: DataType, token: string | null) {
     }
   }, [fetchedData, isOnline, cacheKey]);
 
-  const isLoading = displayData === undefined;
+  const isLoading = areSettingsLoading || displayData === undefined;
 
   const data = useMemo(() => {
     if (!displayData) return undefined;
@@ -105,21 +97,11 @@ export function useTimeFramedData(type: DataType, token: string | null) {
   }, [data]);
 
   const goToPreviousMonth = () => {
-    if (isJalali) {
-      const newDate = moment(currentDate).subtract(1, "jMonth").toDate();
-      setCurrentDate(newDate);
-    } else {
-      setCurrentDate(subMonths(currentDate, 1));
-    }
+    setCurrentDate(new DateObject(currentDate).subtract(1, "month"));
   };
 
   const goToNextMonth = () => {
-    if (isJalali) {
-      const newDate = moment(currentDate).add(1, "jMonth").toDate();
-      setCurrentDate(newDate);
-    } else {
-      setCurrentDate(addMonths(currentDate, 1));
-    }
+    setCurrentDate(new DateObject(currentDate).add(1, "month"));
   };
 
   const refetch = useCallback(() => {
