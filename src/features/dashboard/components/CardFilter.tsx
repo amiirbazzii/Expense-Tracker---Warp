@@ -24,7 +24,7 @@ export const CardFilter = ({ cards, selectedCardId, onSelectCard }: CardFilterPr
           paddingLeft: '16px',
           paddingRight: '16px'
         }}
-        className="scrollbar-hide"
+        className=""
       >
         <div 
           style={{
