@@ -6,4 +6,5 @@ export interface Income {
     category: string;
     date: number;
     notes?: string;
+    cardId: string;
   }

@@ -8,7 +8,7 @@ import DateObject from "react-date-object";
 import jalali from "react-date-object/calendars/jalali";
 import gregorian from "react-date-object/calendars/gregorian";
 
-export function useDashboardData(token: string | null) {
+export function useDashboardData(token: string | null, selectedCardId: string | null) {
   const { settings } = useSettings();
   const isJalali = settings?.calendar === "jalali";
 
@@ -33,8 +33,20 @@ export function useDashboardData(token: string | null) {
     token ? { token, startDate, endDate, key } : "skip"
   );
 
-  const expenses = expensesResult as unknown as Expense[] | undefined;
-  const income = incomeResult as unknown as Income[] | undefined;
+  const allExpenses = expensesResult as unknown as Expense[] | undefined;
+  const allIncome = incomeResult as unknown as Income[] | undefined;
+
+  const expenses = useMemo(() => {
+    if (!allExpenses) return undefined;
+    if (!selectedCardId) return allExpenses;
+    return allExpenses.filter((e) => e.cardId === selectedCardId);
+  }, [allExpenses, selectedCardId]);
+
+  const income = useMemo(() => {
+    if (!allIncome) return undefined;
+    if (!selectedCardId) return allIncome;
+    return allIncome.filter((i) => i.cardId === selectedCardId);
+  }, [allIncome, selectedCardId]);
   
   const isLoading = expensesResult === undefined || incomeResult === undefined;
 

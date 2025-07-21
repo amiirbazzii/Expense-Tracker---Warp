@@ -8,6 +8,7 @@ export interface Expense {
   category: string[];
   date: number;
   for?: string;
+  cardId: string;
 }
 
 export interface MonthlyData {

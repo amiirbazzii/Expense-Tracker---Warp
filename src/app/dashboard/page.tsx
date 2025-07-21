@@ -6,10 +6,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { BottomNav } from "@/components/BottomNav";
 import { HeaderRow } from "@/components/HeaderRow";
 import { Calendar } from "lucide-react";
+import { useState } from "react";
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 
 // Import components
 import { DateFilterHeader } from "@/components/DateFilterHeader";
 import { SummaryCards } from "@/features/dashboard/components/SummaryCards";
+import { CardFilter } from "@/features/dashboard/components/CardFilter";
 
 import { CategoryBreakdownChart, DailySpendingChart } from "@/features/dashboard/components/Charts";
 import { CategoryList } from "@/features/dashboard/components/CategoryList";
@@ -27,6 +31,8 @@ import { useExpenseActions } from "@/features/dashboard/hooks/useExpenseActions"
 export default function DashboardPage() {
   const { token } = useAuth();
   const router = useRouter();
+  const cards = useQuery(api.cardsAndIncome.getCardBalances, token ? { token } : "skip");
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
 
   // Use custom hooks for data and actions
@@ -38,7 +44,7 @@ export default function DashboardPage() {
     goToPreviousMonth,
     goToNextMonth,
     refetchExpenses,
-  } = useDashboardData(token);
+  } = useDashboardData(token, selectedCardId);
 
   const {
     selectedExpense,
@@ -68,19 +74,34 @@ export default function DashboardPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-lg shadow-sm p-2 mb-6"
+            className="bg-white rounded-lg shadow-sm mb-6 overflow-hidden"
           >
             {/* Header Section */}
-            <DateFilterHeader 
-              currentDate={currentDate} 
-              onPreviousMonth={goToPreviousMonth} 
-              onNextMonth={goToNextMonth}
-              subtitle="Monthly Summary"
-              isMainTitle={true}
-            />
+            <div className="px-2 pt-2 pb-1">
+              <DateFilterHeader 
+                currentDate={currentDate} 
+                onPreviousMonth={goToPreviousMonth} 
+                onNextMonth={goToNextMonth}
+                subtitle="Monthly Summary"
+                isMainTitle={true}
+              />
+            </div>
 
-
-
+            {/* Card Filter */}
+            {cards && (
+              <CardFilter
+                cards={cards}
+                selectedCardId={selectedCardId}
+                onSelectCard={setSelectedCardId}
+              />
+            )}
+          </motion.div>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-lg shadow-sm p-2 mb-6"
+          >
             {/* Summary Cards */}
             {monthlyData ? (
               <SummaryCards
