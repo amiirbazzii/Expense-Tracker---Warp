@@ -24,7 +24,7 @@ interface IncomeFormData {
   amount: string;
   source: string;
   category: string[];
-  date: string;
+  date: Date;
   cardId: string;
   notes: string;
 }
@@ -45,7 +45,7 @@ export default function IncomePage() {
     amount: "",
     source: "",
     category: [],
-    date: format(new Date(), "yyyy-MM-dd"),
+    date: new Date(),
     cardId: "",
     notes: "",
   });
@@ -115,7 +115,7 @@ export default function IncomePage() {
         amount: "",
         source: "",
         category: [],
-        date: format(new Date(), "yyyy-MM-dd"),
+        date: new Date(),
         cardId: formData.cardId, // Keep the same card selected
         notes: "",
       });
@@ -230,8 +230,13 @@ export default function IncomePage() {
               {/* Date */}
               <CustomDatePicker
                 label="Date *"
-                value={formData.date}
-                onChange={(date) => setFormData({ ...formData, date })}
+                value={format(formData.date, "yyyy-MM-dd")}
+                onChange={(dateString) => {
+                  const [year, month, day] = dateString.split('-').map(Number);
+                  const newDate = new Date(formData.date);
+                  newDate.setFullYear(year, month - 1, day);
+                  setFormData({ ...formData, date: newDate });
+                }}
               />
 
               {/* Notes */}

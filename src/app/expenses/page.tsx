@@ -44,7 +44,7 @@ interface ExpenseFormData {
   title: string;
   category: string[];
   for: string[];
-  date: string;
+  date: Date;
   cardId: string;
 }
 
@@ -64,7 +64,7 @@ export default function ExpensesPage() {
     title: "",
     category: [],
     for: [],
-    date: format(new Date(), "yyyy-MM-dd"),
+    date: new Date(),
     cardId: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -218,7 +218,7 @@ export default function ExpensesPage() {
         title: "",
         category: [],
         for: [],
-        date: format(new Date(), "yyyy-MM-dd"),
+        date: new Date(),
         cardId: formData.cardId, // Keep the same card selected
       });
     } catch (error: unknown) {
@@ -396,8 +396,13 @@ export default function ExpensesPage() {
               {/* Date */}
               <CustomDatePicker
                 label="Date *"
-                value={formData.date}
-                onChange={(date) => setFormData({ ...formData, date })}
+                value={format(formData.date, "yyyy-MM-dd")}
+                onChange={(dateString) => {
+                  const [year, month, day] = dateString.split('-').map(Number);
+                  const newDate = new Date(formData.date);
+                  newDate.setFullYear(year, month - 1, day);
+                  setFormData({ ...formData, date: newDate });
+                }}
               />
 
               {/* Submit Button */}
