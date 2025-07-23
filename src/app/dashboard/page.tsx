@@ -5,18 +5,18 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { BottomNav } from "@/components/BottomNav";
 import { HeaderRow } from "@/components/HeaderRow";
-import { Calendar } from "lucide-react";
+import { Calendar } from 'lucide-react';
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 
 // Import components
 import { DateFilterHeader } from "@/components/DateFilterHeader";
-import { SummaryCards } from "@/features/dashboard/components/SummaryCards";
-import { CardFilter } from "@/features/dashboard/components/CardFilter";
+import { SummaryCards } from "../../features/dashboard/components/SummaryCards";
+import { CardFilter } from "../../features/dashboard/components/CardFilter";
 
-import { CategoryBreakdownChart, DailySpendingChart } from "@/features/dashboard/components/Charts";
-import { CategoryList } from "@/features/dashboard/components/CategoryList";
+import { CategoryBreakdownChart, DailySpendingChart } from "../../features/dashboard/components/Charts";
+import { CategoryList } from "../../features/dashboard/components/CategoryList";
 
 import { TotalBalanceCard } from "@/features/dashboard/components/TotalBalanceCard/TotalBalanceCard";
 
@@ -24,32 +24,38 @@ import { TotalBalanceCard } from "@/features/dashboard/components/TotalBalanceCa
 // Import hooks
 import { useDashboardData } from "@/features/dashboard/hooks/useDashboardData";
 import { useExpenseActions } from "@/features/dashboard/hooks/useExpenseActions";
+import { useSettings } from "@/contexts/SettingsContext";
 
 // Import types
 
 
 export default function DashboardPage() {
-  const { token } = useAuth();
+    const { token } = useAuth();
+  const { settings } = useSettings();
   const router = useRouter();
   const cards = useQuery(api.cardsAndIncome.getCardBalances, token ? { token } : "skip");
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
 
   // Use custom hooks for data and actions
-  const {
-    currentDate,
-    expenses,
-    monthlyData,
-    isLoading,
-    goToPreviousMonth,
-    goToNextMonth,
-    refetchExpenses,
+  const { 
+    currentDate, 
+    expenses, 
+    monthlyData, 
+    isLoading, 
+    monthName, 
+    year, 
+    goToPreviousMonth, 
+    goToNextMonth, 
+    refetchExpenses 
   } = useDashboardData(token, selectedCardId);
 
   const {
     selectedExpense,
     handleEdit,
   } = useExpenseActions();
+
+  
 
   // Handle edit navigation
   const handleEditNavigation = (expense: any) => {
@@ -79,9 +85,10 @@ export default function DashboardPage() {
             {/* Header Section */}
             <div className="px-2 pt-2 pb-1">
               <DateFilterHeader 
-                currentDate={currentDate} 
+                monthName={monthName} 
+                year={year} 
+                onNextMonth={goToNextMonth} 
                 onPreviousMonth={goToPreviousMonth} 
-                onNextMonth={goToNextMonth}
                 subtitle="Monthly Summary"
                 isMainTitle={true}
               />

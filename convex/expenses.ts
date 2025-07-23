@@ -1,3 +1,4 @@
+import moment from "jalali-moment";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { ConvexError } from "convex/values";
@@ -91,8 +92,9 @@ export const getExpenses = query({
 
     // Filter by month/year if provided
     if (args.month !== undefined && args.year !== undefined) {
-      const startOfMonth = new Date(args.year, args.month - 1, 1).getTime();
-      const endOfMonth = new Date(args.year, args.month, 0).getTime();
+      const date = moment(`${args.year}/${args.month}`, 'jYYYY/jM');
+      const startOfMonth = date.startOf('jMonth').valueOf();
+      const endOfMonth = date.endOf('jMonth').valueOf();
 
       return expenses.filter(expense => 
         expense.date >= startOfMonth && expense.date <= endOfMonth

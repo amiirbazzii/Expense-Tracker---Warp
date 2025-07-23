@@ -59,13 +59,14 @@ export default function IncomePage() {
   const allIncomeCategories = useQuery(api.cardsAndIncome.getUniqueIncomeCategories, token ? { token } : "skip");
 
   const { 
-    currentDate, 
-    data: income, 
+    data: incomes, 
     isLoading,
+    monthName, 
+    year, 
     goToPreviousMonth, 
     goToNextMonth, 
     refetch 
-  } = useTimeFramedData('income', token);
+  } = useTimeFramedData("income", token);
 
   // Auto-select first card if available
   useEffect(() => {
@@ -262,7 +263,8 @@ export default function IncomePage() {
           {/* Income History Section */}
           <div className="mt-8">
             <DateFilterHeader 
-              currentDate={currentDate} 
+              monthName={monthName} 
+              year={year} 
               onPreviousMonth={goToPreviousMonth} 
               onNextMonth={goToNextMonth} 
               subtitle="Income History"
@@ -271,9 +273,9 @@ export default function IncomePage() {
 
             {isLoading ? (
               <div className="text-center py-8 text-gray-500">Loading income...</div>
-            ) : income && income.length > 0 ? (
+            ) : incomes && incomes.length > 0 ? (
               <div className="space-y-4 mt-4">
-                {(income as Doc<"income">[]).map((incomeRecord) => (
+                {(incomes as Doc<"income">[]).map((incomeRecord) => (
                   <IncomeCard
                     key={incomeRecord._id}
                     income={incomeRecord}

@@ -4,24 +4,21 @@ import { api } from "../../../../convex/_generated/api";
 import { Expense, MonthlyData } from "../types";
 import { Income } from "../types/income";
 import { useSettings } from "@/contexts/SettingsContext";
-import DateObject from "react-date-object";
-import jalali from "react-date-object/calendars/jalali";
-import gregorian from "react-date-object/calendars/gregorian";
+import moment from 'jalali-moment';
 
 export function useDashboardData(token: string | null, selectedCardId: string | null) {
   const { settings } = useSettings();
   const isJalali = settings?.calendar === "jalali";
 
-  const [currentDate, setCurrentDate] = useState(new DateObject());
+  const [currentDate, setCurrentDate] = useState(moment());
   const [key, setKey] = useState(0);
 
-  // Adjust calendar for currentDate when settings change
   useEffect(() => {
-    setCurrentDate(currentDate.convert(isJalali ? jalali : gregorian));
+    moment.locale(isJalali ? 'fa' : 'en');
   }, [isJalali]);
 
-  const startDate = new DateObject(currentDate).toFirstOfMonth().toUnix() * 1000;
-  const endDate = new DateObject(currentDate).toLastOfMonth().toUnix() * 1000;
+  const startDate = currentDate.clone().startOf(isJalali ? 'jMonth' : 'month').valueOf();
+  const endDate = currentDate.clone().endOf(isJalali ? 'jMonth' : 'month').valueOf();
 
   const expensesResult = useQuery(
     api.expenses.getExpensesByDateRange,
@@ -71,7 +68,7 @@ export function useDashboardData(token: string | null, selectedCardId: string | 
 
     // Calculate daily totals
     const dailyTotals = expenses.reduce<Record<string, number>>((acc, expense) => {
-      const date = new DateObject({ date: expense.date, calendar: isJalali ? jalali : gregorian });
+      const date = moment(expense.date);
       const dayKey = date.format("YYYY-MM-DD");
       acc[dayKey] = (acc[dayKey] || 0) + expense.amount;
       return acc;
@@ -92,20 +89,25 @@ export function useDashboardData(token: string | null, selectedCardId: string | 
   };
 
   const goToNextMonth = () => {
-    setCurrentDate(currentDate.add(1, "month"));
+    setCurrentDate(currentDate.clone().add(1, "month"));
   };
 
   const refetchExpenses = useCallback(() => {
     setKey((prevKey) => prevKey + 1);
   }, []);
 
+  const monthName = isJalali ? currentDate.format("jMMMM") : currentDate.format("MMMM");
+  const year = isJalali ? currentDate.format("jYYYY") : currentDate.format("YYYY");
+
   return {
     currentDate,
+    monthName,
+    year,
+    goToPreviousMonth,
+    goToNextMonth,
+    refetchExpenses,
     expenses,
     monthlyData,
     isLoading,
-    goToPreviousMonth,
-    goToNextMonth,
-    refetchExpenses, // Expose the refetch function
   };
 }

@@ -90,7 +90,9 @@ export default function ExpensesPage() {
   const { 
     currentDate, 
     data: expenses, 
-    isLoading,
+    isLoading, 
+    monthName, 
+    year, 
     goToPreviousMonth, 
     goToNextMonth, 
     refetch 
@@ -413,7 +415,8 @@ export default function ExpensesPage() {
           {/* Expenses History Section */}
           <div className="mt-8">
             <DateFilterHeader 
-              currentDate={currentDate} 
+              monthName={monthName} 
+              year={year} 
               onPreviousMonth={goToPreviousMonth} 
               onNextMonth={goToNextMonth} 
               subtitle="Expense History"
