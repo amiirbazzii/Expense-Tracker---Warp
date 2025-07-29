@@ -15,7 +15,7 @@ import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useTimeFramedData } from "@/hooks/useTimeFramedData";
 import { DateFilterHeader } from "@/components/DateFilterHeader";
-import { Doc } from "../../../convex/_generated/dataModel";
+import { Doc, Id } from "../../../convex/_generated/dataModel";
 import { IncomeCard } from "@/components/cards/IncomeCard";
 import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { CurrencyInput } from "@/components/CurrencyInput";
@@ -49,10 +49,12 @@ export default function IncomePage() {
     cardId: "",
     notes: "",
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingDeletions, setPendingDeletions] = useState<string[]>([]);
 
   // Mutations
-  const createIncomeMutation = useMutation(api.cardsAndIncome.createIncome);
+    const createIncomeMutation = useMutation(api.cardsAndIncome.createIncome);
+  const deleteIncomeMutation = useMutation(api.cardsAndIncome.deleteIncome);
 
   // Queries
   const cards = useQuery(api.cardsAndIncome.getMyCards, token ? { token } : "skip");
@@ -280,12 +282,35 @@ export default function IncomePage() {
               <div className="text-center py-8 text-gray-500">Loading income...</div>
             ) : incomes && incomes.length > 0 ? (
               <div className="space-y-4 mt-4">
-                {(incomes as Doc<"income">[]).map((incomeRecord) => (
+                                {(incomes as Doc<"income">[] | undefined)?.filter(income => !pendingDeletions.includes(income._id)).map((incomeRecord) => (
                   <IncomeCard
                     key={incomeRecord._id}
                     income={incomeRecord}
                     cardName={cardMap[incomeRecord.cardId] || 'Unknown Card'}
-                    onDelete={refetch}
+                    onDelete={(incomeId: Id<"income">) => {
+                      setPendingDeletions(prev => [...prev, incomeId]);
+
+                      const toastId = toast.success("Income deleted", {
+                        action: {
+                          label: "Undo",
+                          onClick: () => {
+                            setPendingDeletions(prev => prev.filter(id => id !== incomeId));
+                            toast.dismiss(toastId);
+                          },
+                        },
+                        onAutoClose: async () => {
+                          try {
+                            await deleteIncomeMutation({ token: token!, incomeId: incomeId as any });
+                            refetch();
+                          } catch (error) {
+                            console.error("Failed to delete income:", error);
+                            toast.error("Failed to delete income.");
+                            setPendingDeletions(prev => prev.filter(id => id !== incomeId));
+                          }
+                        },
+                        duration: 5000,
+                      });
+                    }}
                   />
                 ))}
               </div>

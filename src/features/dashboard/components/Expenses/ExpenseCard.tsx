@@ -6,11 +6,10 @@ import { useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
-import { CheckCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 export interface Expense {
-  _id: Id<"expenses">; // Use Id type for Convex IDs
+  _id: Id<"expenses">;
   _creationTime: number;
   title: string;
   amount: number;
@@ -22,16 +21,17 @@ export interface Expense {
 interface ExpenseCardProps {
   expense: Expense;
   onEdit: (expense: Expense) => void;
-  onDeleteSuccess: (expenseId: Id<"expenses">) => void; // Callback for successful deletion
+  onDelete: (expenseId: Id<"expenses">) => void;
 }
 
-export function ExpenseCard({ expense, onEdit, onDeleteSuccess }: ExpenseCardProps) {
+export function ExpenseCard({ expense, onEdit, onDelete }: ExpenseCardProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const { token } = useAuth();
   const deleteExpenseMutation = useMutation(api.expenses.deleteExpense);
+  
 
-  useEffect(() => {
+    useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (cardRef.current && !cardRef.current.contains(event.target as Node)) {
         setIsMenuOpen(false);
@@ -53,20 +53,9 @@ export function ExpenseCard({ expense, onEdit, onDeleteSuccess }: ExpenseCardPro
     setIsMenuOpen(false);
   };
 
-  const handleDelete = async () => {
+    const handleDelete = () => {
     setIsMenuOpen(false);
-    if (!token) {
-      toast.error("Authentication required to delete.");
-      return;
-    }
-    try {
-      // Optimistic UI update can be handled by parent via onDeleteSuccess
-      await deleteExpenseMutation({ token, id: expense._id });
-      toast.success("Expense deleted successfully");
-      onDeleteSuccess(expense._id); // Notify parent about successful deletion
-    } catch (error) {
-      toast.error("Failed to delete expense.");
-    }
+    onDelete(expense._id);
   };
 
   return (

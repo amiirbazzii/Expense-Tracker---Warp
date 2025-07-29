@@ -68,7 +68,8 @@ export default function ExpensesPage() {
     cardId: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
+  const [pendingDeletions, setPendingDeletions] = useState<string[]>([]);
   const isOnline = useOnlineStatus();
   const { 
     queue: offlineExpenses, 
@@ -80,7 +81,8 @@ export default function ExpensesPage() {
   // Mutations
   const createExpenseMutation = useMutation(api.expenses.createExpense);
   const createCategoryMutation = useMutation(api.expenses.createCategory);
-  const createForValueMutation = useMutation(api.expenses.createForValue);
+    const createForValueMutation = useMutation(api.expenses.createForValue);
+  const deleteExpenseMutation = useMutation(api.expenses.deleteExpense);
 
   // Queries
   const cards = useQuery(api.cardsAndIncome.getMyCards, token ? { token } : "skip");
@@ -283,7 +285,9 @@ export default function ExpensesPage() {
     status: item.status,
   }));
 
-  const combinedExpenses = [...(expenses || []), ...mappedOfflineExpenses].sort((a, b) => b.date - a.date);
+    const combinedExpenses = [...(expenses || []), ...mappedOfflineExpenses]
+    .filter(expense => !pendingDeletions.includes(expense._id))
+    .sort((a, b) => b.date - a.date);
 
   if (cards === undefined) {
     return (
@@ -437,7 +441,30 @@ export default function ExpensesPage() {
                     key={expense._id} 
                     expense={expense as any} 
                     cardName={cardMap[expense.cardId!] || 'Unknown Card'}
-                    onDelete={refetch}
+                    onDelete={(expenseId: Id<"expenses">) => {
+                      setPendingDeletions(prev => [...prev, expenseId]);
+
+                      const toastId = toast.success("Expense deleted", {
+                        action: {
+                          label: "Undo",
+                          onClick: () => {
+                            setPendingDeletions(prev => prev.filter(id => id !== expenseId));
+                            toast.dismiss(toastId);
+                          },
+                        },
+                        onAutoClose: async () => {
+                          try {
+                            await deleteExpenseMutation({ token: token!, expenseId: expenseId as any });
+                            refetch();
+                          } catch (error) {
+                            console.error("Failed to delete expense:", error);
+                            toast.error("Failed to delete expense.");
+                            setPendingDeletions(prev => prev.filter(id => id !== expenseId));
+                          }
+                        },
+                        duration: 5000,
+                      });
+                    }}
                     status={(expense as any).status}
                     onRetry={handleRetrySync}
                   />

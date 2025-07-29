@@ -20,7 +20,7 @@ type ExpenseItem = (Doc<"expenses"> | Omit<Doc<"expenses">, '_id' | 'userId'>) &
 interface ExpenseCardProps {
   expense: ExpenseItem;
   cardName: string;
-  onDelete: () => void;
+  onDelete: (id: Id<"expenses">) => void;
   onRetry?: (id: string) => void;
   status?: 'pending' | 'failed';
 }
@@ -30,22 +30,11 @@ export function ExpenseCard({ expense, cardName, onDelete, onRetry, status }: Ex
   const { settings } = useSettings();
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const deleteExpenseMutation = useMutation(api.expenses.deleteExpense);
+  
 
-  const handleDelete = async (e: React.MouseEvent) => {
+    const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!token) {
-      toast.error("Authentication failed.");
-      return;
-    }
-    try {
-      await deleteExpenseMutation({ token, expenseId: expense._id as Id<"expenses"> });
-      toast.success("Expense deleted successfully!");
-      onDelete();
-    } catch (error) {
-      toast.error("Failed to delete expense.");
-      console.error(error);
-    }
+    onDelete(expense._id as Id<"expenses">);
   };
 
   const handleEdit = (e: React.MouseEvent) => {

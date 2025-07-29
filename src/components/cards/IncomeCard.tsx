@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useMutation } from 'convex/react';
+import { Id } from "../../../convex/_generated/dataModel";
 import { toast } from 'sonner';
 import { CreditCard, Trash2, Edit } from 'lucide-react';
 import { api } from '../../../convex/_generated/api';
@@ -15,7 +16,7 @@ import { formatCurrency, formatDate } from '@/lib/formatters';
 interface IncomeCardProps {
   income: Doc<"income">;
   cardName: string;
-  onDelete: () => void;
+  onDelete: (incomeId: Id<"income">) => void;
 }
 
 export function IncomeCard({ income, cardName, onDelete }: IncomeCardProps) {
@@ -23,22 +24,10 @@ export function IncomeCard({ income, cardName, onDelete }: IncomeCardProps) {
   const { settings } = useSettings();
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const deleteIncomeMutation = useMutation(api.cardsAndIncome.deleteIncome);
 
-  const handleDelete = async (e: React.MouseEvent) => {
+  const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!token) {
-      toast.error("Authentication failed.");
-      return;
-    }
-    try {
-      await deleteIncomeMutation({ token, incomeId: income._id });
-      toast.success("Income deleted successfully!");
-      onDelete();
-    } catch (error) {
-      toast.error("Failed to delete income.");
-      console.error(error);
-    }
+    onDelete(income._id);
   };
 
   const handleEdit = (e: React.MouseEvent) => {
