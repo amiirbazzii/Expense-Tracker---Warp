@@ -50,12 +50,26 @@ export function useDashboardData(token: string | null, selectedCardId: string | 
   const monthlyData = useMemo<MonthlyData | null>(() => {
     if (!expenses || !income) return null;
 
-    const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-    const totalIncome = income.reduce((sum, item) => sum + item.amount, 0);
-    const totalCount = expenses.length;
+    const filteredExpenses = expenses.filter((expense) => {
+      if (Array.isArray(expense.category)) {
+        return !expense.category.includes("Card Transfer");
+      }
+      return expense.category !== "Card Transfer";
+    });
+
+    const filteredIncome = income.filter((item) => {
+      if (Array.isArray(item.category)) {
+        return !item.category.includes("Card Transfer");
+      }
+      return item.category !== "Card Transfer";
+    });
+
+    const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+    const totalIncome = filteredIncome.reduce((sum, item) => sum + item.amount, 0);
+    const totalCount = filteredExpenses.length;
 
     // Calculate category totals
-    const categoryTotals = expenses.reduce<Record<string, number>>((acc, expense) => {
+    const categoryTotals = filteredExpenses.reduce<Record<string, number>>((acc, expense) => {
       const categories = Array.isArray(expense.category) 
         ? expense.category 
         : [expense.category];
@@ -67,7 +81,7 @@ export function useDashboardData(token: string | null, selectedCardId: string | 
     }, {});
 
     // Calculate daily totals
-    const dailyTotals = expenses.reduce<Record<string, number>>((acc, expense) => {
+    const dailyTotals = filteredExpenses.reduce<Record<string, number>>((acc, expense) => {
       const date = moment(expense.date);
       const dayKey = date.format("YYYY-MM-DD");
       acc[dayKey] = (acc[dayKey] || 0) + expense.amount;
