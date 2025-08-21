@@ -141,7 +141,7 @@ export default function DashboardPage() {
               )}
 
               {/* Category List */}
-              <CategoryList categoryTotals={monthlyData.categoryTotals} />
+              <CategoryList categoryTotals={monthlyData.categoryTotals} expenses={expenses || []} />
             </>
           ) : null}
         </div>
