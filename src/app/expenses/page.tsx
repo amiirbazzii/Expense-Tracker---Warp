@@ -27,6 +27,8 @@ import { Doc, Id } from "../../../convex/_generated/dataModel";
 import { ExpenseCard } from '@/components/cards/ExpenseCard';
 import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { CurrencyInput } from "@/components/CurrencyInput";
+import { Input } from "@/components/Input";
+import { Button } from "@/components/Button";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useOfflineQueue, OfflineItem } from "@/hooks/useOfflineQueue";
 
@@ -340,11 +342,10 @@ export default function ExpensesPage() {
                   <PencilLine className="inline w-4 h-4 mr-1" />
                   Title *
                 </label>
-                <input
+                <Input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
                   placeholder="Lunch, Gas, etc."
                   required
                 />
@@ -410,14 +411,14 @@ export default function ExpensesPage() {
               />
 
               {/* Submit Button */}
-              <motion.button
-                whileTap={{ scale: 0.98 }}
+              <Button
                 type="submit"
+                className="w-full"
                 disabled={isSubmitting || formData.category.length === 0 || !formData.cardId}
-                className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-medium min-h-[44px]"
+                loading={isSubmitting}
               >
-                {isSubmitting ? "Adding Expense..." : "Add Expense"}
-              </motion.button>
+                Add Expense
+              </Button>
             </form>
           </motion.div>
 
