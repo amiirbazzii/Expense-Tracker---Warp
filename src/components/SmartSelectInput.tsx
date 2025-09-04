@@ -199,7 +199,7 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
             }}
             onFocus={() => setDropdownVisible(true)}
             onKeyDown={handleKeyDown}
-            className="flex-grow bg-transparent outline-none text-black placeholder:text-gray-500 min-w-[120px]"
+            className={`flex-grow bg-transparent outline-none placeholder:text-gray-500 min-w-[120px] ${value.length > 0 || inputValue ? 'font-medium text-gray-900' : 'font-normal text-gray-900'}`}
             placeholder={value.length === 0 ? placeholder : ''}
             autoComplete="off"
             aria-label={label}

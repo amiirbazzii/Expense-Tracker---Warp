@@ -87,7 +87,7 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
           type="text"
           value={formatNumber(value)}
           onChange={handleChange}
-          className="w-full bg-transparent outline-none text-black placeholder:text-gray-500"
+          className={`w-full bg-transparent outline-none placeholder:text-gray-500 ${value ? 'font-medium text-gray-900' : 'font-normal text-gray-900'}`}
           {...rest}
         />
       </InputContainer>
