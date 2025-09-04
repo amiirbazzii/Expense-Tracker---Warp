@@ -27,6 +27,7 @@ import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
+import InputContainer from "@/components/InputContainer";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useOfflineQueue, OfflineItem } from "@/hooks/useOfflineQueue";
 
@@ -347,29 +348,28 @@ export default function ExpensesPage() {
 
               {/* Card Selection */}
               <div>
-                <div className="flex items-center w-full rounded-[10px] border border-[#D3D3D3] bg-[#f8f8f8] transition-all duration-300">
-                  <div className="flex items-center w-full p-4">
-                    <CreditCard className="size-4 mr-2 shrink-0 text-[#707070]" />
-                    <select
-                      value={formData.cardId}
-                      onChange={(e) => setFormData({ ...formData, cardId: e.target.value })}
-                      className="w-full bg-transparent outline-none text-black placeholder:text-gray-500 py-1 px-0 appearance-none"
-                      required
-                    >
-                      <option value="">Select card</option>
-                      {cards?.map((card) => (
-                        <option key={card._id} value={card._id}>
-                          {card.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex items-center pr-3">
+                <InputContainer
+                  leftIcon={CreditCard}
+                  rightAdornment={(
                     <svg className="size-5 text-gray-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                       <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
-                  </div>
-                </div>
+                  )}
+                >
+                  <select
+                    value={formData.cardId}
+                    onChange={(e) => setFormData({ ...formData, cardId: e.target.value })}
+                    className="w-full bg-transparent outline-none text-black placeholder:text-gray-500 py-1 px-0 appearance-none"
+                    required
+                  >
+                    <option value="">Select card</option>
+                    {cards?.map((card) => (
+                      <option key={card._id} value={card._id}>
+                        {card.name}
+                      </option>
+                    ))}
+                  </select>
+                </InputContainer>
               </div>
 
               <SmartSelectInput

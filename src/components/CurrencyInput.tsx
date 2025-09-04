@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { DollarSign } from "lucide-react";
 import { useSettings } from "@/contexts/SettingsContext";
+import InputContainer from "./InputContainer";
 
 interface CurrencyInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   /** Raw numeric string without separators (e.g. "8580909" or "1234.56") */
@@ -28,7 +29,7 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
 }) => {
   const { settings } = useSettings();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [isFocused, setIsFocused] = useState(false);
+  // focus state is handled visually by InputContainer via :focus-within
 
   const symbol = currencySymbol ?? settings?.currency ?? "USD";
 
@@ -77,41 +78,19 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
 
   return (
     <div className={`w-full ${className}`.trim()}>
-      <div
-        className={[
-          "flex items-center w-full rounded-[10px] transition-all duration-300",
-          isFocused
-            ? "border border-black bg-[#f8f8f8] shadow-[inset_0px_0px_0px_1px_#000]"
-            : value
-            ? "border border-[#D3D3D3] bg-[#f8f8f8]"
-            : "border border-[#D3D3D3] bg-[#f8f8f8] text-gray-500 placeholder:text-gray-500",
-        ].join(" ")}
+      <InputContainer
+        leftIcon={DollarSign}
+        rightAdornment={<span className="text-gray-400 whitespace-nowrap">{getSymbol(symbol)}</span>}
       >
-        <div className="flex items-center w-full p-4">
-          <DollarSign className="size-4 mr-2 shrink-0 text-[#707070]" />
-          <input
-            ref={inputRef}
-            type="text"
-            value={formatNumber(value)}
-            onChange={handleChange}
-            onFocus={(e) => {
-              setIsFocused(true);
-              // @ts-ignore - rest may or may not have onFocus
-              rest.onFocus && rest.onFocus(e);
-            }}
-            onBlur={(e) => {
-              setIsFocused(false);
-              // @ts-ignore - rest may or may not have onBlur
-              rest.onBlur && rest.onBlur(e);
-            }}
-            className="w-full bg-transparent outline-none text-black placeholder:text-gray-500"
-            {...rest}
-          />
-        </div>
-        <div className="flex items-center pr-3">
-          <span className="text-gray-400 whitespace-nowrap">{getSymbol(symbol)}</span>
-        </div>
-      </div>
+        <input
+          ref={inputRef}
+          type="text"
+          value={formatNumber(value)}
+          onChange={handleChange}
+          className="w-full bg-transparent outline-none text-black placeholder:text-gray-500"
+          {...rest}
+        />
+      </InputContainer>
     </div>
   );
 };

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, PlusCircle } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
+import InputContainer from './InputContainer';
 
 interface SmartSelectInputProps {
   name: string;
@@ -171,12 +172,12 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
 
   return (
     <div ref={containerRef} className={`relative ${className || ''}`}>
-      <div
-        className="flex items-center w-full rounded-[10px] transition-all duration-300 border border-[#D3D3D3] bg-[#f8f8f8] focus-within:border-black focus-within:shadow-[inset_0px_0px_0px_1px_#000]"
-        onClick={() => inputRef.current?.focus()}
+      <InputContainer
+        leftIcon={Icon}
+        rightAdornment={rightText ? <span className="text-gray-400 whitespace-nowrap">{rightText}</span> : undefined}
+        contentClassName="gap-2 flex-wrap"
       >
-        <div className="flex items-center w-full p-4 gap-2 flex-wrap">
-          {Icon && <Icon className="size-4 mr-1 shrink-0 text-[#707070]" />}
+        <div className="flex items-center w-full gap-2 flex-wrap" onClick={() => inputRef.current?.focus()}>
           {value.map(item => (
             <span key={item} className="flex items-center gap-1.5 bg-[#e9e9e9] text-gray-800 text-sm font-medium px-2 py-1 rounded-md">
               {item}
@@ -204,12 +205,7 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
             aria-label={label}
           />
         </div>
-        {rightText && (
-          <div className="flex items-center pr-3">
-            <span className="text-gray-400 whitespace-nowrap">{rightText}</span>
-          </div>
-        )}
-      </div>
+      </InputContainer>
       <AnimatePresence>
         {isDropdownVisible && (suggestions.length > 0 || wouldCreateNew) && (
           <motion.div

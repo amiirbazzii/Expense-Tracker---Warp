@@ -8,6 +8,7 @@ import persian from "react-date-object/calendars/persian";
 import gregorian from "react-date-object/calendars/gregorian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import { Calendar } from "lucide-react";
+import InputContainer from "./InputContainer";
 
 interface CustomDatePickerProps {
   value: string; // Expects date in "YYYY-MM-DD" format
@@ -55,25 +56,24 @@ export function CustomDatePicker({ value, onChange, label }: CustomDatePickerPro
 
   return (
     <div className="w-full">
-      <div className="flex items-center w-full rounded-[10px] transition-all duration-300 border border-[#D3D3D3] bg-[#f8f8f8] focus-within:border-black focus-within:shadow-[inset_0px_0px_0px_1px_#000]">
-        <div className="flex items-center w-full p-4">
-          <Calendar className="size-4 mr-2 shrink-0 text-[#707070]" />
-          <DatePicker
-            value={dateRef.current}
-            onChange={handleChange}
-            format={DISPLAY_FORMAT}
-            containerClassName="w-full"
-            calendar={isJalali ? persian : undefined}
-            locale={isJalali ? persian_fa : undefined}
-            inputClass="w-full bg-transparent outline-none text-black placeholder:text-gray-500 border-0 focus:ring-0 min-h-[24px] p-0"
-          />
-        </div>
-        <div className="flex items-center pr-3">
+      <InputContainer
+        leftIcon={Calendar}
+        rightAdornment={(
           <svg className="size-5 text-gray-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-        </div>
-      </div>
+        )}
+      >
+        <DatePicker
+          value={dateRef.current}
+          onChange={handleChange}
+          format={DISPLAY_FORMAT}
+          containerClassName="w-full"
+          calendar={isJalali ? persian : undefined}
+          locale={isJalali ? persian_fa : undefined}
+          inputClass="w-full bg-transparent outline-none text-black placeholder:text-gray-500 border-0 focus:ring-0 min-h-[24px] p-0"
+        />
+      </InputContainer>
     </div>
   );
 }
