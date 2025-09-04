@@ -29,7 +29,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({
         {children}
       </div>
       {rightAdornment && (
-        <div className="flex items-center pr-3">
+        <div className="flex items-center">
           {rightAdornment}
         </div>
       )}
