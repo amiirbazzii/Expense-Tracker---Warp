@@ -79,7 +79,6 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
   return (
     <div className={`w-full ${className}`.trim()}>
       <InputContainer
-        leftIcon={DollarSign}
         rightAdornment={<span className="text-gray-400 whitespace-nowrap">{getSymbol(symbol)}</span>}
       >
         <input
