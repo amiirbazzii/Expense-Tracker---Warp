@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Id } from "../../../convex/_generated/dataModel";
-import { CreditCard, Trash2, Edit } from 'lucide-react';
+import { CreditCard, Calendar, Trash2, Edit } from 'lucide-react';
 import { Doc } from '../../../convex/_generated/dataModel';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -38,33 +38,57 @@ export function IncomeCard({ income, cardName, onDelete }: IncomeCardProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="group relative cursor-pointer rounded-2xl bg-white/90 backdrop-blur-sm border border-gray-100 shadow-sm p-4 md:p-5 hover:shadow-md transition-shadow"
+      className="group relative cursor-pointer rounded-lg bg-white border border-gray-200 [box-shadow:0px_4px_12px_rgba(16,24,40,0.05)] p-4"
       onClick={() => setIsMenuOpen(!isMenuOpen)}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h3 className="text-base font-medium text-gray-900 truncate pr-6">
-            {income.source}
-          </h3>
-          <div className="mt-1 text-sm text-gray-600 flex items-center">
-            <CreditCard className="w-4 h-4 mr-1.5 text-gray-400" />
-            <span className="truncate">{cardName}</span>
+          {/* Title row with price at the end */}
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="text-base leading-6 font-semibold text-gray-900 truncate pr-2">
+              {income.source}
+            </h3>
+            <p className="text-[16px] leading-5 font-semibold text-green-600 whitespace-nowrap">
+              +{settings ? formatCurrency(income.amount, settings.currency) : income.amount.toFixed(2)}
+            </p>
           </div>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <span className="px-2 py-0.5 text-xs rounded-full bg-gray-50 text-gray-700 border border-gray-200">
-              {income.category}
+          {/* Info row */}
+          <div className="mt-1.5 flex items-center gap-4 text-[13px] leading-5 text-gray-600">
+            <span className="inline-flex items-center min-w-0">
+              <CreditCard className="w-[14px] h-[14px] mr-1.5 text-gray-400" />
+              <span className="truncate">{cardName}</span>
+            </span>
+            <span className="inline-flex items-center">
+              <Calendar className="w-[14px] h-[14px] mr-1.5 text-gray-400" />
+              <span>
+                {settings
+                  ? formatDate(income.date, settings.calendar, 'yyyy ,d MMM')
+                  : new Date(income.date).toLocaleDateString()}
+              </span>
             </span>
           </div>
-        </div>
-        <div className="flex flex-col items-end text-right">
-          <p className="text-lg md:text-xl font-semibold text-green-600 leading-none">
-            +{settings ? formatCurrency(income.amount, settings.currency) : income.amount.toFixed(2)}
-          </p>
-          <p className="mt-1 text-xs text-gray-500">
-            {settings
-              ? formatDate(income.date, settings.calendar, 'MMM d, yyyy')
-              : new Date(income.date).toLocaleDateString()}
-          </p>
+          {/* Divider above tags */}
+          <div className="mt-2 -mx-4 h-px bg-[#ECECEC]" />
+          {/* Tags */}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {Array.isArray((income as any).category)
+              ? (income as any).category.map((cat: string) => (
+                  <span key={cat} className="px-3 py-1 text-[12px] leading-5 font-medium rounded-lg bg-[#EEEEEE] text-[#434343]">
+                    {cat}
+                  </span>
+                ))
+              : income.category && (
+                  <span className="px-3 py-1 text-[12px] leading-5 font-medium rounded-lg bg-[#EEEEEE] text-[#434343]">
+                    {income.category as unknown as string}
+                  </span>
+                )}
+          </div>
+          {/* Notes (optional) */}
+          {income.notes && (
+            <p className="mt-3 text-[13px] leading-5 text-gray-400 truncate">
+              {income.notes}
+            </p>
+          )}
         </div>
       </div>
       <AnimatePresence>
