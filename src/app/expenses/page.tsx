@@ -13,11 +13,9 @@ import { SmartSelectInput } from "@/components/SmartSelectInput";
 import { 
   CreditCard, 
   Receipt, 
-  Calendar,
-  PencilLine,
   Tag,
   User,
-  DollarSign
+  Type
 } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -313,63 +311,65 @@ export default function ExpensesPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-lg shadow-sm p-6 mb-6"
+            className="rounded-2xl bg-white/80 backdrop-blur-sm border border-gray-100 shadow-sm p-5 mb-6"
           >
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold text-gray-900">Add New Expense</h2>
-              <p className="text-sm text-gray-600">Fill in the details below to track your expense</p>
+            <div className="mb-5">
+              <div className="flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-gray-900" />
+                <h2 className="text-lg font-semibold text-gray-900">Add New Expense</h2>
+              </div>
+              <p className="mt-1 text-sm text-gray-500">Enter details to log your spending</p>
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Form fields... */}
               {/* Amount */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <DollarSign className="inline w-4 h-4 mr-1" />
-                  Amount *
-                </label>
                 <CurrencyInput
                   value={formData.amount}
                   onChangeValue={(val) => setFormData({ ...formData, amount: val })}
-                  placeholder="0.00"
+                  placeholder="Enter amount"
                   required
                 />
               </div>
 
               {/* Title */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <PencilLine className="inline w-4 h-4 mr-1" />
-                  Title *
-                </label>
                 <Input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="Lunch, Gas, etc."
+                  placeholder="Add a title"
+                  icon={Type}
                   required
                 />
               </div>
 
               {/* Card Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <CreditCard className="inline w-4 h-4 mr-1" />
-                  Card *
-                </label>
-                <select
-                  value={formData.cardId}
-                  onChange={(e) => setFormData({ ...formData, cardId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
-                  required
-                >
-                  <option value="">Select a card</option>
-                  {cards?.map((card) => (
-                    <option key={card._id} value={card._id}>
-                      {card.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center w-full rounded-[10px] border border-[#D3D3D3] bg-[#f8f8f8] transition-all duration-300">
+                  <div className="flex items-center w-full p-4">
+                    <CreditCard className="size-4 mr-2 shrink-0 text-[#707070]" />
+                    <select
+                      value={formData.cardId}
+                      onChange={(e) => setFormData({ ...formData, cardId: e.target.value })}
+                      className="w-full bg-transparent outline-none text-black placeholder:text-gray-500 py-1 px-0 appearance-none"
+                      required
+                    >
+                      <option value="">Select card</option>
+                      {cards?.map((card) => (
+                        <option key={card._id} value={card._id}>
+                          {card.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center pr-3">
+                    <svg className="size-5 text-gray-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                </div>
               </div>
 
               <SmartSelectInput
@@ -382,7 +382,7 @@ export default function ExpensesPage() {
                 fetchSuggestions={fetchCategorySuggestions}
                 onCreateNew={handleCreateCategory}
                 formatNewItem={capitalizeWords}
-                placeholder="Select or add categories"
+                placeholder="Choose category"
               />
 
               <SmartSelectInput
@@ -395,7 +395,8 @@ export default function ExpensesPage() {
                 fetchSuggestions={fetchForSuggestions}
                 onCreateNew={handleCreateForValue}
                 formatNewItem={capitalizeWords}
-                placeholder="Select or add a person"
+                placeholder="Who is this for"
+                rightText="Optional"
               />
 
               {/* Date */}

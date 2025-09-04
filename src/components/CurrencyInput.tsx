@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { DollarSign } from "lucide-react";
 import { useSettings } from "@/contexts/SettingsContext";
 
 interface CurrencyInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -27,16 +28,17 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
 }) => {
   const { settings } = useSettings();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [isFocused, setIsFocused] = useState(false);
 
   const symbol = currencySymbol ?? settings?.currency ?? "USD";
 
   // Utility to get symbol from currency code
   const getSymbol = (code: string): string => {
     const map: Record<string, string> = {
-      USD: "$",
-      EUR: "€",
-      GBP: "£",
-      IRR: "T",
+      USD: "Dollar",
+      EUR: "Euro",
+      GBP: "Pound",
+      IRR: "Toman",
     };
     return map[code] ?? code;
   };
@@ -74,18 +76,42 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
   }, [value]);
 
   return (
-    <div className={`relative w-full ${className}`.trim()}>
-      <input
-        ref={inputRef}
-        type="text"
-        value={formatNumber(value)}
-        onChange={handleChange}
-        className="w-full pr-10 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
-        {...rest}
-      />
-      <span className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-500 text-sm">
-        {getSymbol(symbol)}
-      </span>
+    <div className={`w-full ${className}`.trim()}>
+      <div
+        className={[
+          "flex items-center w-full rounded-[10px] transition-all duration-300",
+          isFocused
+            ? "border border-black bg-[#f8f8f8] shadow-[inset_0px_0px_0px_1px_#000]"
+            : value
+            ? "border border-[#D3D3D3] bg-[#f8f8f8]"
+            : "border border-[#D3D3D3] bg-[#f8f8f8] text-gray-500 placeholder:text-gray-500",
+        ].join(" ")}
+      >
+        <div className="flex items-center w-full p-4">
+          <DollarSign className="size-4 mr-2 shrink-0 text-[#707070]" />
+          <input
+            ref={inputRef}
+            type="text"
+            value={formatNumber(value)}
+            onChange={handleChange}
+            onFocus={(e) => {
+              setIsFocused(true);
+              // @ts-ignore - rest may or may not have onFocus
+              rest.onFocus && rest.onFocus(e);
+            }}
+            onBlur={(e) => {
+              setIsFocused(false);
+              // @ts-ignore - rest may or may not have onBlur
+              rest.onBlur && rest.onBlur(e);
+            }}
+            className="w-full bg-transparent outline-none text-black placeholder:text-gray-500"
+            {...rest}
+          />
+        </div>
+        <div className="flex items-center pr-3">
+          <span className="text-gray-400 whitespace-nowrap">{getSymbol(symbol)}</span>
+        </div>
+      </div>
     </div>
   );
 };
