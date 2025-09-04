@@ -19,6 +19,7 @@ import { Doc, Id } from "../../../convex/_generated/dataModel";
 import { IncomeCard } from "@/components/cards/IncomeCard";
 import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { CurrencyInput } from "@/components/CurrencyInput";
+import InputContainer from "@/components/InputContainer";
 
 interface IncomeFormData {
   amount: string;
@@ -181,39 +182,42 @@ export default function IncomePage() {
 
               {/* Source */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Briefcase className="inline w-4 h-4 mr-1" />
-                  Source *
-                </label>
-                <input
-                  type="text"
-                  value={formData.source}
-                  onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
-                  placeholder="Salary, Freelance, etc."
-                  required
-                />
+                <InputContainer leftIcon={Briefcase}>
+                  <input
+                    type="text"
+                    value={formData.source}
+                    onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                    className={`w-full bg-transparent outline-none placeholder:text-gray-500 ${formData.source ? 'font-medium text-gray-900' : 'font-normal text-gray-900'}`}
+                    placeholder="Source (e.g., Salary, Freelance)"
+                    required
+                  />
+                </InputContainer>
               </div>
 
               {/* Card Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <CreditCard className="inline w-4 h-4 mr-1" />
-                  Card *
-                </label>
-                <select
-                  value={formData.cardId}
-                  onChange={(e) => setFormData({ ...formData, cardId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
-                  required
+                <InputContainer
+                  leftIcon={CreditCard}
+                  rightAdornment={(
+                    <svg className="size-5 text-gray-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
                 >
-                  <option value="">Select a card</option>
-                  {cards?.map((card) => (
-                    <option key={card._id} value={card._id}>
-                      {card.name}
-                    </option>
-                  ))}
-                </select>
+                  <select
+                    value={formData.cardId}
+                    onChange={(e) => setFormData({ ...formData, cardId: e.target.value })}
+                    className="w-full bg-transparent outline-none text-black placeholder:text-gray-500 py-1 px-0 appearance-none"
+                    required
+                  >
+                    <option value="">Select card</option>
+                    {cards?.map((card) => (
+                      <option key={card._id} value={card._id}>
+                        {card.name}
+                      </option>
+                    ))}
+                  </select>
+                </InputContainer>
               </div>
 
               <SmartSelectInput
@@ -242,17 +246,15 @@ export default function IncomePage() {
               />
 
               {/* Notes */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <PencilLine className="inline w-4 h-4 mr-1" />
-                  Notes (Optional)
-                </label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[88px]"
-                  placeholder="Add any relevant notes..."
-                />
+              <div className="rounded-[10px] border border-[#D3D3D3] bg-[#f8f8f8] focus-within:border-black focus-within:shadow-[inset_0px_0px_0px_1px_#000]">
+                <div className="px-4 py-3">
+                  <textarea
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    className={`w-full bg-transparent outline-none placeholder:text-gray-500 resize-none min-h-[88px] ${formData.notes ? 'font-medium text-gray-900' : 'font-normal text-gray-900'}`}
+                    placeholder="Notes (Optional)"
+                  />
+                </div>
               </div>
 
               {/* Submit Button */}
