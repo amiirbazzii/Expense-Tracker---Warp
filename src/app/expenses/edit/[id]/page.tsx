@@ -16,6 +16,7 @@ import { SmartSelectInput } from "@/components/SmartSelectInput";
 import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import { Button } from "@/components/Button";
+import InputContainer from "@/components/InputContainer";
 
 const capitalizeWords = (str: string) => {
   return str
@@ -295,10 +296,6 @@ export default function EditExpensePage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Amount */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <DollarSign className="inline w-4 h-4 mr-1" />
-                  Amount *
-                </label>
                 <CurrencyInput
                   value={formData.amount}
                   onChangeValue={(val) => setFormData({ ...formData, amount: val })}
@@ -309,18 +306,16 @@ export default function EditExpensePage() {
 
               {/* Title */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <PencilLine className="inline w-4 h-4 mr-1" />
-                  Title *
-                </label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
-                  placeholder="Lunch, Gas, etc."
-                  required
-                />
+                <InputContainer leftIcon={PencilLine}>
+                  <input
+                    type="text"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    className={`w-full bg-transparent outline-none placeholder:text-gray-500 ${formData.title ? 'font-medium text-gray-900' : 'font-normal text-gray-900'}`}
+                    placeholder="Lunch, Gas, etc."
+                    required
+                  />
+                </InputContainer>
               </div>
 
               <SmartSelectInput
@@ -351,21 +346,26 @@ export default function EditExpensePage() {
 
               {/* Card */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <CreditCard className="inline w-4 h-4 mr-1" />
-                  Card *
-                </label>
-                <select
-                  value={formData.cardId}
-                  onChange={(e) => setFormData({ ...formData, cardId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
-                  required
+                <InputContainer
+                  leftIcon={CreditCard}
+                  rightAdornment={(
+                    <svg className="size-5 text-gray-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
                 >
-                  <option value="" disabled>Select a card</option>
-                  {cards?.map(card => (
-                    <option key={card._id} value={card._id}>{card.name}</option>
-                  ))}
-                </select>
+                  <select
+                    value={formData.cardId}
+                    onChange={(e) => setFormData({ ...formData, cardId: e.target.value })}
+                    className="w-full bg-transparent outline-none text-black placeholder:text-gray-500 py-1 px-0 appearance-none"
+                    required
+                  >
+                    <option value="" disabled>Select a card</option>
+                    {cards?.map(card => (
+                      <option key={card._id} value={card._id}>{card.name}</option>
+                    ))}
+                  </select>
+                </InputContainer>
               </div>
 
               {/* Date */}

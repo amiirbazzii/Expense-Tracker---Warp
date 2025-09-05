@@ -165,10 +165,6 @@ export default function IncomePage() {
               {/* Form fields... */}
               {/* Amount */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <DollarSign className="inline w-4 h-4 mr-1" />
-                  Amount *
-                </label>
                 <CurrencyInput
                   value={formData.amount}
                   onChangeValue={(val) => setFormData({ ...formData, amount: val })}
