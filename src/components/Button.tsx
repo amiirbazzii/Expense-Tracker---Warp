@@ -91,7 +91,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || loading}
         {...props}
       >
-        {loading ? <LucideLoaderCircle /> : (buttonType === 'icon' ? icon : children)}
+        {loading
+          ? <LucideLoaderCircle />
+          : (buttonType === 'icon'
+              ? icon
+              : (disabled ? 'Fill the information' : children))}
       </button>
     );
   }

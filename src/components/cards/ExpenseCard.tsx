@@ -54,7 +54,7 @@ export function ExpenseCard({ expense, cardName, onDelete, onRetry, status }: Ex
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="group relative cursor-pointer rounded-lg bg-white border border-gray-200 [box-shadow:0px_4px_12px_rgba(16,24,40,0.05)] p-4"
+      className="group relative cursor-pointer rounded-lg bg-white border border-gray-200 [box-shadow:0px_4px_12px_rgba(16,24,40,0.05)] p-3"
       onClick={() => setIsMenuOpen(!isMenuOpen)}
     >
       <div className="flex items-start justify-between gap-3">

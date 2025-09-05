@@ -20,6 +20,7 @@ import { IncomeCard } from "@/components/cards/IncomeCard";
 import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import InputContainer from "@/components/InputContainer";
+import { Button } from "@/components/Button";
 
 interface IncomeFormData {
   amount: string;
@@ -254,14 +255,14 @@ export default function IncomePage() {
               </div>
 
               {/* Submit Button */}
-              <motion.button
-                whileTap={{ scale: 0.98 }}
+              <Button
                 type="submit"
+                className="w-full bg-[#EAEAEA] text-gray-700 hover:bg-[#E0E0E0]"
                 disabled={isSubmitting || formData.category.length === 0 || !formData.cardId}
-                className="w-full bg-[#EAEAEA] text-gray-700 py-3 px-4 rounded-md hover:bg-[#E0E0E0] focus:outline-none focus:ring-0 disabled:opacity-50 disabled:cursor-not-allowed font-medium min-h-[44px]"
+                loading={isSubmitting}
               >
-                {isSubmitting ? "Adding Income..." : "Fill the information"}
-              </motion.button>
+                Add Income
+              </Button>
             </form>
           </motion.div>
 

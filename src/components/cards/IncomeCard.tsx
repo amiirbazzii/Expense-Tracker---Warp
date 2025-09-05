@@ -21,6 +21,7 @@ export function IncomeCard({ income, cardName, onDelete }: IncomeCardProps) {
   const { settings } = useSettings();
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const hasNotes = typeof income.notes === 'string' && income.notes.trim().length > 0;
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -38,7 +39,7 @@ export function IncomeCard({ income, cardName, onDelete }: IncomeCardProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="group relative cursor-pointer rounded-lg bg-white border border-gray-200 [box-shadow:0px_4px_12px_rgba(16,24,40,0.05)] p-4"
+      className="group relative cursor-pointer rounded-lg bg-white border border-gray-200 [box-shadow:0px_4px_12px_rgba(16,24,40,0.05)] p-3"
       onClick={() => setIsMenuOpen(!isMenuOpen)}
     >
       <div className="flex items-start justify-between gap-3">
@@ -83,13 +84,15 @@ export function IncomeCard({ income, cardName, onDelete }: IncomeCardProps) {
                   </span>
                 )}
           </div>
-          {/* Divider above note */}
-          <div className="mt-3 -mx-4 h-px bg-[#ECECEC]" />
           {/* Notes (optional) */}
-          {income.notes && (
-            <p className="mt-3 text-[13px] leading-5 text-gray-400 truncate">
-              {income.notes}
-            </p>
+          {hasNotes && (
+            <>
+              {/* Divider above note */}
+              <div className="mt-3 -mx-4 h-px bg-[#ECECEC]" />
+              <p className="mt-3 text-[13px] leading-5 text-gray-400 truncate">
+                {income.notes}
+              </p>
+            </>
           )}
         </div>
       </div>

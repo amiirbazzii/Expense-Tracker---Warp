@@ -411,7 +411,7 @@ export default function ExpensesPage() {
                 disabled={isSubmitting || formData.category.length === 0 || !formData.cardId}
                 loading={isSubmitting}
               >
-                Fill the information
+                Add Expense
               </Button>
             </form>
           </motion.div>
