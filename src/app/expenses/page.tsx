@@ -302,7 +302,7 @@ export default function ExpensesPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-[#F6F6F6]">
+      <div className="min-h-screen bg-white">
         <HeaderRow
           left={<h1 className="text-xl font-bold text-gray-900">Expenses</h1>}
         />
@@ -417,7 +417,7 @@ export default function ExpensesPage() {
           </motion.div>
 
           {/* Expenses History Section - wrapped in a light container */}
-          <div className="mt-6 rounded-lg border border-gray-200 bg-[#FAFAFA] p-4">
+          <div className="mt-8 rounded-xl border border-gray-200 bg-[#F9F9F9] p-4">
             <DateFilterHeader 
               monthName={monthName} 
               year={year} 
@@ -430,7 +430,7 @@ export default function ExpensesPage() {
             {isLoading && combinedExpenses.length === 0 ? (
               <div className="text-center py-8 text-gray-500">Loading expenses...</div>
             ) : combinedExpenses.length > 0 ? (
-              <div className="space-y-4 mt-4">
+              <div className="space-y-2 mt-4">
                 {combinedExpenses.map((expense) => (
                   <ExpenseCard 
                     key={expense._id} 

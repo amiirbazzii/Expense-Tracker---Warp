@@ -143,7 +143,7 @@ export default function IncomePage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-white">
         <HeaderRow
           left={
             <>
@@ -152,16 +152,12 @@ export default function IncomePage() {
           }
         />
         
-        <div className="max-w-md mx-auto p-4 pt-24 pb-20">
-          {/* Input Form Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-lg shadow-sm p-6 mb-6"
-          >
-            <div className="mb-6">
+        <div className="max-w-lg mx-auto p-4 pt-20 pb-24">
+          {/* Input Form Section - header + fields (no card wrapper) */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Add New Income</h2>
-              <p className="text-sm text-gray-600">Fill in the details below to track your income</p>
+              <p className="mt-1 text-[13px] leading-5 text-gray-500">Fill in the details below to track your income</p>
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -262,15 +258,15 @@ export default function IncomePage() {
                 whileTap={{ scale: 0.98 }}
                 type="submit"
                 disabled={isSubmitting || formData.category.length === 0 || !formData.cardId}
-                className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-medium min-h-[44px]"
+                className="w-full bg-[#EAEAEA] text-gray-700 py-3 px-4 rounded-md hover:bg-[#E0E0E0] focus:outline-none focus:ring-0 disabled:opacity-50 disabled:cursor-not-allowed font-medium min-h-[44px]"
               >
-                {isSubmitting ? "Adding Income..." : "Add Income"}
+                {isSubmitting ? "Adding Income..." : "Fill the information"}
               </motion.button>
             </form>
           </motion.div>
 
-          {/* Income History Section */}
-          <div className="mt-8">
+          {/* Income History Section - wrapped */}
+          <div className="mt-8 rounded-xl border border-gray-200 bg-[#F9F9F9] p-4">
             <DateFilterHeader 
               monthName={monthName} 
               year={year} 
@@ -283,8 +279,8 @@ export default function IncomePage() {
             {isLoading ? (
               <div className="text-center py-8 text-gray-500">Loading income...</div>
             ) : incomes && incomes.length > 0 ? (
-              <div className="space-y-4 mt-4">
-                                {(incomes as Doc<"income">[] | undefined)?.filter(income => !pendingDeletions.includes(income._id)).map((incomeRecord) => (
+              <div className="space-y-2 mt-4">
+                {(incomes as Doc<"income">[] | undefined)?.filter(income => !pendingDeletions.includes(income._id)).map((incomeRecord) => (
                   <IncomeCard
                     key={incomeRecord._id}
                     income={incomeRecord}
@@ -333,3 +329,4 @@ export default function IncomePage() {
     </ProtectedRoute>
   );
 }
+

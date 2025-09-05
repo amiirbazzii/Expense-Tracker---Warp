@@ -26,7 +26,7 @@ export function DateFilterHeader({
   const { settings } = useSettings();
 
   const containerClasses = variant === 'card'
-    ? "flex items-center justify-between mb-4 rounded-2xl bg-white/80 backdrop-blur-sm border border-gray-100 shadow-sm px-3 py-2"
+    ? "flex items-center justify-between mb-4 "
     : "flex items-center justify-between mb-4";
 
   const titleClasses = isMainTitle
