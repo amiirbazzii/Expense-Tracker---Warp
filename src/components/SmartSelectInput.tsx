@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, PlusCircle } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
+import InputContainer from './InputContainer';
 
 interface SmartSelectInputProps {
   name: string;
@@ -17,6 +18,7 @@ interface SmartSelectInputProps {
   formatNewItem?: (value: string) => string;
   placeholder?: string;
   className?: string;
+  rightText?: string;
 }
 
 export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
@@ -31,6 +33,7 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
   formatNewItem,
   placeholder,
   className,
+  rightText,
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -169,47 +172,48 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
 
   return (
     <div ref={containerRef} className={`relative ${className || ''}`}>
-      <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">
-        {Icon && <Icon className="inline w-4 h-4 mr-1" />}
-        {label}
-      </label>
-      <div 
-        className="relative w-full flex items-center flex-wrap gap-1.5 p-2 border border-gray-300 rounded-md bg-white focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 min-h-[44px]"
-        onClick={() => inputRef.current?.focus()}
+      <InputContainer
+        leftIcon={Icon}
+        rightAdornment={rightText ? <span className="text-gray-400 whitespace-nowrap">{rightText}</span> : undefined}
+        className="h-auto min-h-14 py-3 items-start"
+        contentClassName="gap-2 flex-wrap items-start"
       >
-        {value.map(item => (
-          <span key={item} className="flex items-center gap-1.5 bg-gray-200 text-gray-800 text-sm font-medium px-2 py-1 rounded-md">
-            {item}
-            {multiple && (
-              <button type="button" onClick={() => handleRemove(item)} className="text-gray-500 hover:text-gray-800">
-                <X size={14} />
-              </button>
-            )}
-          </span>
-        ))}
-        <input
-          ref={inputRef}
-          id={name}
-          type="text"
-          value={inputValue}
-          onChange={e => {
-            setInputValue(e.target.value)
-            setDropdownVisible(true)
-          }}
-          onFocus={() => setDropdownVisible(true)}
-          onKeyDown={handleKeyDown}
-          className="flex-grow bg-transparent outline-none text-gray-900 placeholder-gray-500 min-w-[100px]"
-          placeholder={value.length === 0 ? placeholder : ''}
-          autoComplete="off"
-        />
-      </div>
+        <div className="flex w-full gap-2 flex-wrap items-center" onClick={() => inputRef.current?.focus()}>
+          {value.map(item => (
+            <span key={item} className="flex items-center gap-1.5 bg-[#e9e9e9] text-gray-800 text-sm font-medium px-2 py-1 rounded-md">
+              {item}
+              {multiple && (
+                <button type="button" onClick={() => handleRemove(item)} className="text-gray-500 hover:text-gray-800">
+                  <X size={14} />
+                </button>
+              )}
+            </span>
+          ))}
+          <input
+            ref={inputRef}
+            id={name}
+            type="text"
+            value={inputValue}
+            onChange={e => {
+              setInputValue(e.target.value)
+              setDropdownVisible(true)
+            }}
+            onFocus={() => setDropdownVisible(true)}
+            onKeyDown={handleKeyDown}
+            className={`flex-grow bg-transparent outline-none placeholder:text-gray-500 min-w-[120px] ${value.length > 0 || inputValue ? 'font-medium text-gray-900' : 'font-normal text-gray-900'}`}
+            placeholder={value.length === 0 ? placeholder : ''}
+            autoComplete="off"
+            aria-label={label}
+          />
+        </div>
+      </InputContainer>
       <AnimatePresence>
         {isDropdownVisible && (suggestions.length > 0 || wouldCreateNew) && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-20 max-h-60 overflow-y-auto"
+            className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#D3D3D3] rounded-lg shadow-md z-20 max-h-60 overflow-y-auto"
           >
             {isLoading && <div className="px-3 py-2 text-sm text-gray-500">Loading...</div>}
             {!isLoading && suggestions.map((s, i) => (
@@ -217,7 +221,7 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
                 key={s}
                 type="button"
                 onClick={() => handleSelect(s)}
-                className={`w-full text-left px-3 py-2 text-sm ${activeIndex === i ? 'bg-blue-100 text-blue-800' : 'text-gray-900 hover:bg-gray-100'}`}
+                className={`w-full text-left px-3 py-2 text-sm ${activeIndex === i ? 'bg-gray-100 text-gray-900' : 'text-gray-900 hover:bg-gray-50'}`}
               >
                 {renderSuggestionHighlight(s)}
               </button>
@@ -226,7 +230,7 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
               <button
                 type="button"
                 onClick={handleCreateNew}
-                className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 ${activeIndex === suggestions.length ? 'bg-blue-100 text-blue-800' : 'text-gray-700 hover:bg-gray-100'}`}
+                className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 ${activeIndex === suggestions.length ? 'bg-gray-100 text-gray-900' : 'text-gray-700 hover:bg-gray-50'}`}
               >
                 <PlusCircle size={16} />
                 <span>Add '<b>{inputValue}</b>'</span>
@@ -237,4 +241,5 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
       </AnimatePresence>
     </div>
   );
-};
+}
+;

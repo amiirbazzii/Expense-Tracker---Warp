@@ -8,6 +8,7 @@ import persian from "react-date-object/calendars/persian";
 import gregorian from "react-date-object/calendars/gregorian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import { Calendar } from "lucide-react";
+import InputContainer from "./InputContainer";
 
 interface CustomDatePickerProps {
   value: string; // Expects date in "YYYY-MM-DD" format
@@ -54,20 +55,25 @@ export function CustomDatePicker({ value, onChange, label }: CustomDatePickerPro
   };
 
   return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        <Calendar className="inline w-4 h-4 mr-1" />
-        {label}
-      </label>
-      <DatePicker
-        value={dateRef.current}
-        onChange={handleChange}
-        format={DISPLAY_FORMAT}
-        containerClassName="w-full"
-        calendar={isJalali ? persian : undefined}
-        locale={isJalali ? persian_fa : undefined}
-        inputClass="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
-      />
+    <div className="w-full">
+      <InputContainer
+        leftIcon={Calendar}
+        rightAdornment={(
+          <svg className="size-5 text-gray-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        )}
+      >
+        <DatePicker
+          value={dateRef.current}
+          onChange={handleChange}
+          format={DISPLAY_FORMAT}
+          containerClassName="w-full"
+          calendar={isJalali ? persian : undefined}
+          locale={isJalali ? persian_fa : undefined}
+          inputClass="w-full bg-transparent outline-none text-black placeholder:text-gray-500 border-0 focus:ring-0 min-h-[24px] p-0"
+        />
+      </InputContainer>
     </div>
   );
 }

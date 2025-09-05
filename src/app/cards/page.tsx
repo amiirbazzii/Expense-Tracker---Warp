@@ -13,6 +13,7 @@ import { CreditCard, Plus, X, ArrowLeft, Trash2, ArrowRight, TrendingUp, Trendin
 import { useRouter } from "next/navigation";
 import { useSettings } from "@/contexts/SettingsContext";
 import { formatCurrency } from "@/lib/formatters";
+import { Button } from "@/components/Button";
 
 export default function CardsPage() {
   const { token } = useAuth();
@@ -144,14 +145,15 @@ export default function CardsPage() {
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
                 />
               </div>
-              <motion.button
-                whileTap={{ scale: 0.95 }}
+              <Button
                 type="submit"
                 disabled={!cardName.trim() || isSubmitting}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] flex items-center justify-center"
-              >
-                {isSubmitting ? "Adding..." : <Plus size={20} />}
-              </motion.button>
+                loading={isSubmitting}
+                buttonType="icon"
+                icon={<Plus size={20} />}
+                className="min-h-[44px]"
+                aria-label="Add card"
+              />
             </form>
           </motion.div>
 
@@ -199,14 +201,14 @@ export default function CardsPage() {
                 onChangeValue={(val) => setAmount(val)}
                 placeholder="Amount"
               />
-              <motion.button
-                whileTap={{ scale: 0.95 }}
+              <Button
                 onClick={handleTransfer}
                 disabled={!fromCard || !toCard || !amount || isTransferring}
-                className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] flex items-center justify-center"
+                loading={isTransferring}
+                className="w-full min-h-[44px]"
               >
-                {isTransferring ? "Transferring..." : "Transfer"}
-              </motion.button>
+                Transfer
+              </Button>
             </div>
           </motion.div>
 

@@ -19,6 +19,8 @@ import { Doc, Id } from "../../../convex/_generated/dataModel";
 import { IncomeCard } from "@/components/cards/IncomeCard";
 import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { CurrencyInput } from "@/components/CurrencyInput";
+import InputContainer from "@/components/InputContainer";
+import { Button } from "@/components/Button";
 
 interface IncomeFormData {
   amount: string;
@@ -142,7 +144,7 @@ export default function IncomePage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-white">
         <HeaderRow
           left={
             <>
@@ -151,26 +153,18 @@ export default function IncomePage() {
           }
         />
         
-        <div className="max-w-md mx-auto p-4 pt-24 pb-20">
-          {/* Input Form Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-lg shadow-sm p-6 mb-6"
-          >
-            <div className="mb-6">
+        <div className="max-w-lg mx-auto p-4 pt-20 pb-24">
+          {/* Input Form Section - header + fields (no card wrapper) */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Add New Income</h2>
-              <p className="text-sm text-gray-600">Fill in the details below to track your income</p>
+              <p className="mt-1 text-[13px] leading-5 text-gray-500">Fill in the details below to track your income</p>
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Form fields... */}
               {/* Amount */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <DollarSign className="inline w-4 h-4 mr-1" />
-                  Amount *
-                </label>
                 <CurrencyInput
                   value={formData.amount}
                   onChangeValue={(val) => setFormData({ ...formData, amount: val })}
@@ -181,39 +175,42 @@ export default function IncomePage() {
 
               {/* Source */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Briefcase className="inline w-4 h-4 mr-1" />
-                  Source *
-                </label>
-                <input
-                  type="text"
-                  value={formData.source}
-                  onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
-                  placeholder="Salary, Freelance, etc."
-                  required
-                />
+                <InputContainer leftIcon={Briefcase}>
+                  <input
+                    type="text"
+                    value={formData.source}
+                    onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                    className={`w-full bg-transparent outline-none placeholder:text-gray-500 ${formData.source ? 'font-medium text-gray-900' : 'font-normal text-gray-900'}`}
+                    placeholder="Source (e.g., Salary, Freelance)"
+                    required
+                  />
+                </InputContainer>
               </div>
 
               {/* Card Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <CreditCard className="inline w-4 h-4 mr-1" />
-                  Card *
-                </label>
-                <select
-                  value={formData.cardId}
-                  onChange={(e) => setFormData({ ...formData, cardId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
-                  required
+                <InputContainer
+                  leftIcon={CreditCard}
+                  rightAdornment={(
+                    <svg className="size-5 text-gray-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
                 >
-                  <option value="">Select a card</option>
-                  {cards?.map((card) => (
-                    <option key={card._id} value={card._id}>
-                      {card.name}
-                    </option>
-                  ))}
-                </select>
+                  <select
+                    value={formData.cardId}
+                    onChange={(e) => setFormData({ ...formData, cardId: e.target.value })}
+                    className="w-full bg-transparent outline-none text-black placeholder:text-gray-500 py-1 px-0 appearance-none"
+                    required
+                  >
+                    <option value="">Select card</option>
+                    {cards?.map((card) => (
+                      <option key={card._id} value={card._id}>
+                        {card.name}
+                      </option>
+                    ))}
+                  </select>
+                </InputContainer>
               </div>
 
               <SmartSelectInput
@@ -242,33 +239,31 @@ export default function IncomePage() {
               />
 
               {/* Notes */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <PencilLine className="inline w-4 h-4 mr-1" />
-                  Notes (Optional)
-                </label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[88px]"
-                  placeholder="Add any relevant notes..."
-                />
+              <div className="rounded-[10px] border border-[#D3D3D3] bg-[#f8f8f8] focus-within:border-black focus-within:shadow-[inset_0px_0px_0px_1px_#000]">
+                <div className="px-4 py-3">
+                  <textarea
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    className={`w-full bg-transparent outline-none placeholder:text-gray-500 resize-none min-h-[88px] ${formData.notes ? 'font-medium text-gray-900' : 'font-normal text-gray-900'}`}
+                    placeholder="Notes (Optional)"
+                  />
+                </div>
               </div>
 
               {/* Submit Button */}
-              <motion.button
-                whileTap={{ scale: 0.98 }}
+              <Button
                 type="submit"
+                className="w-full bg-[#EAEAEA] text-gray-700 hover:bg-[#E0E0E0]"
                 disabled={isSubmitting || formData.category.length === 0 || !formData.cardId}
-                className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-medium min-h-[44px]"
+                loading={isSubmitting}
               >
-                {isSubmitting ? "Adding Income..." : "Add Income"}
-              </motion.button>
+                Add Income
+              </Button>
             </form>
           </motion.div>
 
-          {/* Income History Section */}
-          <div className="mt-8">
+          {/* Income History Section - wrapped */}
+          <div className="mt-8 rounded-xl border border-gray-200 bg-[#F9F9F9] p-4">
             <DateFilterHeader 
               monthName={monthName} 
               year={year} 
@@ -281,8 +276,8 @@ export default function IncomePage() {
             {isLoading ? (
               <div className="text-center py-8 text-gray-500">Loading income...</div>
             ) : incomes && incomes.length > 0 ? (
-              <div className="space-y-4 mt-4">
-                                {(incomes as Doc<"income">[] | undefined)?.filter(income => !pendingDeletions.includes(income._id)).map((incomeRecord) => (
+              <div className="space-y-2 mt-4">
+                {(incomes as Doc<"income">[] | undefined)?.filter(income => !pendingDeletions.includes(income._id)).map((incomeRecord) => (
                   <IncomeCard
                     key={incomeRecord._id}
                     income={incomeRecord}
@@ -331,3 +326,4 @@ export default function IncomePage() {
     </ProtectedRoute>
   );
 }
+

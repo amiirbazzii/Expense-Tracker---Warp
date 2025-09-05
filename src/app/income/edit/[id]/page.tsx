@@ -15,6 +15,8 @@ import { useRouter, useParams } from "next/navigation";
 import { SmartSelectInput } from "@/components/SmartSelectInput";
 import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { CurrencyInput } from "@/components/CurrencyInput";
+import { Button } from "@/components/Button";
+import InputContainer from "@/components/InputContainer";
 
 interface IncomeFormData {
   amount: string;
@@ -152,10 +154,6 @@ export default function EditIncomePage() {
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <DollarSign className="inline w-4 h-4 mr-1" />
-                  Amount *
-                </label>
                 <CurrencyInput
                   value={formData.amount}
                   onChangeValue={(val) => setFormData({ ...formData, amount: val })}
@@ -165,18 +163,16 @@ export default function EditIncomePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Briefcase className="inline w-4 h-4 mr-1" />
-                  Source *
-                </label>
-                <input
-                  type="text"
-                  value={formData.source}
-                  onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                  placeholder="Salary, Freelance, etc."
-                  required
-                />
+                <InputContainer leftIcon={Briefcase}>
+                  <input
+                    type="text"
+                    value={formData.source}
+                    onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                    className={`w-full bg-transparent outline-none placeholder:text-gray-500 ${formData.source ? 'font-medium text-gray-900' : 'font-normal text-gray-900'}`}
+                    placeholder="Salary, Freelance, etc."
+                    required
+                  />
+                </InputContainer>
               </div>
 
               <SmartSelectInput
@@ -191,51 +187,56 @@ export default function EditIncomePage() {
               />
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <CreditCard className="inline w-4 h-4 mr-1" />
-                  Card *
-                </label>
-                <select
-                  value={formData.cardId}
-                  onChange={(e) => setFormData({ ...formData, cardId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                  required
+                <InputContainer
+                  leftIcon={CreditCard}
+                  rightAdornment={(
+                    <svg className="size-5 text-gray-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
                 >
-                  <option value="" disabled>Select a card</option>
-                  {cards?.map(card => (
-                    <option key={card._id} value={card._id}>{card.name}</option>
-                  ))}
-                </select>
+                  <select
+                    value={formData.cardId}
+                    onChange={(e) => setFormData({ ...formData, cardId: e.target.value })}
+                    className="w-full bg-transparent outline-none text-black placeholder:text-gray-500 py-1 px-0 appearance-none"
+                    required
+                  >
+                    <option value="" disabled>Select a card</option>
+                    {cards?.map(card => (
+                      <option key={card._id} value={card._id}>{card.name}</option>
+                    ))}
+                  </select>
+                </InputContainer>
               </div>
 
               <CustomDatePicker
-                label="Date"
+                label=""
                 value={formData.date}
                 onChange={(date) => setFormData({ ...formData, date })}
               />
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Notes (Optional)
-                </label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                  placeholder="Add any notes here..."
-                  rows={3}
-                />
+                <div className="rounded-[10px] border border-[#D3D3D3] bg-[#f8f8f8] focus-within:border-black focus-within:shadow-[inset_0px_0px_0px_1px_#000]">
+                  <div className="px-4 py-3">
+                    <textarea
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      className={`w-full bg-transparent outline-none placeholder:text-gray-500 resize-none min-h-[88px] ${formData.notes ? 'font-medium text-gray-900' : 'font-normal text-gray-900'}`}
+                      placeholder="Add any notes here..."
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="pt-4">
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
+                <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300"
+                  loading={isSubmitting}
+                  className="w-full min-h-[44px]"
                 >
-                  {isSubmitting ? "Updating Income..." : "Update Income"}
-                </motion.button>
+                  Update Income
+                </Button>
               </div>
             </form>
           </motion.div>

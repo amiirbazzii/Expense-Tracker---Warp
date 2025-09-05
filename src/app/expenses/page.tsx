@@ -13,11 +13,9 @@ import { SmartSelectInput } from "@/components/SmartSelectInput";
 import { 
   CreditCard, 
   Receipt, 
-  Calendar,
-  PencilLine,
   Tag,
   User,
-  DollarSign
+  Type
 } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -27,6 +25,9 @@ import { Doc, Id } from "../../../convex/_generated/dataModel";
 import { ExpenseCard } from '@/components/cards/ExpenseCard';
 import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { CurrencyInput } from "@/components/CurrencyInput";
+import { Input } from "@/components/Input";
+import { Button } from "@/components/Button";
+import InputContainer from "@/components/InputContainer";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useOfflineQueue, OfflineItem } from "@/hooks/useOfflineQueue";
 
@@ -301,74 +302,67 @@ export default function ExpensesPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-white">
         <HeaderRow
           left={<h1 className="text-xl font-bold text-gray-900">Expenses</h1>}
         />
         
-        <div className="max-w-md mx-auto p-4 pt-24 pb-20">
-          {/* Input Form Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-lg shadow-sm p-6 mb-6"
-          >
-            <div className="mb-6">
+        <div className="max-w-lg mx-auto p-4 pt-20 pb-24">
+          {/* Input Form Section - header + fields (no card wrapper) */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Add New Expense</h2>
-              <p className="text-sm text-gray-600">Fill in the details below to track your expense</p>
+              <p className="mt-1 text-[13px] leading-5 text-gray-500">Fill in the details below to track your expense</p>
             </div>
-            
+
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Form fields... */}
               {/* Amount */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <DollarSign className="inline w-4 h-4 mr-1" />
-                  Amount *
-                </label>
                 <CurrencyInput
                   value={formData.amount}
                   onChangeValue={(val) => setFormData({ ...formData, amount: val })}
-                  placeholder="0.00"
+                  placeholder="Enter amount"
                   required
                 />
               </div>
 
               {/* Title */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <PencilLine className="inline w-4 h-4 mr-1" />
-                  Title *
-                </label>
-                <input
+                <Input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
-                  placeholder="Lunch, Gas, etc."
+                  placeholder="Add a title"
+                  icon={Type}
                   required
                 />
               </div>
 
               {/* Card Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <CreditCard className="inline w-4 h-4 mr-1" />
-                  Card *
-                </label>
-                <select
-                  value={formData.cardId}
-                  onChange={(e) => setFormData({ ...formData, cardId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
-                  required
+                <InputContainer
+                  leftIcon={CreditCard}
+                  rightAdornment={(
+                    <svg className="size-5 text-gray-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
                 >
-                  <option value="">Select a card</option>
-                  {cards?.map((card) => (
-                    <option key={card._id} value={card._id}>
-                      {card.name}
-                    </option>
-                  ))}
-                </select>
+                  <select
+                    value={formData.cardId}
+                    onChange={(e) => setFormData({ ...formData, cardId: e.target.value })}
+                    className="w-full bg-transparent outline-none text-black placeholder:text-gray-500 py-1 px-0 appearance-none"
+                    required
+                  >
+                    <option value="">Select card</option>
+                    {cards?.map((card) => (
+                      <option key={card._id} value={card._id}>
+                        {card.name}
+                      </option>
+                    ))}
+                  </select>
+                </InputContainer>
               </div>
 
               <SmartSelectInput
@@ -381,7 +375,7 @@ export default function ExpensesPage() {
                 fetchSuggestions={fetchCategorySuggestions}
                 onCreateNew={handleCreateCategory}
                 formatNewItem={capitalizeWords}
-                placeholder="Select or add categories"
+                placeholder="Choose category"
               />
 
               <SmartSelectInput
@@ -394,7 +388,8 @@ export default function ExpensesPage() {
                 fetchSuggestions={fetchForSuggestions}
                 onCreateNew={handleCreateForValue}
                 formatNewItem={capitalizeWords}
-                placeholder="Select or add a person"
+                placeholder="Who is this for"
+                rightText="Optional"
               />
 
               {/* Date */}
@@ -410,19 +405,19 @@ export default function ExpensesPage() {
               />
 
               {/* Submit Button */}
-              <motion.button
-                whileTap={{ scale: 0.98 }}
+              <Button
                 type="submit"
+                className="w-full bg-[#EAEAEA] text-gray-700 hover:bg-[#E0E0E0]"
                 disabled={isSubmitting || formData.category.length === 0 || !formData.cardId}
-                className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-medium min-h-[44px]"
+                loading={isSubmitting}
               >
-                {isSubmitting ? "Adding Expense..." : "Add Expense"}
-              </motion.button>
+                Add Expense
+              </Button>
             </form>
           </motion.div>
 
-          {/* Expenses History Section */}
-          <div className="mt-8">
+          {/* Expenses History Section - wrapped in a light container */}
+          <div className="mt-8 rounded-xl border border-gray-200 bg-[#F9F9F9] p-4">
             <DateFilterHeader 
               monthName={monthName} 
               year={year} 
@@ -435,7 +430,7 @@ export default function ExpensesPage() {
             {isLoading && combinedExpenses.length === 0 ? (
               <div className="text-center py-8 text-gray-500">Loading expenses...</div>
             ) : combinedExpenses.length > 0 ? (
-              <div className="space-y-4 mt-4">
+              <div className="space-y-2 mt-4">
                 {combinedExpenses.map((expense) => (
                   <ExpenseCard 
                     key={expense._id} 

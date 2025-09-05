@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
+import { DollarSign } from "lucide-react";
 import { useSettings } from "@/contexts/SettingsContext";
+import InputContainer from "./InputContainer";
 
 interface CurrencyInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   /** Raw numeric string without separators (e.g. "8580909" or "1234.56") */
@@ -27,16 +29,17 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
 }) => {
   const { settings } = useSettings();
   const inputRef = useRef<HTMLInputElement>(null);
+  // focus state is handled visually by InputContainer via :focus-within
 
   const symbol = currencySymbol ?? settings?.currency ?? "USD";
 
   // Utility to get symbol from currency code
   const getSymbol = (code: string): string => {
     const map: Record<string, string> = {
-      USD: "$",
-      EUR: "€",
-      GBP: "£",
-      IRR: "T",
+      USD: "Dollar",
+      EUR: "Euro",
+      GBP: "Pound",
+      IRR: "Toman",
     };
     return map[code] ?? code;
   };
@@ -74,18 +77,19 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
   }, [value]);
 
   return (
-    <div className={`relative w-full ${className}`.trim()}>
-      <input
-        ref={inputRef}
-        type="text"
-        value={formatNumber(value)}
-        onChange={handleChange}
-        className="w-full pr-10 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
-        {...rest}
-      />
-      <span className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-500 text-sm">
-        {getSymbol(symbol)}
-      </span>
+    <div className={`w-full ${className}`.trim()}>
+      <InputContainer
+        rightAdornment={<span className="text-gray-400 whitespace-nowrap">{getSymbol(symbol)}</span>}
+      >
+        <input
+          ref={inputRef}
+          type="text"
+          value={formatNumber(value)}
+          onChange={handleChange}
+          className={`w-full bg-transparent outline-none placeholder:text-gray-500 ${value ? 'font-medium text-gray-900' : 'font-normal text-gray-900'}`}
+          {...rest}
+        />
+      </InputContainer>
     </div>
   );
 };
