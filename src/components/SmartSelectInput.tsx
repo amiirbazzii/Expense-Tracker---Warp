@@ -175,9 +175,10 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
       <InputContainer
         leftIcon={Icon}
         rightAdornment={rightText ? <span className="text-gray-400 whitespace-nowrap">{rightText}</span> : undefined}
-        contentClassName="gap-2 flex-wrap"
+        className="h-auto min-h-14 py-3 items-start"
+        contentClassName="gap-2 flex-wrap items-start"
       >
-        <div className="flex items-center w-full gap-2 flex-wrap" onClick={() => inputRef.current?.focus()}>
+        <div className="flex w-full gap-2 flex-wrap items-center" onClick={() => inputRef.current?.focus()}>
           {value.map(item => (
             <span key={item} className="flex items-center gap-1.5 bg-[#e9e9e9] text-gray-800 text-sm font-medium px-2 py-1 rounded-md">
               {item}
