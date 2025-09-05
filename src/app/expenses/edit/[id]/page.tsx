@@ -15,6 +15,7 @@ import { useRouter, useParams } from "next/navigation";
 import { SmartSelectInput } from "@/components/SmartSelectInput";
 import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { CurrencyInput } from "@/components/CurrencyInput";
+import { Button } from "@/components/Button";
 
 const capitalizeWords = (str: string) => {
   return str
@@ -376,14 +377,14 @@ export default function EditExpensePage() {
 
               {/* Submit button */}
               <div className="pt-4">
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
+                <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300 transition-colors min-h-[44px]"
+                  loading={isSubmitting}
+                  className="w-full min-h-[44px]"
                 >
-                  {isSubmitting ? "Updating Expense..." : "Update Expense"}
-                </motion.button>
+                  Update Expense
+                </Button>
               </div>
             </form>
           </motion.div>

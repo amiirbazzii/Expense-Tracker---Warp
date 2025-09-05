@@ -7,6 +7,7 @@ import { ConvexError } from "convex/values";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import Link from "next/link";
+import { Button } from "@/components/Button";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -111,14 +112,14 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <motion.button
-              whileTap={{ scale: 0.98 }}
+            <Button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+              loading={isLoading}
+              className="w-full min-h-[44px]"
             >
-              {isLoading ? "Signing in..." : "Sign in"}
-            </motion.button>
+              Sign in
+            </Button>
           </div>
         </form>
       </motion.div>
