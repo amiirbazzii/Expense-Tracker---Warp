@@ -83,6 +83,8 @@ export function IncomeCard({ income, cardName, onDelete }: IncomeCardProps) {
                   </span>
                 )}
           </div>
+          {/* Divider above note */}
+          <div className="mt-3 -mx-4 h-px bg-[#ECECEC]" />
           {/* Notes (optional) */}
           {income.notes && (
             <p className="mt-3 text-[13px] leading-5 text-gray-400 truncate">

@@ -302,26 +302,19 @@ export default function ExpensesPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#F6F6F6]">
         <HeaderRow
           left={<h1 className="text-xl font-bold text-gray-900">Expenses</h1>}
         />
         
-        <div className="max-w-md mx-auto p-4 pt-24 pb-20">
-          {/* Input Form Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl bg-white/80 backdrop-blur-sm border border-gray-100 shadow-sm p-5 mb-6"
-          >
-            <div className="mb-5">
-              <div className="flex items-center gap-2">
-                <Receipt className="w-5 h-5 text-gray-900" />
-                <h2 className="text-lg font-semibold text-gray-900">Add New Expense</h2>
-              </div>
-              <p className="mt-1 text-sm text-gray-500">Enter details to log your spending</p>
+        <div className="max-w-lg mx-auto p-4 pt-20 pb-24">
+          {/* Input Form Section - header + fields (no card wrapper) */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Add New Expense</h2>
+              <p className="mt-1 text-[13px] leading-5 text-gray-500">Fill in the details below to track your expense</p>
             </div>
-            
+
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Form fields... */}
               {/* Amount */}
@@ -414,17 +407,17 @@ export default function ExpensesPage() {
               {/* Submit Button */}
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full bg-[#EAEAEA] text-gray-700 hover:bg-[#E0E0E0]"
                 disabled={isSubmitting || formData.category.length === 0 || !formData.cardId}
                 loading={isSubmitting}
               >
-                Add Expense
+                Fill the information
               </Button>
             </form>
           </motion.div>
 
-          {/* Expenses History Section */}
-          <div className="mt-8">
+          {/* Expenses History Section - wrapped in a light container */}
+          <div className="mt-6 rounded-lg border border-gray-200 bg-[#FAFAFA] p-4">
             <DateFilterHeader 
               monthName={monthName} 
               year={year} 
