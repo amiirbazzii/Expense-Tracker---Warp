@@ -1,11 +1,11 @@
 {
-  "name": "Expense Tracker",
-  "short_name": "ExpenseTracker",
+  "name": "Spendly",
+  "short_name": "Spendly",
   "description": "Track your daily expenses with ease",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "background_color": "#1E1E1E",
+  "theme_color": "#1E1E1E",
   "orientation": "portrait-primary",
   "icons": [
     {
