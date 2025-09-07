@@ -28,8 +28,9 @@ export const update = mutation({
       v.union(v.literal("USD"), v.literal("EUR"), v.literal("GBP"), v.literal("IRR"))
     ),
     calendar: v.optional(v.union(v.literal("gregorian"), v.literal("jalali"))),
+    language: v.optional(v.union(v.literal("en"), v.literal("fa"))),
   },
-  handler: async (ctx, { token, currency, calendar }) => {
+  handler: async (ctx, { token, currency, calendar, language }) => {
     const user = await getUserByToken({ ctx, token });
 
     if (!user) {
@@ -45,6 +46,7 @@ export const update = mutation({
       await ctx.db.patch(existingSettings._id, {
         ...(currency && { currency }),
         ...(calendar && { calendar }),
+        ...(language && { language }),
         updatedAt: Date.now(),
       });
     } else {
@@ -52,6 +54,7 @@ export const update = mutation({
         userId: user._id,
         currency: currency || "USD",
         calendar: calendar || "gregorian",
+        language: language || "en",
         updatedAt: Date.now(),
       });
     }

@@ -23,6 +23,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
+  const [hasSetTimeout, setHasSetTimeout] = useState(false);
 
   const loginMutation = useMutation(api.auth.login);
   const registerMutation = useMutation(api.auth.register);
@@ -36,8 +38,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (savedToken) {
       setToken(savedToken);
     }
-    setLoading(false);
+    setInitialLoad(false);
   }, []);
+
+  // Update loading state when user query resolves or when we have no token
+  useEffect(() => {
+    if (!initialLoad) {
+      if (!token) {
+        // No token, not loading
+        setLoading(false);
+        setHasSetTimeout(false);
+      } else {
+        // Have token - check if user query has resolved
+        if (user !== undefined) {
+          // Query resolved (either with user data or null)
+          setLoading(false);
+          setHasSetTimeout(false);
+        } else if (!hasSetTimeout) {
+          // Query still loading and we haven't set a timeout yet
+          setHasSetTimeout(true);
+          const timeoutId = setTimeout(() => {
+            console.warn('Auth query timeout after 15 seconds, token may be invalid');
+            setToken(null);
+            localStorage.removeItem('auth-token');
+            setLoading(false);
+            setHasSetTimeout(false);
+          }, 15000);
+          
+          return () => {
+            clearTimeout(timeoutId);
+            setHasSetTimeout(false);
+          };
+        }
+      }
+    }
+  }, [token, user, initialLoad, hasSetTimeout]);
 
   const login = async (username: string, password: string) => {
     try {
@@ -79,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         register,
         logout,
-        loading: loading || Boolean(token && user === undefined),
+        loading,
       }}
     >
       {children}

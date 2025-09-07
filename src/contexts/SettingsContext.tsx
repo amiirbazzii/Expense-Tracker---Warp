@@ -8,10 +8,11 @@ import { Doc } from "../../convex/_generated/dataModel";
 
 export type Currency = Doc<"userSettings">["currency"];
 export type Calendar = Doc<"userSettings">["calendar"];
+export type Language = Doc<"userSettings">["language"];
 
 interface SettingsContextType {
   settings: Doc<"userSettings"> | null | undefined;
-  updateSettings: (args: { currency?: Currency; calendar?: Calendar }) => Promise<void>;
+  updateSettings: (args: { currency?: Currency; calendar?: Calendar; language?: Language }) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -22,7 +23,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const settings = useQuery(api.userSettings.get, token ? { token } : "skip");
   const updateMutation = useMutation(api.userSettings.update);
 
-  const updateSettings = async (args: { currency?: Currency; calendar?: Calendar }) => {
+  const updateSettings = async (args: { currency?: Currency; calendar?: Calendar; language?: Language }) => {
     if (!token) {
       console.error("Authentication token not found. Cannot update settings.");
       return;

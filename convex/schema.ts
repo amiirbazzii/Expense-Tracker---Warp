@@ -56,6 +56,7 @@ export default defineSchema({
       v.literal("IRR")
     ),
     calendar: v.union(v.literal("gregorian"), v.literal("jalali")),
+    language: v.optional(v.union(v.literal("en"), v.literal("fa"))),
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
 
