@@ -84,6 +84,8 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
         <input
           ref={inputRef}
           type="text"
+          inputMode="decimal"
+          pattern="[0-9]*"
           value={formatNumber(value)}
           onChange={handleChange}
           className={`w-full bg-transparent outline-none placeholder:text-gray-500 ${value ? 'font-medium text-gray-900' : 'font-normal text-gray-900'}`}
