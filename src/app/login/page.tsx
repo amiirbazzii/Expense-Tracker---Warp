@@ -13,8 +13,24 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
   const { login, user } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    
+    setIsOnline(navigator.onLine);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -28,6 +44,19 @@ export default function LoginPage() {
     if (!username.trim() || !password.trim()) {
       toast.error("Please enter your username and password.");
       return;
+    }
+
+    // Check if offline
+    if (!navigator.onLine) {
+      const cachedToken = localStorage.getItem("auth-token");
+      if (cachedToken) {
+        toast.success("Using cached credentials (offline mode)");
+        router.push("/expenses");
+        return;
+      } else {
+        toast.error("No internet connection. Please connect to login for the first time.");
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -65,6 +94,11 @@ export default function LoginPage() {
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Welcome Back
           </h2>
+          {!isOnline && (
+            <div className="mt-2 text-center text-sm text-orange-600 bg-orange-50 p-2 rounded">
+              📱 Offline Mode - Using cached credentials
+            </div>
+          )}
           <p className="mt-2 text-center text-sm text-gray-600">
             New here?{" "}
             <Link

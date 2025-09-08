@@ -8,6 +8,7 @@ import { SettingsProvider } from "@/contexts/SettingsContext";
 import { OfflineProvider } from "@/contexts/OfflineContext";
 import { Toaster } from "sonner";
 import { NetworkStatusIndicator } from "@/components/NetworkStatusIndicator";
+import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next"
 
@@ -67,6 +68,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Expense Tracker" />
       </head>
       <body className={`${poppins.variable} ${geistMono.variable} font-sans antialiased`}>
+        <ServiceWorkerRegistration />
         <ConvexProvider>
           <AuthProvider>
             <SettingsProvider>
