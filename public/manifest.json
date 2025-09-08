@@ -4,8 +4,8 @@
   "description": "Track your daily expenses with ease",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1E1E1E",
-  "theme_color": "#1E1E1E",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "orientation": "portrait-primary",
   "icons": [
     {
