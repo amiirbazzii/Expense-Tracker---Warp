@@ -173,11 +173,54 @@ export function EnhancedNetworkStatusIndicator() {
 
 // Enhanced offline banner for better user experience
 export function OfflineModeIndicator() {
-  const { isOnline, pendingOperationsCount } = useOfflineFirst();
+  const context = useOfflineFirst();
   const [dismissed, setDismissed] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Show banner if offline
-  const shouldShow = !isOnline && !dismissed;
+  // Wait for proper initialization
+  useEffect(() => {
+    if (context && context.isInitialized) {
+      setIsInitialized(true);
+    }
+  }, [context]);
+
+  // Only show banner if properly initialized, confirmed offline, and not dismissed
+  const shouldShow = isInitialized && 
+                    context && 
+                    !context.isOnline && 
+                    !dismissed &&
+                    typeof navigator !== 'undefined' && 
+                    !navigator.onLine; // Double-check with native API
+
+  // Debug logging (remove in production)
+  useEffect(() => {
+    console.log('OfflineModeIndicator Debug:', {
+      isInitialized,
+      contextExists: !!context,
+      contextIsOnline: context?.isOnline,
+      navigatorOnLine: typeof navigator !== 'undefined' ? navigator.onLine : 'undefined',
+      dismissed,
+      shouldShow
+    });
+  }, [isInitialized, context, dismissed, shouldShow]);
+
+  // Auto-dismiss after 10 seconds
+  useEffect(() => {
+    if (shouldShow) {
+      const timer = setTimeout(() => {
+        setDismissed(true);
+      }, 10000); // Auto-dismiss after 10 seconds
+      
+      return () => clearTimeout(timer);
+    }
+  }, [shouldShow]);
+
+  // Reset dismissed state when coming back online
+  useEffect(() => {
+    if (context?.isOnline && navigator.onLine) {
+      setDismissed(false);
+    }
+  }, [context?.isOnline]);
 
   if (!shouldShow) return null;
 
@@ -192,8 +235,8 @@ export function OfflineModeIndicator() {
             </p>
             <p className="text-xs text-yellow-700">
               Changes are saved locally and will sync when connection is restored.
-              {pendingOperationsCount > 0 && (
-                <span className="font-medium"> ({pendingOperationsCount} pending)</span>
+              {context?.pendingOperationsCount > 0 && (
+                <span className="font-medium"> ({context.pendingOperationsCount} pending)</span>
               )}
             </p>
           </div>

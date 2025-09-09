@@ -79,7 +79,7 @@ export default function RootLayout({
                   {children}
                   <div id="modal-root"></div>
                   <EnhancedNetworkStatusIndicator />
-                  <OfflineModeIndicator />
+                  {/* <OfflineModeIndicator /> */}
                   <Toaster position="top-center" />
                 </OfflineProvider>
               </SettingsProvider>
