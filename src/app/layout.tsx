@@ -1,48 +1,38 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Poppins } from "next/font/google";
+import "./critical.css";
 import "./globals.css";
 import { ConvexProvider } from "@/providers/ConvexProvider";
 import { OfflineFirstWrapper } from "@/providers/OfflineFirstWrapper";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { OfflineProvider } from "@/contexts/OfflineContext";
-import { Toaster } from "sonner";
 import { NetworkStatusIndicator } from "@/components/NetworkStatusIndicator";
-import { EnhancedNetworkStatusIndicator, OfflineModeIndicator } from "@/components/EnhancedNetworkStatusIndicator";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next"
+import { LazyAnalytics, LazySpeedInsights, LazyToaster, LazyEnhancedNetworkStatusIndicator } from "@/components/LazyComponents";
 
 const geistMono = localFont({
   src: "./fonts/GeistMonoVF.woff",
   variable: "--font-geist-mono",
   weight: "100 900",
+  display: "swap",
+  preload: true,
 });
 
 const poppins = Poppins({
   subsets: ["latin"],
-  weight: [
-    "100",
-    "200",
-    "300",
-    "400",
-    "500",
-    "600",
-    "700",
-    "800",
-    "900",
-  ],
+  weight: ["400", "500", "600", "700"], // Reduced weights
   variable: "--font-poppins",
   display: "swap",
+  preload: true,
+  fallback: ['system-ui', 'arial'],
 });
 
 export const metadata: Metadata = {
   title: "Expense Tracker",
   description: "Track your daily expenses with ease",
   manifest: "/manifest.json",
-  themeColor: "#000000",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1",
   icons: {
     icon: [
       { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
@@ -54,6 +44,13 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: "#000000",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -62,6 +59,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
@@ -78,16 +78,16 @@ export default function RootLayout({
                 <OfflineProvider>
                   {children}
                   <div id="modal-root"></div>
-                  <EnhancedNetworkStatusIndicator />
+                  <LazyEnhancedNetworkStatusIndicator />
                   {/* <OfflineModeIndicator /> */}
-                  <Toaster position="top-center" />
+                  <LazyToaster position="top-center" />
                 </OfflineProvider>
               </SettingsProvider>
             </OfflineFirstWrapper>
           </AuthProvider>
         </ConvexProvider>
-        <Analytics />
-        <SpeedInsights />
+        <LazyAnalytics />
+        <LazySpeedInsights />
       </body>
     </html>
   );
