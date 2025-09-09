@@ -52,6 +52,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Have token - check if user query has resolved
         if (user !== undefined) {
           // Query resolved (either with user data or null)
+          if (user === null) {
+            // User query returned null - token is invalid
+            console.warn('Token appears to be invalid, clearing auth state');
+            setToken(null);
+            localStorage.removeItem('auth-token');
+          }
           setLoading(false);
           setHasSetTimeout(false);
         } else if (!hasSetTimeout) {
@@ -66,18 +72,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Query still loading and we haven't set a timeout yet
           setHasSetTimeout(true);
           const timeoutId = setTimeout(() => {
-            console.warn('Auth query timeout after 15 seconds, checking if offline');
+            console.warn('Auth query timeout after 10 seconds, checking if offline');
             if (!navigator.onLine) {
               // If offline, keep the token and stop loading
               setLoading(false);
             } else {
               // If online but query failed, token may be invalid
+              console.warn('Clearing invalid token after timeout');
               setToken(null);
               localStorage.removeItem('auth-token');
               setLoading(false);
             }
             setHasSetTimeout(false);
-          }, 15000);
+          }, 10000); // Reduced from 15 to 10 seconds
           
           return () => {
             clearTimeout(timeoutId);

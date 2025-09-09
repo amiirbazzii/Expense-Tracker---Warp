@@ -58,7 +58,7 @@ const capitalizeWords = (str: string) => {
 };
 
 export default function ExpensesPage() {
-  const { token } = useAuth();
+  const { token, loading } = useAuth();
   const router = useRouter();
   const [formData, setFormData] = useState<ExpenseFormData>({
     amount: "",
@@ -78,6 +78,24 @@ export default function ExpensesPage() {
     removeFromQueue, 
     updateItemStatus 
   } = useOfflineQueue<ExpenseCreationData>('offline-expenses');
+
+  // Early return if still loading authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect to login if not authenticated
+  if (!token) {
+    router.push('/login');
+    return null;
+  }
 
   // Mutations
   const createExpenseMutation = useMutation(api.expenses.createExpense);
@@ -122,6 +140,17 @@ export default function ExpensesPage() {
               removeFromQueue(item.id);
             } catch (error) {
               console.error(`Failed to sync expense ${item.id}:`, error);
+              
+              // Check if it's an authentication error
+              if (error && typeof error === 'object' && 'message' in error) {
+                const errorMessage = (error as any).message || '';
+                if (errorMessage.includes('Authentication required') || errorMessage.includes('authentication')) {
+                  toast.error("Your session has expired during sync. Please log in again.");
+                  router.push('/login');
+                  return;
+                }
+              }
+              
               updateItemStatus(item.id, 'failed');
             }
           });
@@ -225,8 +254,19 @@ export default function ExpensesPage() {
         cardId: formData.cardId, // Keep the same card selected
       });
     } catch (error: unknown) {
+      console.error('Error creating expense:', error);
+      
+      // Check if it's an authentication error
+      if (error && typeof error === 'object' && 'message' in error) {
+        const errorMessage = (error as any).message || '';
+        if (errorMessage.includes('Authentication required') || errorMessage.includes('authentication')) {
+          toast.error("Your session has expired. Please log in again.");
+          router.push('/login');
+          return;
+        }
+      }
+      
       toast.error("Could not add your expense. Please try again.");
-      console.error(error);
     } finally {
       setIsSubmitting(false);
     }

@@ -403,12 +403,12 @@ export class PerformanceOptimizer {
     let oldestKey: string | null = null;
     let oldestTime = Date.now();
     
-    for (const [key, entry] of this.queryCache) {
+    this.queryCache.forEach((entry, key) => {
       if (entry.timestamp < oldestTime) {
         oldestTime = entry.timestamp;
         oldestKey = key;
       }
-    }
+    });
     
     return oldestKey;
   }
@@ -503,25 +503,31 @@ export class PerformanceOptimizer {
   private performCleanup(): void {
     // Clean expired cache entries
     const now = Date.now();
-    for (const [key, entry] of this.queryCache) {
+    const keysToDelete: string[] = [];
+    this.queryCache.forEach((entry, key) => {
       if (now - entry.timestamp > this.config.cacheExpirationTime) {
-        this.queryCache.delete(key);
+        keysToDelete.push(key);
       }
-    }
+    });
+    keysToDelete.forEach(key => this.queryCache.delete(key));
     
     // Clean up completed timers
-    for (const [key, timer] of this.debounceTimers) {
+    const debounceKeysToDelete: string[] = [];
+    this.debounceTimers.forEach((timer, key) => {
       if (!timer) {
-        this.debounceTimers.delete(key);
+        debounceKeysToDelete.push(key);
       }
-    }
+    });
+    debounceKeysToDelete.forEach(key => this.debounceTimers.delete(key));
     
     // Clean old throttle entries
-    for (const [key, timestamp] of this.throttleTimers) {
+    const throttleKeysToDelete: string[] = [];
+    this.throttleTimers.forEach((timestamp, key) => {
       if (now - timestamp > this.config.throttleDelay * 2) {
-        this.throttleTimers.delete(key);
+        throttleKeysToDelete.push(key);
       }
-    }
+    });
+    throttleKeysToDelete.forEach(key => this.throttleTimers.delete(key));
   }
   
   /**
@@ -629,9 +635,9 @@ export class PerformanceOptimizer {
     }
     
     // Clear all timers
-    for (const timer of this.debounceTimers.values()) {
+    this.debounceTimers.forEach(timer => {
       clearTimeout(timer);
-    }
+    });
     
     this.debounceTimers.clear();
     this.throttleTimers.clear();
@@ -639,4 +645,4 @@ export class PerformanceOptimizer {
     this.syncQueue.length = 0;
     this.activeSyncs.clear();
   }
-}"
+}

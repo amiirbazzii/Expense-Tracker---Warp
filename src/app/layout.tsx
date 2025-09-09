@@ -3,11 +3,13 @@ import localFont from "next/font/local";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 import { ConvexProvider } from "@/providers/ConvexProvider";
+import { OfflineFirstWrapper } from "@/providers/OfflineFirstWrapper";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { OfflineProvider } from "@/contexts/OfflineContext";
 import { Toaster } from "sonner";
 import { NetworkStatusIndicator } from "@/components/NetworkStatusIndicator";
+import { EnhancedNetworkStatusIndicator, OfflineModeIndicator } from "@/components/EnhancedNetworkStatusIndicator";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next"
@@ -71,14 +73,17 @@ export default function RootLayout({
         <ServiceWorkerRegistration />
         <ConvexProvider>
           <AuthProvider>
-            <SettingsProvider>
-              <OfflineProvider>
-                {children}
-                <div id="modal-root"></div>
-                <NetworkStatusIndicator />
-                <Toaster position="top-center" />
-              </OfflineProvider>
-            </SettingsProvider>
+            <OfflineFirstWrapper>
+              <SettingsProvider>
+                <OfflineProvider>
+                  {children}
+                  <div id="modal-root"></div>
+                  <EnhancedNetworkStatusIndicator />
+                  <OfflineModeIndicator />
+                  <Toaster position="top-center" />
+                </OfflineProvider>
+              </SettingsProvider>
+            </OfflineFirstWrapper>
           </AuthProvider>
         </ConvexProvider>
         <Analytics />
