@@ -12,10 +12,28 @@ import { NetworkStatusIndicator } from "@/components/NetworkStatusIndicator";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import { LazyAnalytics, LazySpeedInsights, LazyToaster, LazyEnhancedNetworkStatusIndicator } from "@/components/LazyComponents";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { LanguageWrapper } from "@/components/LanguageWrapper";
 
 const geistMono = localFont({
   src: "./fonts/GeistMonoVF.woff",
   variable: "--font-geist-mono",
+  weight: "100 900",
+  display: "swap",
+  preload: true,
+});
+
+const iranSansX = localFont({
+  src: [
+    {
+      path: "./fonts/IRANSansXV.woff2",
+      style: "normal",
+    },
+    {
+      path: "./fonts/IRANSansXV.woff",
+      style: "normal",
+    },
+  ],
+  variable: "--font-iran-sans",
   weight: "100 900",
   display: "swap",
   preload: true,
@@ -70,20 +88,22 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Expense Tracker" />
       </head>
-      <body className={`${poppins.variable} ${geistMono.variable} font-sans antialiased`}>
+      <body className={`${poppins.variable} ${geistMono.variable} ${iranSansX.variable} font-sans antialiased`}>
         <ErrorBoundary>
           <ServiceWorkerRegistration />
           <ConvexProvider>
             <AuthProvider>
               <OfflineFirstWrapper>
                 <SettingsProvider>
-                  <OfflineProvider>
-                    {children}
-                    <div id="modal-root"></div>
-                    <LazyEnhancedNetworkStatusIndicator />
-                    {/* <OfflineModeIndicator /> */}
-                    <LazyToaster position="top-center" />
-                  </OfflineProvider>
+                  <LanguageWrapper>
+                    <OfflineProvider>
+                      {children}
+                      <div id="modal-root"></div>
+                      <LazyEnhancedNetworkStatusIndicator />
+                      {/* <OfflineModeIndicator /> */}
+                      <LazyToaster position="top-center" />
+                    </OfflineProvider>
+                  </LanguageWrapper>
                 </SettingsProvider>
               </OfflineFirstWrapper>
             </AuthProvider>

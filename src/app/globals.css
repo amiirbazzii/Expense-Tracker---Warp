@@ -45,4 +45,96 @@ body {
   .scrollbar-hide::-webkit-scrollbar-thumb {
     display: none;
   }
+
+  /* Persian/Farsi text support */
+  .font-persian {
+    font-family: var(--font-iran-sans), Tahoma, Arial, sans-serif;
+  }
+
+  .font-english {
+    font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  }
+
+  /* Auto-detect Persian characters and apply Persian font */
+  /* Persian Unicode ranges: Arabic, Arabic Supplement, Arabic Extended-A */
+  :not(input):not(textarea):not(select) {
+    /* Apply Persian font if text contains Persian/Arabic characters */
+    font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  }
+
+  /* Persian text detection using CSS */
+  *:lang(fa),
+  *[dir="rtl"],
+  .persian-text {
+    font-family: var(--font-iran-sans), Tahoma, Arial, sans-serif !important;
+    /* Remove RTL behavior - keep everything LTR for now */
+    direction: ltr;
+    text-align: left;
+  }
+
+  /* Force Persian font for any element containing Persian characters */
+  .force-persian {
+    font-family: var(--font-iran-sans), Tahoma, Arial, sans-serif !important;
+    /* Keep LTR direction and left alignment */
+    direction: ltr !important;
+    text-align: left !important;
+  }
+
+  /* Keep numbers and English words LTR within Persian text */
+  .force-persian .english-inline {
+    direction: ltr !important;
+    display: inline-block;
+    text-align: left !important;
+  }
+
+  /* English content in Persian context */
+  [lang="fa"] .english-text, [dir="rtl"] .english-text {
+    font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+    direction: ltr;
+    text-align: left;
+    display: inline-block;
+  }
+
+  /* Persian content in English context */
+  [lang="en"] .persian-text, [dir="ltr"] .persian-text {
+    font-family: var(--font-iran-sans), Tahoma, Arial, sans-serif;
+    direction: ltr;
+    text-align: left;
+    display: inline-block;
+  }
+
+  /* Document-level font application */
+  html.font-persian {
+    font-family: var(--font-iran-sans), Tahoma, Arial, sans-serif;
+  }
+
+  html.font-english {
+    font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  }
+
+  /* Override for Persian text everywhere */
+  html {
+    /* Default to English font */
+    font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  }
+
+  /* Apply Persian font to any text containing Persian characters */
+  html :is(
+    h1, h2, h3, h4, h5, h6,
+    p, span, div, label,
+    button, a, li, td, th
+  ):not(input):not(textarea):not(select) {
+    /* This will be handled by JavaScript font detection */
+  }
+
+  /* Persian number support */
+  .persian-numbers {
+    font-feature-settings: "locl";
+    font-variant-numeric: lining-nums;
+  }
+
+  /* Mixed content containers */
+  .mixed-content {
+    unicode-bidi: plaintext;
+  }
 }

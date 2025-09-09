@@ -27,6 +27,18 @@ const config: Config = {
           '"Segoe UI Symbol"',
           '"Noto Color Emoji"',
         ],
+        'persian': [
+          'var(--font-iran-sans)',
+          'Tahoma',
+          'Arial',
+          'sans-serif',
+        ],
+        'english': [
+          'var(--font-poppins)',
+          'ui-sans-serif',
+          'system-ui',
+          'sans-serif',
+        ],
       },
     },
   },

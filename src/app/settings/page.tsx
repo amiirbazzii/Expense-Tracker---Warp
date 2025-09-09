@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOffline } from "@/contexts/OfflineContext";
-import { useSettings, Currency, Calendar, Language } from "@/contexts/SettingsContext";
+import { useSettings, Currency, Calendar } from "@/contexts/SettingsContext";
 
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { BottomNav } from "@/components/BottomNav";
@@ -157,26 +157,7 @@ export default function SettingsPage() {
                     </select>
                   </div>
 
-                  {/* Language */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Language *
-                    </label>
-                    <select
-                      value={settings?.language || "en"}
-                      onChange={async (e) => {
-                        await updateSettings({ language: e.target.value as Language });
-                        toast.success("Language updated");
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
-                    >
-                      {(["en", "fa"] as Language[]).map((lang) => (
-                        <option key={lang} value={lang}>
-                          {lang === "en" ? "English" : "فارسی"}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+
 
 
                 </div>

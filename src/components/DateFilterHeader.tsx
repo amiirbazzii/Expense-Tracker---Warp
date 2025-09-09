@@ -1,6 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useSettings } from "@/contexts/SettingsContext";
-import { formatDate } from "@/lib/formatters";
 import { Button } from "@/components/Button";
 
 
