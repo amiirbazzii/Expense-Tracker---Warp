@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOfflineCapability } from "@/providers/OfflineFirstProvider";
@@ -10,46 +10,89 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, loading } = useAuth();
-  const { canFunctionOffline, isInitialized, isOnline } = useOfflineCapability();
+  const { user, loading, token } = useAuth();
   const router = useRouter();
+  const [hasRedirected, setHasRedirected] = useState(false);
+  
+  // Use a try-catch for the offline capability hook in case it's not properly initialized
+  let offlineState = {
+    canFunctionOffline: false,
+    isInitialized: false,
+    isOnline: true
+  };
+  
+  try {
+    offlineState = useOfflineCapability();
+  } catch (error) {
+    console.warn('ProtectedRoute: OfflineCapability not available, proceeding with online-only mode:', error);
+    // If offline provider fails, mark as initialized to prevent blocking
+    offlineState.isInitialized = true;
+  }
+  
+  const { canFunctionOffline, isInitialized, isOnline } = offlineState;
 
   useEffect(() => {
-    // Only redirect to login if:
-    // 1. Not loading
-    // 2. No authenticated user
-    // 3. Cannot function offline (no local user data)
-    if (!loading && !user && isInitialized && !canFunctionOffline) {
-      router.replace("/login");
+    // Don't redirect while still loading authentication or offline capabilities
+    if (loading || !isInitialized || hasRedirected) {
       return;
     }
-    
+
+    // If we have a user, we're authenticated and good to go
+    if (user) {
+      return;
+    }
+
     // If offline but can function with local data, allow access
-    if (!user && canFunctionOffline && !isOnline) {
+    if (canFunctionOffline && !isOnline) {
       console.log('ProtectedRoute: Allowing offline access with local data');
       return;
     }
-  }, [user, loading, router, canFunctionOffline, isInitialized, isOnline]);
 
-  // Show loading while authentication and offline systems are initializing
+    // If we have a token but no user (possible network issue), allow temporary access
+    if (token && !user && isOnline) {
+      // Give the user query a bit more time to resolve
+      const timer = setTimeout(() => {
+        if (!user && token) {
+          console.log('ProtectedRoute: Token exists but no user after timeout, continuing anyway');
+        }
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+
+    // No authentication available - redirect to login
+    if (!user && !token && !hasRedirected) {
+      console.log('ProtectedRoute: No authentication, redirecting to login');
+      setHasRedirected(true);
+      router.replace("/login");
+    }
+  }, [user, loading, router, canFunctionOffline, isInitialized, isOnline, token, hasRedirected]);
+
+  // Single loading screen while initializing
   if (loading || !isInitialized) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <div className="text-lg text-gray-600">
-            {!isInitialized ? 'Initializing offline capabilities...' : 'Loading...'}
-          </div>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+          <div className="mt-4 text-lg font-medium text-gray-900">Loading...</div>
+          <div className="mt-2 text-sm text-gray-600">Initializing your session</div>
         </div>
       </div>
     );
   }
 
-  // Allow access if user is authenticated OR if offline with local capabilities
-  if (user || (canFunctionOffline && !isOnline)) {
+  // Allow access if authenticated or can function offline
+  if (user || (canFunctionOffline && !isOnline) || token) {
     return <>{children}</>;
   }
 
-  // Fallback: no user and no offline capability
-  return null;
+  // If we get here, redirect is in progress
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+        <div className="mt-4 text-lg font-medium text-gray-900">Redirecting...</div>
+        <div className="mt-2 text-sm text-gray-600">Taking you to the login page</div>
+      </div>
+    </div>
+  );
 }

@@ -58,7 +58,7 @@ const capitalizeWords = (str: string) => {
 };
 
 export default function ExpensesPage() {
-  const { token, loading } = useAuth();
+  const { token } = useAuth();
   const router = useRouter();
   const [formData, setFormData] = useState<ExpenseFormData>({
     amount: "",
@@ -69,8 +69,9 @@ export default function ExpensesPage() {
     cardId: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isSyncing, setIsSyncing] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [pendingDeletions, setPendingDeletions] = useState<string[]>([]);
+  
   const isOnline = useOnlineStatus();
   const { 
     queue: offlineExpenses, 
@@ -79,23 +80,7 @@ export default function ExpensesPage() {
     updateItemStatus 
   } = useOfflineQueue<ExpenseCreationData>('offline-expenses');
 
-  // Early return if still loading authentication
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Redirect to login if not authenticated
-  if (!token) {
-    router.push('/login');
-    return null;
-  }
+  // Remove all authentication loading logic - let ProtectedRoute handle it
 
   // Mutations
   const createExpenseMutation = useMutation(api.expenses.createExpense);

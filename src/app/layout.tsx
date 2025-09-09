@@ -11,6 +11,7 @@ import { OfflineProvider } from "@/contexts/OfflineContext";
 import { NetworkStatusIndicator } from "@/components/NetworkStatusIndicator";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import { LazyAnalytics, LazySpeedInsights, LazyToaster, LazyEnhancedNetworkStatusIndicator } from "@/components/LazyComponents";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const geistMono = localFont({
   src: "./fonts/GeistMonoVF.woff",
@@ -70,22 +71,24 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Expense Tracker" />
       </head>
       <body className={`${poppins.variable} ${geistMono.variable} font-sans antialiased`}>
-        <ServiceWorkerRegistration />
-        <ConvexProvider>
-          <AuthProvider>
-            <OfflineFirstWrapper>
-              <SettingsProvider>
-                <OfflineProvider>
-                  {children}
-                  <div id="modal-root"></div>
-                  <LazyEnhancedNetworkStatusIndicator />
-                  {/* <OfflineModeIndicator /> */}
-                  <LazyToaster position="top-center" />
-                </OfflineProvider>
-              </SettingsProvider>
-            </OfflineFirstWrapper>
-          </AuthProvider>
-        </ConvexProvider>
+        <ErrorBoundary>
+          <ServiceWorkerRegistration />
+          <ConvexProvider>
+            <AuthProvider>
+              <OfflineFirstWrapper>
+                <SettingsProvider>
+                  <OfflineProvider>
+                    {children}
+                    <div id="modal-root"></div>
+                    <LazyEnhancedNetworkStatusIndicator />
+                    {/* <OfflineModeIndicator /> */}
+                    <LazyToaster position="top-center" />
+                  </OfflineProvider>
+                </SettingsProvider>
+              </OfflineFirstWrapper>
+            </AuthProvider>
+          </ConvexProvider>
+        </ErrorBoundary>
         <LazyAnalytics />
         <LazySpeedInsights />
       </body>

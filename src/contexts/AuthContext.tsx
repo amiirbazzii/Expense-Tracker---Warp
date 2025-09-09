@@ -64,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Check if we're offline
           if (!navigator.onLine) {
             // If offline and we have a token, assume user is authenticated
+            console.log('AuthContext: Offline mode - keeping token and stopping loading');
             setLoading(false);
             setHasSetTimeout(false);
             return;
@@ -72,9 +73,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Query still loading and we haven't set a timeout yet
           setHasSetTimeout(true);
           const timeoutId = setTimeout(() => {
-            console.warn('Auth query timeout after 10 seconds, checking if offline');
+            console.warn('Auth query timeout after 5 seconds, checking if offline');
             if (!navigator.onLine) {
               // If offline, keep the token and stop loading
+              console.log('AuthContext: Timeout while offline - keeping authentication state');
               setLoading(false);
             } else {
               // If online but query failed, token may be invalid
@@ -84,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setLoading(false);
             }
             setHasSetTimeout(false);
-          }, 10000); // Reduced from 15 to 10 seconds
+          }, 5000); // Reduced to 5 seconds for faster response
           
           return () => {
             clearTimeout(timeoutId);

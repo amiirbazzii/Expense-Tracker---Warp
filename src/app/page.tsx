@@ -22,6 +22,17 @@ export default function Home() {
   const router = useRouter();
   const [isOnline, setIsOnline] = useState(true);
   const [redirecting, setRedirecting] = useState(false);
+  const [timeoutReached, setTimeoutReached] = useState(false);
+
+  // Timeout to prevent infinite loading
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      console.warn('Home: Loading timeout reached, forcing redirect');
+      setTimeoutReached(true);
+    }, 5000); // 5 second timeout (reduced from 8)
+
+    return () => clearTimeout(timeoutId);
+  }, []);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -39,14 +50,27 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!loading && !redirecting) {
+    // Force redirect if loading is taking too long
+    if (timeoutReached && !redirecting) {
+      console.log('Home: Timeout reached, forcing redirect to login');
       setRedirecting(true);
+      router.replace("/login");
+      return;
+    }
+
+    if ((!loading || timeoutReached) && !redirecting) {
+      setRedirecting(true);
+      
+      console.log('Home: Redirecting - user:', !!user, 'token:', !!token, 'online:', isOnline);
       
       // Use requestIdleCallback for non-critical redirects
       const redirect = () => {
         if (user || (token && !isOnline)) {
+          console.log('Home: Redirecting to expenses');
           router.replace("/expenses");
         } else {
+          // For new users or when no authentication is available
+          console.log('Home: Redirecting to login');
           router.replace("/login");
         }
       };
@@ -54,10 +78,11 @@ export default function Home() {
       if ('requestIdleCallback' in window) {
         requestIdleCallback(redirect);
       } else {
-        setTimeout(redirect, 0);
+        // Fallback with small delay to ensure providers are ready
+        setTimeout(redirect, 100);
       }
     }
-  }, [user, loading, token, isOnline, router, redirecting]);
+  }, [user, loading, token, isOnline, router, redirecting, timeoutReached]);
 
   return <LoadingSkeleton />;
 }
