@@ -45,7 +45,7 @@ export function BottomNav() {
                 className={`flex flex-col items-center p-2 min-w-[44px] min-h-[44px] justify-center ${isActive ? "text-black" : "text-gray-400"
                   }`}
               >
-                <Icon size={20} />
+                <Icon size={24} />
                 <span className={`text-xs mt-1 ${isActive ? "font-medium" : "font-normal"
                   }`}>{item.label}</span>
               </motion.div>
