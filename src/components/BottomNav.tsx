@@ -3,22 +3,22 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Plus, BarChart3, Settings, TrendingUp } from "lucide-react";
+import { CirclePlus, ChartPie, Settings, CircleArrowUp } from "lucide-react";
 
 const navItems = [
   {
     href: "/expenses",
-    icon: Plus,
+    icon: CirclePlus,
     label: "Expenses",
   },
   {
     href: "/income",
-    icon: TrendingUp,
+    icon: CircleArrowUp,
     label: "Income",
   },
   {
     href: "/dashboard",
-    icon: BarChart3,
+    icon: ChartPie,
     label: "Dashboard",
   },
   {
@@ -42,12 +42,12 @@ export function BottomNav() {
             <Link key={item.href} href={item.href}>
               <motion.div
                 whileTap={{ scale: 0.95 }}
-                className={`flex flex-col items-center p-2 min-w-[44px] min-h-[44px] justify-center ${
-                  isActive ? "text-blue-600" : "text-gray-600"
-                }`}
+                className={`flex flex-col items-center p-2 min-w-[44px] min-h-[44px] justify-center ${isActive ? "text-black" : "text-gray-400"
+                  }`}
               >
                 <Icon size={20} />
-                <span className="text-xs mt-1">{item.label}</span>
+                <span className={`text-xs mt-1 ${isActive ? "font-medium" : "font-normal"
+                  }`}>{item.label}</span>
               </motion.div>
             </Link>
           );
