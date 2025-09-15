@@ -90,7 +90,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           return () => {
             clearTimeout(timeoutId);
-            setHasSetTimeout(false);
           };
         }
       }
