@@ -9,6 +9,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { BottomNav } from "@/components/BottomNav";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { HeaderRow } from "@/components/HeaderRow";
+import { RecoveryCodeCard } from "@/components/RecoveryCodeCard";
 import { User, LogOut, Wifi, WifiOff, RefreshCw, CreditCard, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -164,6 +165,8 @@ export default function SettingsPage() {
               )}
             </div>
 
+            {/* Recovery Code Section */}
+            <RecoveryCodeCard />
 
             {/* Actions */}
             <div className="space-y-4">

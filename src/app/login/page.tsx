@@ -155,6 +155,15 @@ export default function LoginPage() {
               Sign in
             </Button>
           </div>
+
+          <div className="text-center">
+            <Link
+              href="/forgot-password"
+              className="font-medium text-blue-600 hover:text-blue-500 text-sm"
+            >
+              Forgot Password?
+            </Link>
+          </div>
         </form>
       </motion.div>
     </div>

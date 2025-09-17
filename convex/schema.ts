@@ -7,6 +7,8 @@ export default defineSchema({
     hashedPassword: v.string(),
     tokenIdentifier: v.string(),
     hasSeenOnboarding: v.optional(v.boolean()),
+    hashedRecoveryCode: v.optional(v.string()),
+    recoveryCodeCreatedAt: v.optional(v.number()),
   }).index("by_username", ["username"]).index("by_token", ["tokenIdentifier"]),
 
   expenses: defineTable({
