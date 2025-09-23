@@ -25,7 +25,9 @@ const withPWA = require('next-pwa')({
       },
     },
     {
-      urlPattern: /^https?.*/,
+      // Avoid caching HTML document navigations to prevent stale app shell issues
+      // that can cause unexpected redirects (e.g., to /expenses) on prod.
+      urlPattern: ({ request }) => request.destination !== 'document',
       handler: 'NetworkFirst',
       options: {
         cacheName: 'offlineCache',
