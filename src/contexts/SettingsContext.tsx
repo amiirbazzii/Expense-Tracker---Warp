@@ -20,7 +20,16 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const { token } = useAuth();
-  const settings = useQuery(api.userSettings.get, token ? { token } : "skip");
+  
+  // Add error handling for the settings query
+  let settings;
+  try {
+    settings = useQuery(api.userSettings.get, token ? { token } : "skip");
+  } catch (error) {
+    console.error('Settings query error:', error);
+    settings = null;
+  }
+  
   const updateMutation = useMutation(api.userSettings.update);
 
   const updateSettings = async (args: { currency?: Currency; calendar?: Calendar; language?: Language }) => {

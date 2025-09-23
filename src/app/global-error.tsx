@@ -15,21 +15,10 @@ export default function GlobalError({
   useEffect(() => {
     // Log the error for debugging
     console.error('Global error caught:', error);
+    console.log('Current pathname when error occurred:', window?.location?.pathname);
     
-    // Try to reload the page first, only redirect to home if that fails
-    const timer = setTimeout(() => {
-      // Check if we're on a specific page and should stay there
-      const currentPath = window.location.pathname;
-      if (currentPath && currentPath !== '/' && !currentPath.includes('undefined')) {
-        console.log('Global error: Attempting to reload current page:', currentPath);
-        window.location.reload();
-      } else {
-        console.log('Global error: Redirecting to home');
-        router.replace('/');
-      }
-    }, 1000);
-
-    return () => clearTimeout(timer);
+    // Don't auto-redirect on global errors to prevent redirect loops
+    // Let the user stay on the current page and handle the error gracefully
   }, [error, router]);
 
   return (
@@ -37,9 +26,19 @@ export default function GlobalError({
       <body>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-            <div className="mt-4 text-lg font-medium text-gray-900">Redirecting...</div>
-            <div className="mt-2 text-sm text-gray-600">Taking you to the home page</div>
+            <div className="text-red-500 mb-4">
+              <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <div className="mt-4 text-lg font-medium text-gray-900">Application Error</div>
+            <div className="mt-2 text-sm text-gray-600">Something went wrong. Please refresh the page.</div>
+            <button 
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Refresh Page
+            </button>
           </div>
         </div>
       </body>

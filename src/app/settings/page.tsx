@@ -20,8 +20,11 @@ export default function SettingsPage() {
   const { settings, updateSettings, isLoading: settingsLoading } = useSettings();
   const router = useRouter();
 
-  // Safe recovery code component with error handling
+  // Safe recovery code component with error handling - temporarily disabled
   const SafeRecoveryCodeCard = () => {
+    // Temporarily return null to debug redirect issue
+    return null;
+    
     try {
       return <RecoveryCodeCard />;
     } catch (error) {
@@ -38,6 +41,7 @@ export default function SettingsPage() {
 
   // Debug logging for production issues
   console.log('SettingsPage render - user:', !!user, 'token:', !!token, 'settings:', !!settings);
+  console.log('SettingsPage current pathname:', window?.location?.pathname);
 
   const handleLogout = async () => {
     try {
