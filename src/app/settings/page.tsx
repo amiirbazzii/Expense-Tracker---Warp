@@ -20,11 +20,8 @@ export default function SettingsPage() {
   const { settings, updateSettings, isLoading: settingsLoading } = useSettings();
   const router = useRouter();
 
-  // Safe recovery code component with error handling - temporarily disabled
+  // Safe recovery code component with error handling
   const SafeRecoveryCodeCard = () => {
-    // Temporarily return null to debug redirect issue
-    return null;
-    
     try {
       return <RecoveryCodeCard />;
     } catch (error) {
