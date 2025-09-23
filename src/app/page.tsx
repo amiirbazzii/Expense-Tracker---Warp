@@ -65,7 +65,23 @@ export default function Home() {
       
       // Use requestIdleCallback for non-critical redirects
       const redirect = () => {
+        // Check if this redirect was triggered by an error from another page
+        const referrer = document.referrer;
+        const currentOrigin = window.location.origin;
+        
         if (user || (token && !isOnline)) {
+          // If the user was trying to access a specific page, respect that
+          if (referrer && referrer.startsWith(currentOrigin)) {
+            const referrerPath = new URL(referrer).pathname;
+            const validPaths = ['/settings', '/expenses', '/income', '/dashboard', '/cards'];
+            
+            if (validPaths.includes(referrerPath) && referrerPath !== '/') {
+              console.log('Home: Redirecting back to original destination:', referrerPath);
+              router.replace(referrerPath);
+              return;
+            }
+          }
+          
           console.log('Home: Redirecting to expenses');
           router.replace("/expenses");
         } else {

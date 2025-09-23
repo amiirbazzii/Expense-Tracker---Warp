@@ -16,9 +16,17 @@ export default function GlobalError({
     // Log the error for debugging
     console.error('Global error caught:', error);
     
-    // Redirect to home page after a short delay
+    // Try to reload the page first, only redirect to home if that fails
     const timer = setTimeout(() => {
-      router.replace('/');
+      // Check if we're on a specific page and should stay there
+      const currentPath = window.location.pathname;
+      if (currentPath && currentPath !== '/' && !currentPath.includes('undefined')) {
+        console.log('Global error: Attempting to reload current page:', currentPath);
+        window.location.reload();
+      } else {
+        console.log('Global error: Redirecting to home');
+        router.replace('/');
+      }
     }, 1000);
 
     return () => clearTimeout(timer);

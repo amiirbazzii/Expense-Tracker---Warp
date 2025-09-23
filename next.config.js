@@ -27,7 +27,13 @@ const withPWA = require('next-pwa')({
     {
       // Avoid caching HTML document navigations to prevent stale app shell issues
       // that can cause unexpected redirects (e.g., to /expenses) on prod.
-      urlPattern: ({ request }) => request.destination !== 'document',
+      // Also exclude specific routes that have been problematic
+      urlPattern: ({ request, url }) => {
+        const pathname = new URL(url).pathname;
+        // Never cache these critical navigation pages
+        const noCacheRoutes = ['/settings', '/dashboard', '/expenses', '/income', '/cards'];
+        return request.destination !== 'document' && !noCacheRoutes.some(route => pathname.startsWith(route));
+      },
       handler: 'NetworkFirst',
       options: {
         cacheName: 'offlineCache',

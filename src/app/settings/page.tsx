@@ -15,10 +15,29 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
 export default function SettingsPage() {
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth();
   const { isOnline, pendingExpenses, syncPendingExpenses } = useOffline();
   const { settings, updateSettings, isLoading: settingsLoading } = useSettings();
   const router = useRouter();
+
+  // Safe recovery code component with error handling
+  const SafeRecoveryCodeCard = () => {
+    try {
+      return <RecoveryCodeCard />;
+    } catch (error) {
+      console.warn('RecoveryCodeCard error:', error);
+      return (
+        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-sm text-yellow-800">
+            Recovery code feature temporarily unavailable. Please try refreshing the page.
+          </p>
+        </div>
+      );
+    }
+  };
+
+  // Debug logging for production issues
+  console.log('SettingsPage render - user:', !!user, 'token:', !!token, 'settings:', !!settings);
 
   const handleLogout = async () => {
     try {
@@ -166,7 +185,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Recovery Code Section */}
-            <RecoveryCodeCard />
+            <SafeRecoveryCodeCard />
 
             {/* Actions */}
             <div className="space-y-4">
