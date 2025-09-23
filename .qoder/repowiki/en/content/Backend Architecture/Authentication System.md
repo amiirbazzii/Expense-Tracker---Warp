@@ -2,12 +2,24 @@
 
 <cite>
 **Referenced Files in This Document**   
-- [auth.ts](file://convex/auth.ts)
+- [auth.ts](file://convex/auth.ts) - *Updated with recovery code system in commit c92b549*
+- [schema.ts](file://convex/schema.ts) - *Updated with recovery code fields in commit c92b549*
 - [AuthContext.tsx](file://src/contexts/AuthContext.tsx)
-- [schema.ts](file://convex/schema.ts)
 - [login/page.tsx](file://src/app/login/page.tsx)
 - [register/page.tsx](file://src/app/register/page.tsx)
+- [forgot-password/page.tsx](file://src/app/forgot-password/page.tsx) - *Added in commit c92b549*
+- [reset-password/page.tsx](file://src/app/reset-password/page.tsx) - *Added in commit c92b549*
+- [RecoveryCodeCard.tsx](file://src/components/RecoveryCodeCard.tsx) - *Added in commit c92b549*
 </cite>
+
+## Update Summary
+**Changes Made**   
+- Added comprehensive documentation for the new recovery code password reset system
+- Updated security implementation section to include recovery code functionality
+- Added new sections for password reset flow and recovery code management
+- Updated data model section to reflect new database fields
+- Enhanced error handling section with new error types
+- Added integration details for new frontend components
 
 ## Table of Contents
 1. [Authentication System](#authentication-system)
@@ -19,6 +31,8 @@
 7. [Security Implementation](#security-implementation)
 8. [Error Handling](#error-handling)
 9. [Data Model](#data-model)
+10. [Password Reset System](#password-reset-system)
+11. [Recovery Code Management](#recovery-code-management)
 
 ## Core Authentication Functions
 
@@ -67,25 +81,47 @@ export const register = mutation({
     password: v.string(),
   },
   handler: async (ctx, args) => {
-    // Check for existing user
+    // Normalize username to lowercase
+    const normalizedUsername = args.username.toLowerCase();
+
+    // Check if user already exists (case-insensitive because we always store lowercase)
     const existingUser = await ctx.db
       .query("users")
-      .withIndex("by_username", (q) => q.eq("username", args.username))
+      .withIndex("by_username", (q) => q.eq("username", normalizedUsername))
       .first();
 
     if (existingUser) {
-      throw new ConvexError("Username already exists");
+      throw new ConvexError({ message: "Username already exists" });
     }
 
-    // Create new user with hashed password and token
+    // Create new user
     const hashedPassword = hashPassword(args.password);
     const tokenIdentifier = generateToken();
 
-    const userId = await ctx.db.insert("users", {
-      username: args.username,
+    const user = {
+      username: normalizedUsername,
       hashedPassword,
       tokenIdentifier,
-    });
+      hasSeenOnboarding: false,
+    };
+
+    const userId = await ctx.db.insert("users", user);
+
+    // Seed default income categories
+    const defaultIncomeCategories = [
+      "Salary",
+      "Freelance",
+      "Investment",
+      "Gift",
+      "Other",
+    ];
+
+    for (const categoryName of defaultIncomeCategories) {
+      await ctx.db.insert("incomeCategories", {
+        name: categoryName,
+        userId: userId,
+      });
+    }
 
     return { userId, token: tokenIdentifier };
   },
@@ -93,7 +129,7 @@ export const register = mutation({
 ```
 
 **Section sources**
-- [auth.ts](file://convex/auth.ts#L45-L65)
+- [auth.ts](file://convex/auth.ts#L45-L80)
 
 ### Login Function
 
@@ -115,18 +151,19 @@ export const login = mutation({
     password: v.string(),
   },
   handler: async (ctx, args) => {
+    const normalizedUsername = args.username.toLowerCase();
     const user = await ctx.db
       .query("users")
-      .withIndex("by_username", (q) => q.eq("username", args.username))
+      .withIndex("by_username", (q) => q.eq("username", normalizedUsername))
       .first();
 
     if (!user) {
-      throw new ConvexError("Invalid username or password");
+      throw new ConvexError({ message: "Username not found" });
     }
 
     const hashedPassword = hashPassword(args.password);
     if (user.hashedPassword !== hashedPassword) {
-      throw new ConvexError("Invalid username or password");
+      throw new ConvexError({ message: "Incorrect password" });
     }
 
     // Generate new token
@@ -139,7 +176,7 @@ export const login = mutation({
 ```
 
 **Section sources**
-- [auth.ts](file://convex/auth.ts#L67-L95)
+- [auth.ts](file://convex/auth.ts#L82-L108)
 
 ### GetCurrentUser Function
 
@@ -177,7 +214,7 @@ export const getCurrentUser = query({
 ```
 
 **Section sources**
-- [auth.ts](file://convex/auth.ts#L97-L115)
+- [auth.ts](file://convex/auth.ts#L110-L128)
 
 ### Logout Function
 
@@ -212,7 +249,7 @@ export const logout = mutation({
 ```
 
 **Section sources**
-- [auth.ts](file://convex/auth.ts#L117-L130)
+- [auth.ts](file://convex/auth.ts#L130-L143)
 
 ## User Registration Flow
 
@@ -236,7 +273,7 @@ style L fill:#a8e6cf,stroke:#333
 ```
 
 **Diagram sources**
-- [auth.ts](file://convex/auth.ts#L45-L65)
+- [auth.ts](file://convex/auth.ts#L45-L80)
 - [register/page.tsx](file://src/app/register/page.tsx#L1-L146)
 
 **Section sources**
@@ -273,7 +310,7 @@ end
 ```
 
 **Diagram sources**
-- [auth.ts](file://convex/auth.ts#L67-L95)
+- [auth.ts](file://convex/auth.ts#L82-L108)
 - [login/page.tsx](file://src/app/login/page.tsx#L1-L119)
 
 **Section sources**
@@ -384,6 +421,37 @@ function hashPassword(password: string): string {
 - **Algorithm**: Simple 32-bit integer hash (for demo purposes)
 - **Production Recommendation**: Should use bcrypt or similar
 
+### Recovery Code Security
+
+The system now includes a recovery code mechanism for password resets, adding an additional layer of security.
+
+**:Recovery Code Generation**
+```typescript
+function createRecoveryCode(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 10; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  // Format as AB12-CD34-EF
+  return `${result.slice(0, 4)}-${result.slice(4, 8)}-${result.slice(8)}`;
+}
+```
+
+**:Recovery Code Hashing**
+```typescript
+function hashRecoveryCode(recoveryCode: string): string {
+  return hashPassword(recoveryCode);
+}
+```
+
+**:Security Features**
+- Recovery codes are 10-character alphanumeric strings formatted with hyphens
+- Codes are hashed before storage using the same method as passwords
+- Each code is associated with a creation timestamp
+- Users can regenerate codes, invalidating previous ones
+- The system prevents reuse of old recovery codes
+
 ### Security Best Practices
 
 **:Implemented Features**
@@ -392,6 +460,7 @@ function hashPassword(password: string): string {
 - **Token Regeneration**: New token on each login
 - **Token Invalidaiton**: Token updated on logout
 - **Indexing**: Database indexes for efficient token and username lookup
+- **Recovery Code System**: Secure password reset mechanism
 
 **:Recommended Enhancements**
 - Implement rate limiting for login attempts
@@ -406,17 +475,22 @@ A["Security Components"] --> B["Password Hashing"]
 A --> C["Token Management"]
 A --> D["Error Handling"]
 A --> E["Database Security"]
-B --> F["Salted passwords"]
-B --> G["Hash function"]
-C --> H["Unique tokens"]
-C --> I["Token invalidation"]
-D --> J["Generic error messages"]
-E --> K["Indexed queries"]
-E --> L["Secure storage"]
+A --> F["Recovery Code System"]
+B --> F1["Salted passwords"]
+B --> F2["Hash function"]
+C --> G1["Unique tokens"]
+C --> G2["Token invalidation"]
+D --> H1["Generic error messages"]
+E --> I1["Indexed queries"]
+E --> I2["Secure storage"]
+F --> J1["One-time use codes"]
+F --> J2["Hashed storage"]
+F --> J3["Regeneration capability"]
 ```
 
 **Section sources**
 - [auth.ts](file://convex/auth.ts#L15-L43)
+- [schema.ts](file://convex/schema.ts#L3-L10)
 
 ## Error Handling
 
@@ -424,7 +498,11 @@ The authentication system uses ConvexError for consistent error handling across 
 
 **:Error Types**
 - **"Username already exists"**: Thrown when registering with existing username
-- **"Invalid username or password"**: Thrown for invalid login credentials
+- **"Username not found"**: Thrown for invalid login credentials
+- **"Incorrect password"**: Thrown for invalid login credentials
+- **"Invalid recovery code"**: Thrown when recovery code is not found
+- **"Password must be at least 6 characters long"**: Thrown when new password is too short
+- **"Authentication required"**: Thrown when user is not authenticated
 
 **:Error Flow**
 ```mermaid
@@ -470,6 +548,8 @@ users: defineTable({
   hashedPassword: v.string(),
   tokenIdentifier: v.string(),
   hasSeenOnboarding: v.optional(v.boolean()),
+  hashedRecoveryCode: v.optional(v.string()),
+  recoveryCodeCreatedAt: v.optional(v.number()),
 }).index("by_username", ["username"]).index("by_token", ["tokenIdentifier"]),
 ```
 
@@ -478,10 +558,12 @@ users: defineTable({
 - **by_token**: Enables fast session validation by token
 
 **:Field Descriptions**
-- **username**: Unique identifier for user login
+- **username**: Unique identifier for user login (stored lowercase)
 - **hashedPassword**: Salted and hashed password (not stored in plain text)
 - **tokenIdentifier**: Current active session token
 - **hasSeenOnboarding**: Optional flag for onboarding flow tracking
+- **hashedRecoveryCode**: Hashed recovery code for password reset
+- **recoveryCodeCreatedAt**: Timestamp when recovery code was created
 
 ```mermaid
 erDiagram
@@ -490,6 +572,8 @@ string username PK
 string hashedPassword
 string tokenIdentifier
 boolean hasSeenOnboarding
+string hashedRecoveryCode
+number recoveryCodeCreatedAt
 }
 USERS ||--o{ SESSIONS : "has current"
 USERS ||--o{ EXPENSES : "owns"
@@ -497,7 +581,8 @@ USERS ||--o{ INCOME : "owns"
 note right of USERS
 Primary authentication entity
 Indexed by username and token
-Passwords are hashed
+Passwords and recovery codes are hashed
+Supports password recovery workflow
 end note
 ```
 
@@ -506,3 +591,159 @@ end note
 
 **Section sources**
 - [schema.ts](file://convex/schema.ts#L3-L10)
+
+## Password Reset System
+
+The password reset system allows users to recover their accounts using a recovery code mechanism.
+
+**:Reset Flow Overview**
+1. User navigates to forgot-password page
+2. User enters recovery code
+3. System validates recovery code
+4. User is redirected to reset-password page with code
+5. User enters new password
+6. System verifies code and updates password
+7. User is logged in with new credentials
+
+**:Request/Response Signatures**
+
+**:validateRecoveryCode Mutation**
+- Request: { recoveryCode: string }
+- Response: { userId: Id<"users">, username: string }
+
+**:resetPasswordWithRecoveryCode Mutation**
+- Request: { recoveryCode: string, newPassword: string }
+- Response: { userId: Id<"users">, token: string }
+
+**:Implementation Details**
+```typescript
+export const validateRecoveryCode = mutation({
+  args: {
+    recoveryCode: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const hashedRecoveryCode = hashRecoveryCode(args.recoveryCode);
+    
+    const users = await ctx.db.query("users").collect();
+    const user = users.find(u => u.hashedRecoveryCode === hashedRecoveryCode);
+
+    if (!user) {
+      throw new ConvexError({ message: "Invalid recovery code" });
+    }
+
+    return { userId: user._id, username: user.username };
+  },
+});
+
+export const resetPasswordWithRecoveryCode = mutation({
+  args: {
+    recoveryCode: v.string(),
+    newPassword: v.string(),
+  },
+  handler: async (ctx, args) => {
+    if (args.newPassword.length < 6) {
+      throw new ConvexError({ message: "Password must be at least 6 characters long" });
+    }
+
+    const hashedRecoveryCode = hashRecoveryCode(args.recoveryCode);
+    
+    const users = await ctx.db.query("users").collect();
+    const user = users.find(u => u.hashedRecoveryCode === hashedRecoveryCode);
+
+    if (!user) {
+      throw new ConvexError({ message: "Invalid recovery code" });
+    }
+
+    const hashedPassword = hashPassword(args.newPassword);
+    const tokenIdentifier = generateToken();
+
+    await ctx.db.patch(user._id, {
+      hashedPassword,
+      tokenIdentifier,
+    });
+
+    return { userId: user._id, token: tokenIdentifier };
+  },
+});
+```
+
+**Section sources**
+- [auth.ts](file://convex/auth.ts#L211-L259)
+- [forgot-password/page.tsx](file://src/app/forgot-password/page.tsx#L1-L113)
+- [reset-password/page.tsx](file://src/app/reset-password/page.tsx#L1-L227)
+
+## Recovery Code Management
+
+Users can generate and manage recovery codes through the settings interface.
+
+**:Generation Flow**
+1. Authenticated user accesses settings
+2. User clicks "Generate" or "Regenerate" button
+3. System creates new recovery code
+4. Code is displayed once in modal
+5. User must save code before closing modal
+6. Code is hashed and stored in database
+
+**:Frontend Component**
+The RecoveryCodeCard component manages the UI for recovery code generation:
+
+```typescript
+export function RecoveryCodeCard() {
+  const { token } = useAuth();
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [isCodeVisible, setIsCodeVisible] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+
+  const hasRecoveryCode = useQuery(api.auth.hasRecoveryCode, token ? { token } : "skip");
+  const generateRecoveryMutation = useMutation(api.auth.generateRecoveryCode);
+
+  const handleGenerateCode = async () => {
+    if (!token) return;
+    
+    try {
+      const result = await generateRecoveryMutation({ token });
+      setGeneratedCode(result.recoveryCode);
+      setShowGenerateModal(true);
+      toast.success("Recovery code generated successfully!");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to generate recovery code");
+    }
+  };
+  // ... rest of implementation
+}
+```
+
+**:Security Considerations**
+- Recovery codes are only shown once after generation
+- Users are warned about the sensitivity of recovery codes
+- Codes can be regenerated, invalidating previous ones
+- The system prevents brute force attacks by not revealing which part of the code is incorrect
+
+```mermaid
+sequenceDiagram
+participant User
+participant SettingsUI
+participant AuthContext
+participant AuthBackend
+participant DB
+User->>SettingsUI : Click Generate/Regenerate
+SettingsUI->>AuthContext : Call generateRecoveryCode
+AuthContext->>AuthBackend : Call mutation with token
+AuthBackend->>AuthBackend : Validate token
+AuthBackend->>AuthBackend : Generate recovery code
+AuthBackend->>AuthBackend : Hash code
+AuthBackend->>DB : Store hashed code and timestamp
+AuthBackend-->>AuthContext : Return plaintext code
+AuthContext-->>SettingsUI : Display code in modal
+SettingsUI->>User : Show one-time display
+```
+
+**Diagram sources**
+- [auth.ts](file://convex/auth.ts#L172-L193)
+- [RecoveryCodeCard.tsx](file://src/components/RecoveryCodeCard.tsx#L1-L155)
+
+**Section sources**
+- [auth.ts](file://convex/auth.ts#L172-L193)
+- [RecoveryCodeCard.tsx](file://src/components/RecoveryCodeCard.tsx#L1-L155)
+- [settings/page.tsx](file://src/app/settings/page.tsx#L182-L210)

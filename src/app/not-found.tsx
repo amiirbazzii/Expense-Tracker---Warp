@@ -8,7 +8,9 @@ export default function NotFound() {
 
   useEffect(() => {
     // Log 404 for debugging
-    console.log('404 error for path:', window?.location?.pathname);
+    if (typeof window !== 'undefined') {
+      console.log('404 error for path:', window.location.pathname);
+    }
     
     // Don't auto-redirect on 404 to prevent redirect loops
     // Let the user stay and handle the error gracefully

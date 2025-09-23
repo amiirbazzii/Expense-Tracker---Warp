@@ -10,7 +10,7 @@
 - [SmartSelectInput.tsx](file://src/components/SmartSelectInput.tsx)
 - [BottomSheet.tsx](file://src/components/BottomSheet.tsx)
 - [HeaderRow.tsx](file://src/components/HeaderRow.tsx)
-- [BottomNav.tsx](file://src/components/BottomNav.tsx)
+- [BottomNav.tsx](file://src/components/BottomNav.tsx) - *Redesigned with new Lucide icons and styling*
 - [NetworkStatusIndicator.tsx](file://src/components/NetworkStatusIndicator.tsx)
 - [OfflineBanner.tsx](file://src/components/OfflineBanner.tsx)
 - [ProtectedRoute.tsx](file://src/components/ProtectedRoute.tsx)
@@ -20,11 +20,11 @@
 
 ## Update Summary
 **Changes Made**   
-- Updated CurrencyInput component documentation to reflect mobile keyboard optimization
-- Added detailed explanation of inputMode and pattern attributes for mobile UX
-- Enhanced Input System Analysis section with new implementation details
-- Updated section sources to reflect changes in CurrencyInput.tsx
-- Added troubleshooting guidance for mobile input issues
+- Updated BottomNav component documentation to reflect redesign with new Lucide icons, color scheme, and typography
+- Added detailed explanation of active/inactive states in bottom navigation
+- Enhanced Architecture Overview section with updated navigation structure
+- Updated section sources to reflect changes in BottomNav.tsx
+- Added troubleshooting guidance for navigation state issues
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -94,7 +94,7 @@ The core components form the foundation of the UI library, providing essential b
 - [InputContainer.tsx](file://src/components/InputContainer.tsx#L1-L39)
 
 ## Architecture Overview
-The component library follows a layered architecture with clear separation of concerns. Basic components handle visual presentation and user interaction, while container components manage layout and composition. Context consumers like CurrencyInput and CustomDatePicker integrate with application state, and higher-order components like ProtectedRoute handle routing logic.
+The component library follows a layered architecture with clear separation of concerns. Basic components handle visual presentation and user interaction, while container components manage layout and composition. Context consumers like CurrencyInput and CustomDatePicker integrate with application state, higher-order components like ProtectedRoute handle routing logic, and navigation components like BottomNav provide consistent app navigation.
 
 ```mermaid
 graph TD
@@ -102,6 +102,7 @@ A[UI Components] --> B[Atomic Elements]
 A --> C[Composite Components]
 A --> D[Context Consumers]
 A --> E[Route Wrappers]
+A --> F[Navigation Components]
 B --> B1[Button]
 B --> B2[Input]
 B --> B3[Icons]
@@ -112,10 +113,12 @@ D --> D1[CurrencyInput]
 D --> D2[CustomDatePicker]
 D --> D3[SmartSelectInput]
 E --> E1[ProtectedRoute]
-F[Contexts] --> D
-F --> E
-G[Styling] --> A
-H[Accessibility] --> A
+F --> F1[BottomNav]
+G[Contexts] --> D
+G --> E
+G --> F
+H[Styling] --> A
+I[Accessibility] --> A
 ```
 
 **Diagram sources**
@@ -125,6 +128,7 @@ H[Accessibility] --> A
 - [CustomDatePicker.tsx](file://src/components/CustomDatePicker.tsx)
 - [SmartSelectInput.tsx](file://src/components/SmartSelectInput.tsx)
 - [ProtectedRoute.tsx](file://src/components/ProtectedRoute.tsx)
+- [BottomNav.tsx](file://src/components/BottomNav.tsx)
 
 ## Detailed Component Analysis
 
@@ -258,6 +262,37 @@ DatePicker->>UI : onChange("2023-12-26")
 **Section sources**
 - [CustomDatePicker.tsx](file://src/components/CustomDatePicker.tsx#L1-L79)
 
+### Bottom Navigation Redesign Analysis
+The BottomNav component has been redesigned with new design guidelines, including updated Lucide icons, color scheme, and typography. The navigation now uses CirclePlus for expenses, CircleArrowUp for income, ChartPie for dashboard, and Settings for settings, with improved active/inactive state styling.
+
+```mermaid
+classDiagram
+class BottomNav {
++navItems : Array<{href, icon, label}>
++pathname : string
++isActive : boolean
+-icon : LucideIcon
+-label : string
+-scale : 0.95
+}
+class navItems {
++href : "/expenses" | "/income" | "/dashboard" | "/settings"
++icon : CirclePlus | CircleArrowUp | ChartPie | Settings
++label : "Expenses" | "Income" | "Dashboard" | "Settings"
+}
+BottomNav --> navItems : "maps over"
+BottomNav --> motion : "uses whileTap animation"
+BottomNav --> Link : "wraps with Next.js Link"
+```
+
+**Updated** BottomNav documentation to reflect redesign with new icons and styling
+
+**Diagram sources**
+- [BottomNav.tsx](file://src/components/BottomNav.tsx#L1-L57) - *Redesigned with new Lucide icons and styling*
+
+**Section sources**
+- [BottomNav.tsx](file://src/components/BottomNav.tsx#L1-L57) - *Redesigned with new Lucide icons and styling*
+
 ## Dependency Analysis
 The component library has a clear dependency hierarchy with atomic components depending only on React and basic utilities, while composite components depend on both atomic components and application contexts.
 
@@ -268,8 +303,10 @@ LucideReact --> Button
 LucideReact --> Input
 LucideReact --> CustomDatePicker
 LucideReact --> SmartSelectInput
+LucideReact --> BottomNav
 FramerMotion --> BottomSheet
 FramerMotion --> SmartSelectInput
+FramerMotion --> BottomNav
 UseDebounce --> SmartSelectInput
 SettingsContext --> CurrencyInput
 SettingsContext --> CustomDatePicker
@@ -290,6 +327,7 @@ Button --> ProtectedRoute
 - [BottomSheet.tsx](file://src/components/BottomSheet.tsx)
 - [useDebounce.ts](file://src/hooks/useDebounce.ts)
 - [SettingsContext.tsx](file://src/contexts/SettingsContext.tsx)
+- [BottomNav.tsx](file://src/components/BottomNav.tsx)
 
 **Section sources**
 - [package.json](file://package.json)
@@ -297,6 +335,7 @@ Button --> ProtectedRoute
 - [CurrencyInput.tsx](file://src/components/CurrencyInput.tsx)
 - [CustomDatePicker.tsx](file://src/components/CustomDatePicker.tsx)
 - [SmartSelectInput.tsx](file://src/components/SmartSelectInput.tsx)
+- [BottomNav.tsx](file://src/components/BottomNav.tsx)
 
 ## Performance Considerations
 The component library implements several performance optimizations:
@@ -305,6 +344,7 @@ The component library implements several performance optimizations:
 - Efficient CSS transitions and animations using Tailwind classes
 - Proper cleanup of event listeners in BottomSheet
 - Memoization patterns through useCallback in interactive components
+- Frictionless tap feedback in BottomNav using framer-motion's whileTap
 
 While most components are lightweight, complex components like SmartSelectInput should be used judiciously on mobile devices due to their dynamic rendering requirements.
 
@@ -316,6 +356,7 @@ Common issues and solutions for the UI component library:
 - [SmartSelectInput.tsx](file://src/components/SmartSelectInput.tsx#L100-L120)
 - [CustomDatePicker.tsx](file://src/components/CustomDatePicker.tsx#L45-L55)
 - [CurrencyInput.tsx](file://src/components/CurrencyInput.tsx#L78-L95) - *Updated to enable mobile numeric keyboard*
+- [BottomNav.tsx](file://src/components/BottomNav.tsx#L30-L57) - *Redesigned with new Lucide icons and styling*
 
 ### Button Loading State Not Displaying
 Ensure the `loading` prop is properly bound to async operation state. The component uses an animated SVG spinner that requires the `animate-spin` Tailwind class.
@@ -335,6 +376,13 @@ The CurrencyInput component now uses `inputMode="decimal"` and `pattern="[0-9,]*
 2. Check that no parent component is overriding the input attributes
 3. Ensure the browser supports the inputMode attribute
 4. Test on actual mobile devices as emulators may not accurately represent keyboard behavior
+
+### Bottom Navigation Active State Not Highlighting
+If the active tab in BottomNav is not properly highlighted:
+1. Ensure the component is used within a Next.js App Router context
+2. Verify that usePathname hook is available and functioning correctly
+3. Check that the href values in navItems match the actual route paths
+4. Confirm that the text color classes (text-black for active, text-gray-400 for inactive) are not being overridden by parent styles
 
 ### Accessibility Concerns
 All interactive components should maintain proper keyboard navigation and ARIA attributes. Test with screen readers to ensure labels and states are properly announced.

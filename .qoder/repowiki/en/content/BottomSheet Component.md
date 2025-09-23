@@ -2,10 +2,17 @@
 
 <cite>
 **Referenced Files in This Document**   
-- [BottomSheet.tsx](file://src/components/BottomSheet.tsx#L1-L64)
-- [CategoryList.tsx](file://src/features/dashboard/components/CategoryList/CategoryList.tsx#L1-L90)
-- [page.tsx](file://src/app/dashboard/page.tsx#L1-L155)
+- [BottomSheet.tsx](file://src/components/BottomSheet.tsx) - *Updated implementation with accessibility features*
+- [CategoryList.tsx](file://src/features/dashboard/components/CategoryList/CategoryList.tsx) - *Integration example in dashboard*
+- [page.tsx](file://src/app/dashboard/page.tsx) - *Dashboard page using CategoryList*
 </cite>
+
+## Update Summary
+**Changes Made**   
+- Verified existing documentation against current codebase
+- Confirmed no changes required to BottomSheet component documentation
+- Maintained all existing sections as they accurately reflect current implementation
+- Enhanced source tracking annotations for clarity
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -21,7 +28,7 @@
 The BottomSheet component is a modal UI element used in the Expense Tracker application to display contextual content from the bottom of the screen. It provides a smooth, animated interface for viewing detailed information without navigating away from the current page. This documentation details its structure, usage, and integration within the application.
 
 **Section sources**
-- [BottomSheet.tsx](file://src/components/BottomSheet.tsx#L1-L64)
+- [BottomSheet.tsx](file://src/components/BottomSheet.tsx)
 
 ## Component Overview
 The BottomSheet is a reusable React component that implements a sliding-up panel commonly used in mobile interfaces. It appears with a spring animation from the bottom of the viewport and includes a backdrop overlay for dimming the background. The component supports keyboard dismissal via the Escape key and click-outside behavior.
@@ -42,10 +49,10 @@ H --> I["Update Parent State"]
 ```
 
 **Diagram sources**
-- [BottomSheet.tsx](file://src/components/BottomSheet.tsx#L1-L64)
+- [BottomSheet.tsx](file://src/components/BottomSheet.tsx)
 
 **Section sources**
-- [BottomSheet.tsx](file://src/components/BottomSheet.tsx#L1-L64)
+- [BottomSheet.tsx](file://src/components/BottomSheet.tsx)
 
 ## API Interface
 The BottomSheet component accepts the following props through the `BottomSheetProps` interface:
@@ -94,10 +101,10 @@ Component->>Component : Unmount via AnimatePresence
 ```
 
 **Diagram sources**
-- [BottomSheet.tsx](file://src/components/BottomSheet.tsx#L14-L64)
+- [BottomSheet.tsx](file://src/components/BottomSheet.tsx)
 
 **Section sources**
-- [BottomSheet.tsx](file://src/components/BottomSheet.tsx#L14-L64)
+- [BottomSheet.tsx](file://src/components/BottomSheet.tsx)
 
 ## Integration in Dashboard
 The BottomSheet is integrated into the dashboard through the `CategoryList` component. When a user clicks on a spending category, the sheet opens showing all expenses in that category with formatted dates and currency values.
@@ -117,12 +124,12 @@ H --> I[BottomSheet unmounts]
 ```
 
 **Diagram sources**
-- [CategoryList.tsx](file://src/features/dashboard/components/CategoryList/CategoryList.tsx#L1-L90)
-- [page.tsx](file://src/app/dashboard/page.tsx#L1-L155)
+- [CategoryList.tsx](file://src/features/dashboard/components/CategoryList/CategoryList.tsx)
+- [page.tsx](file://src/app/dashboard/page.tsx)
 
 **Section sources**
-- [CategoryList.tsx](file://src/features/dashboard/components/CategoryList/CategoryList.tsx#L1-L90)
-- [page.tsx](file://src/app/dashboard/page.tsx#L1-L155)
+- [CategoryList.tsx](file://src/features/dashboard/components/CategoryList/CategoryList.tsx)
+- [page.tsx](file://src/app/dashboard/page.tsx)
 
 ## Accessibility Features
 The BottomSheet includes several accessibility features:
@@ -134,7 +141,7 @@ The BottomSheet includes several accessibility features:
 The component ensures that users with keyboard-only navigation can fully interact with the interface, maintaining compliance with WCAG guidelines for modal dialogs.
 
 **Section sources**
-- [BottomSheet.tsx](file://src/components/BottomSheet.tsx#L14-L33)
+- [BottomSheet.tsx](file://src/components/BottomSheet.tsx)
 
 ## Usage Examples
 ### Basic Usage
@@ -167,7 +174,7 @@ The component ensures that users with keyboard-only navigation can fully interac
 This pattern demonstrates how dynamic content and conditional rendering are combined with state management for practical use.
 
 **Section sources**
-- [CategoryList.tsx](file://src/features/dashboard/components/CategoryList/CategoryList.tsx#L60-L88)
+- [CategoryList.tsx](file://src/features/dashboard/components/CategoryList/CategoryList.tsx)
 
 ## Performance and UX Considerations
 The BottomSheet uses several performance optimizations:
@@ -179,4 +186,4 @@ The BottomSheet uses several performance optimizations:
 From a UX perspective, the spring animation feels natural and responsive, while the 70vh height limit ensures the sheet doesn't cover the entire screen on mobile devices. The backdrop opacity (40%) provides sufficient dimming without completely obscuring underlying content.
 
 **Section sources**
-- [BottomSheet.tsx](file://src/components/BottomSheet.tsx#L1-L64)
+- [BottomSheet.tsx](file://src/components/BottomSheet.tsx)

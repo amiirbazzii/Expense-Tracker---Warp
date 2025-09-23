@@ -41,7 +41,9 @@ export default function SettingsPage() {
 
   // Debug logging for production issues
   console.log('SettingsPage render - user:', !!user, 'token:', !!token, 'settings:', !!settings);
-  console.log('SettingsPage current pathname:', window?.location?.pathname);
+  if (typeof window !== 'undefined') {
+    console.log('SettingsPage current pathname:', window.location.pathname);
+  }
 
   const handleLogout = async () => {
     try {

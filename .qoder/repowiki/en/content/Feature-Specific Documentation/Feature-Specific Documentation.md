@@ -2,7 +2,7 @@
 
 <cite>
 **Referenced Files in This Document**   
-- [auth.ts](file://convex/auth.ts#L1-L131)
+- [auth.ts](file://convex/auth.ts#L1-L260)
 - [schema.ts](file://convex/schema.ts#L1-L61)
 - [expenses.ts](file://convex/expenses.ts#L1-L324)
 - [userSettings.ts](file://convex/userSettings.ts#L1-L59)
@@ -10,12 +10,12 @@
 - [OfflineContext.tsx](file://src/contexts/OfflineContext.tsx#L1-L171)
 - [SettingsContext.tsx](file://src/contexts/SettingsContext.tsx#L1-L57)
 - [page.tsx](file://src/app/page.tsx#L1-L30)
-- [login/page.tsx](file://src/app/login/page.tsx#L1-L163) - *Updated with offline-first authentication*
+- [login/page.tsx](file://src/app/login/page.tsx#L1-L171) - *Updated with offline-first authentication and password recovery*
 - [register/page.tsx](file://src/app/register/page.tsx#L1-L146)
 - [expenses/page.tsx](file://src/app/expenses/page.tsx#L1-L525) - *Updated with offline queue and authentication error handling*
 - [expenses/edit/[id]/page.tsx](file://src/app/expenses/edit/[id]/page.tsx#L1-L394) - *Updated with CurrencyInput component*
 - [dashboard/page.tsx](file://src/app/dashboard/page.tsx#L1-L126) - *Updated with bottom sheet integration*
-- [settings/page.tsx](file://src/app/settings/page.tsx#L1-L234) - *Updated with offline sync enhancements*
+- [settings/page.tsx](file://src/app/settings/page.tsx#L1-L211) - *Updated with recovery code management*
 - [income/page.tsx](file://src/app/income/page.tsx#L1-L320) - *Updated with undo functionality*
 - [ExpenseCard.tsx](file://src/components/cards/ExpenseCard.tsx#L1-L180) - *Updated with deletion undo support*
 - [IncomeCard.tsx](file://src/components/cards/IncomeCard.tsx#L1-L165) - *Updated with deletion undo support*
@@ -29,15 +29,19 @@
 - [EnhancedNetworkStatusIndicator.tsx](file://src/components/EnhancedNetworkStatusIndicator.tsx#L1-L255) - *Added for improved network status visualization*
 - [ProtectedRoute.tsx](file://src/components/ProtectedRoute.tsx#L1-L98) - *Updated with single loading state*
 - [OfflineFirstProvider.tsx](file://src/providers/OfflineFirstProvider.tsx#L1-L326) - *Updated with initialization improvements*
+- [forgot-password/page.tsx](file://src/app/forgot-password/page.tsx#L1-L113) - *Added recovery code password reset system*
+- [reset-password/page.tsx](file://src/app/reset-password/page.tsx#L1-L227) - *Added recovery code password reset system*
+- [RecoveryCodeCard.tsx](file://src/components/RecoveryCodeCard.tsx#L1-L155) - *Added recovery code management component*
 </cite>
 
 ## Update Summary
 **Changes Made**   
-- Updated Expense Management section to reflect removal of redundant loading states in ExpensesPage
-- Added documentation for ProtectedRoute's unified loading state and initialization logic
-- Enhanced Offline Functionality section with details about OfflineFirstProvider initialization
-- Updated source tracking to include ProtectedRoute.tsx and OfflineFirstProvider.tsx
-- Removed references to multiple loading screens as they have been consolidated
+- Added comprehensive documentation for the new recovery code password reset system
+- Updated Authentication section to include forgot password and reset password workflows
+- Enhanced Settings Customization section with recovery code management details
+- Added new diagrams for password recovery flow and recovery code generation
+- Updated source tracking to include new files: forgot-password/page.tsx, reset-password/page.tsx, and RecoveryCodeCard.tsx
+- Added detailed explanation of recovery code security practices
 
 ## Table of Contents
 1. [Authentication](#authentication)
@@ -50,7 +54,7 @@
 
 ## Authentication
 
-The authentication system implements a custom username/password solution using Convex as the backend. It provides user registration, login, session persistence, and logout functionality with enhanced offline support.
+The authentication system implements a custom username/password solution using Convex as the backend. It provides user registration, login, session persistence, password recovery, and logout functionality with enhanced offline support.
 
 ### User Registration
 The registration process creates a new user account with a hashed password and unique token identifier.
@@ -78,7 +82,7 @@ RegisterPage->>Client : Redirect to /expenses
 
 **Section sources**
 - [register/page.tsx](file://src/app/register/page.tsx#L1-L146)
-- [auth.ts](file://convex/auth.ts#L1-L131)
+- [auth.ts](file://convex/auth.ts#L1-L260)
 
 ### User Login
 The login process authenticates users by verifying their credentials against stored data and establishing a session, with support for offline access using cached credentials.
@@ -112,8 +116,96 @@ LoginPage->>Client : Redirect to /expenses
 ```
 
 **Section sources**
-- [login/page.tsx](file://src/app/login/page.tsx#L1-L163) - *Updated with offline-first authentication*
-- [auth.ts](file://convex/auth.ts#L1-L131)
+- [login/page.tsx](file://src/app/login/page.tsx#L1-L171) - *Updated with offline-first authentication and password recovery link*
+
+### Password Recovery System
+The application now includes a secure recovery code-based password reset system that allows users to regain access to their accounts when they forget their passwords.
+
+#### Recovery Code Generation
+Users can generate a recovery code from the settings page, which is securely stored and can be used to reset their password.
+
+```mermaid
+sequenceDiagram
+participant Client as "SettingsPage"
+participant Context as "AuthContext"
+participant Mutation as "auth.generateRecoveryCode"
+participant DB as "Database"
+Client->>Client : User clicks Generate button
+Client->>Mutation : Call generateRecoveryCode with auth token
+Mutation->>DB : Verify user authentication
+DB-->>Mutation : Return user record
+Mutation->>Mutation : Generate 10-character alphanumeric code
+Mutation->>Mutation : Hash recovery code using same method as passwords
+Mutation->>DB : Store hashed recovery code in user record
+DB-->>Mutation : Success
+Mutation-->>Client : Return unhashed recovery code
+Client->>Client : Display recovery code in secure modal
+Client->>Client : Prompt user to save code safely
+```
+
+**Section sources**
+- [settings/page.tsx](file://src/app/settings/page.tsx#L1-L211) - *Contains recovery code UI*
+- [RecoveryCodeCard.tsx](file://src/components/RecoveryCodeCard.tsx#L1-L155) - *Recovery code component*
+- [auth.ts](file://convex/auth.ts#L1-L260) - *Contains generateRecoveryCode mutation*
+
+#### Forgot Password Flow
+When users forget their password, they can use their recovery code to initiate the password reset process.
+
+```mermaid
+sequenceDiagram
+participant Client as "ForgotPasswordPage"
+participant Mutation as "auth.validateRecoveryCode"
+participant DB as "Database"
+Client->>Client : Navigate to forgot-password page
+Client->>Client : Enter recovery code
+Client->>Client : Submit form
+Client->>Mutation : Call validateRecoveryCode with entered code
+Mutation->>DB : Query all users for matching hashed recovery code
+DB-->>Mutation : Return user if found
+Mutation->>Mutation : Verify recovery code matches stored hash
+Mutation->>Mutation : Return success with user ID and username
+Mutation-->>Client : Success
+Client->>Client : Show success toast
+Client->>Client : Redirect to reset-password page with code and username
+Note over Client,Mutation : If invalid recovery code
+Mutation-->>Client : Error response
+Client->>Client : Show error message
+Client->>Client : Keep user on forgot-password page
+```
+
+**Section sources**
+- [forgot-password/page.tsx](file://src/app/forgot-password/page.tsx#L1-L113) - *Forgot password page implementation*
+- [auth.ts](file://convex/auth.ts#L1-L260) - *Contains validateRecoveryCode mutation*
+
+#### Reset Password Flow
+After validating their recovery code, users can set a new password for their account.
+
+```mermaid
+sequenceDiagram
+participant Client as "ResetPasswordPage"
+participant Mutation as "auth.resetPasswordWithRecoveryCode"
+participant DB as "Database"
+Client->>Client : Navigate from forgot-password page
+Client->>Client : Extract recovery code and username from URL
+Client->>Client : Enter new password and confirmation
+Client->>Client : Submit form
+Client->>Mutation : Call resetPasswordWithRecoveryCode with recovery code and new password
+Mutation->>Mutation : Validate new password length (minimum 6 characters)
+Mutation->>DB : Query users for matching hashed recovery code
+DB-->>Mutation : Return user if found
+Mutation->>Mutation : Hash new password using standard method
+Mutation->>Mutation : Generate new authentication token
+Mutation->>DB : Update user record with new hashed password and token
+DB-->>Mutation : Success
+Mutation-->>Client : Return success with new token
+Client->>Client : Store new token in localStorage
+Client->>Client : Show success toast
+Client->>Client : Redirect to /expenses
+```
+
+**Section sources**
+- [reset-password/page.tsx](file://src/app/reset-password/page.tsx#L1-L227) - *Reset password page implementation*
+- [auth.ts](file://convex/auth.ts#L1-L260) - *Contains resetPasswordWithRecoveryCode mutation*
 
 ### Session Persistence
 The application maintains user sessions using localStorage to store authentication tokens, enabling persistent login across browser sessions.
@@ -451,7 +543,7 @@ ConfirmDelete --> End
 
 ## Settings Customization
 
-The settings system allows users to customize application preferences including currency and calendar systems.
+The settings system allows users to customize application preferences including currency, calendar, and security settings.
 
 ### Currency and Calendar Preferences
 Users can select their preferred currency and calendar system, which are stored in the userSettings table.
@@ -475,7 +567,37 @@ Client->>Client : Show success toast
 ```
 
 **Section sources**
-- [settings/page.tsx](file://src/app/settings/page.tsx#L1-L234)
+- [settings/page.tsx](file://src/app/settings/page.tsx#L1-L211)
+
+### Recovery Code Management
+The settings page includes a security section where users can generate and manage their recovery codes for password reset purposes.
+
+```mermaid
+sequenceDiagram
+participant Client as "SettingsPage"
+participant Component as "RecoveryCodeCard"
+participant Mutation as "auth.generateRecoveryCode"
+participant DB as "Database"
+Client->>Component : Render recovery code section
+Component->>Component : Query auth.hasRecoveryCode to check status
+Component-->>Client : Display "Generate" or "Regenerate" button
+Client->>Component : Click generate button
+Component->>Mutation : Call generateRecoveryCode with auth token
+Mutation->>DB : Verify user authentication
+DB-->>Mutation : Return user record
+Mutation->>Mutation : Generate and hash recovery code
+Mutation->>DB : Store hashed code in user record
+DB-->>Mutation : Success
+Mutation-->>Component : Return unhashed code
+Component->>Component : Display code in secure modal with show/copy options
+Component->>Component : Provide safety instructions
+Component->>Component : Require acknowledgment before closing
+```
+
+**Section sources**
+- [settings/page.tsx](file://src/app/settings/page.tsx#L1-L211) - *Contains recovery code UI integration*
+- [RecoveryCodeCard.tsx](file://src/components/RecoveryCodeCard.tsx#L1-L155) - *Complete recovery code component*
+- [auth.ts](file://convex/auth.ts#L1-L260) - *Backend mutations for recovery code system*
 
 ## Offline Functionality
 
@@ -546,7 +668,7 @@ Client->>Client : Show appropriate toast message
 ```
 
 **Section sources**
-- [settings/page.tsx](file://src/app/settings/page.tsx#L1-L234)
+- [settings/page.tsx](file://src/app/settings/page.tsx#L1-L211)
 
 ### Enhanced Network Status Indicator
 The application now features an enhanced network status indicator that provides detailed information about connection status and sync operations.
@@ -670,9 +792,9 @@ RetryLogin --> NormalLogin
 ```
 
 **Diagram sources**
-- [login/page.tsx](file://src/app/login/page.tsx#L1-L163) - *Handles offline authentication*
+- [login/page.tsx](file://src/app/login/page.tsx#L1-L171) - *Handles offline authentication*
 - [public/sw.js](file://public/sw.js) - *Caches critical routes*
 
 **Section sources**
-- [login/page.tsx](file://src/app/login/page.tsx#L1-L163)
+- [login/page.tsx](file://src/app/login/page.tsx#L1-L171)
 - [public/sw.js](file://public/sw.js)

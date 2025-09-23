@@ -2,26 +2,25 @@
 
 <cite>
 **Referenced Files in This Document**   
-- [schema.ts](file://convex/schema.ts#L1-L66) - *Updated in recent commit with language field in userSettings*
+- [schema.ts](file://convex/schema.ts#L1-L66) - *Updated in recent commit with recovery code fields*
 - [dataModel.d.ts](file://convex/_generated/dataModel.d.ts#L1-L61)
 - [expenses.ts](file://convex/expenses.ts#L1-L325)
 - [userSettings.ts](file://convex/userSettings.ts#L1-L60)
-- [auth.ts](file://convex/auth.ts#L1-L132)
+- [auth.ts](file://convex/auth.ts#L1-L132) - *Updated to include recovery code functionality*
 - [cardsAndIncome.ts](file://convex/cardsAndIncome.ts#L1-L383)
-- [internal.ts](file://convex/internal.ts#L1-L33) - *Added in recent commit for income category seeding*
-- [SettingsContext.tsx](file://src/contexts/SettingsContext.tsx#L1-L59) - *Updated to include language type*
-- [page.tsx](file://src/app/settings/page.tsx#L1-L209) - *Updated with language selection UI*
+- [internal.ts](file://convex/internal.ts#L1-L33)
+- [SettingsContext.tsx](file://src/contexts/SettingsContext.tsx#L1-L59)
+- [page.tsx](file://src/app/settings/page.tsx#L1-L209)
 </cite>
 
 ## Update Summary
 **Changes Made**   
-- Added documentation for new `language` field in UserSettings entity
-- Updated UserSettings entity definition to include language field with valid values
-- Updated TypeScript type generation section to reflect new Language type
-- Added new valid and invalid document examples for UserSettings with language field
-- Updated mutation validation rules to include language parameter
-- Enhanced source tracking with new frontend file references
-- Updated UI context documentation to show language selection implementation
+- Added documentation for new `hashedRecoveryCode` and `recoveryCodeCreatedAt` fields in User entity
+- Updated User entity definition to include password recovery functionality
+- Added new valid and invalid document examples for User with recovery code fields
+- Updated mutation validation rules to include recovery code generation and validation
+- Enhanced source tracking with new backend file references
+- Updated authentication context documentation to show recovery code implementation
 
 ## Table of Contents
 1. [Data Model Overview](#data-model-overview)
@@ -51,8 +50,10 @@ The schema is defined in `schema.ts` using Convex's `defineSchema` and `defineTa
 - `hashedPassword`: String, required
 - `tokenIdentifier`: String, required, unique via index
 - `hasSeenOnboarding`: Optional boolean flag
+- `hashedRecoveryCode`: Optional string field storing hashed recovery code for password reset
+- `recoveryCodeCreatedAt`: Optional number field storing timestamp when recovery code was generated
 
-The User entity serves as the authentication and authorization foundation for the application. Each user is uniquely identified by their `_id`, with additional unique constraints on username and tokenIdentifier through database indexes.
+The User entity serves as the authentication and authorization foundation for the application. Each user is uniquely identified by their `_id`, with additional unique constraints on username and tokenIdentifier through database indexes. The new recovery code fields support a password reset system that allows users to recover access to their accounts.
 
 ### Expense Entity
 **Fields:**
@@ -89,7 +90,7 @@ ForValue represents the recipient or purpose of an expense (e.g., "Groceries", "
 - `language`: Optional String, restricted to "en" or "fa"
 - `updatedAt`: Number (Unix timestamp), required
 
-UserSettings stores user preferences and is scoped to individual users with a one-to-one relationship. The new `language` field allows users to select their preferred interface language, with English ("en") as the default value.
+UserSettings stores user preferences and is scoped to individual users with a one-to-one relationship. The `language` field allows users to select their preferred interface language, with English ("en") as the default value.
 
 ### IncomeCategories Entity
 **Fields:**
@@ -105,7 +106,7 @@ IncomeCategories provides standardized classification for income records. Each u
 
 ### Required Fields
 All fields in the schema are required by default unless explicitly marked as optional:
-- User: `username`, `hashedPassword`, `tokenIdentifier` are required
+- User: `username`, `hashedPassword`, `tokenIdentifier` are required; `hashedRecoveryCode` and `recoveryCodeCreatedAt` are optional
 - Expense: All fields except `cardId` are required
 - Category: `name`, `userId` are required
 - ForValue: `value`, `userId` are required
@@ -139,11 +140,14 @@ The schema includes several optional fields:
 - `cardId`: Optional reference in Expense entity
 - `notes`: Optional string in Income entity
 - `language`: Optional string in UserSettings entity
+- `hashedRecoveryCode`: Optional string in User entity for password recovery
+- `recoveryCodeCreatedAt`: Optional number in User entity for recovery code expiration tracking
 
 **Section sources**
 - [schema.ts](file://convex/schema.ts#L1-L66)
 - [expenses.ts](file://convex/expenses.ts#L1-L325)
 - [userSettings.ts](file://convex/userSettings.ts#L1-L60)
+- [auth.ts](file://convex/auth.ts#L1-L132)
 
 ## Entity Relationships
 
@@ -155,6 +159,8 @@ string username UK
 string hashedPassword
 string tokenIdentifier UK
 boolean hasSeenOnboarding
+string hashedRecoveryCode
+number recoveryCodeCreatedAt
 }
 EXPENSE {
 string _id PK
@@ -300,6 +306,8 @@ class UserDoc {
 +hashedPassword : string
 +tokenIdentifier : string
 +hasSeenOnboarding? : boolean
++hashedRecoveryCode? : string
++recoveryCodeCreatedAt? : number
 }
 class ExpenseDoc {
 +_id : Id~"expenses"~
@@ -642,7 +650,9 @@ This provides meaningful feedback while preventing information leakage.
   "username": "johndoe",
   "hashedPassword": "abc123def456",
   "tokenIdentifier": "xyz789",
-  "hasSeenOnboarding": true
+  "hasSeenOnboarding": true,
+  "hashedRecoveryCode": "ghi789jkl012",
+  "recoveryCodeCreatedAt": 1704067200000
 }
 ```
 

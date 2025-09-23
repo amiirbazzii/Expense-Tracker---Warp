@@ -2,37 +2,43 @@
 
 <cite>
 **Referenced Files in This Document**   
-- [schema.ts](file://convex/schema.ts#L1-L66) - *Updated with language field in userSettings*
-- [auth.ts](file://convex/auth.ts#L1-L131)
+- [schema.ts](file://convex/schema.ts#L1-L66) - *Updated with recovery code fields*
+- [auth.ts](file://convex/auth.ts#L1-L260) - *Updated with recovery code functionality*
 - [expenses.ts](file://convex/expenses.ts#L1-L324)
 - [userSettings.ts](file://convex/userSettings.ts#L1-L59) - *Updated with language support*
 - [cardsAndIncome.ts](file://convex/cardsAndIncome.ts#L1-L384) - *Updated with incomeCategories and transferFunds functionality*
 - [api.d.ts](file://convex/_generated/api.d.ts#L1-L45) - *Updated with new API functions*
+- [RecoveryCodeCard.tsx](file://src/components/RecoveryCodeCard.tsx#L1-L155) - *Added recovery code UI component*
+- [forgot-password/page.tsx](file://src/app/forgot-password/page.tsx#L1-L112) - *Added password recovery flow*
+- [reset-password/page.tsx](file://src/app/reset-password/page.tsx#L1-L227) - *Added password reset implementation*
 </cite>
 
 ## Update Summary
 **Changes Made**   
-- Added documentation for new language field in userSettings data model
-- Updated User Settings Management section to include language preference functionality
-- Modified Core Data Models section to reflect updated userSettings schema
-- Enhanced User Settings Management section with new frontend integration details
-- Updated Security and Access Control section to reflect language field handling
-- Added language selection details in frontend consumption patterns
+- Added documentation for new recovery code system in User model and auth module
+- Updated Authentication System section to include password recovery workflow
+- Added new Password Recovery section detailing the recovery code mechanism
+- Enhanced Security and Access Control section with recovery code security considerations
+- Updated Auto-Generated API Interface section with new recovery-related functions
+- Added frontend integration details for recovery code generation and usage
+- Included new diagram illustrating the password recovery flow
+- Updated User Settings Management section with recovery code UI details
 
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
 3. [Core Data Models](#core-data-models)
 4. [Authentication System](#authentication-system)
-5. [Expenses Management](#expenses-management)
-6. [User Settings Management](#user-settings-management)
-7. [Financial Sources Tracking](#financial-sources-tracking)
-8. [Security and Access Control](#security-and-access-control)
-9. [Auto-Generated API Interface](#auto-generated-api-interface)
-10. [Error Handling Patterns](#error-handling-patterns)
-11. [Query Optimization and Indexing](#query-optimization-and-indexing)
-12. [System Architecture Diagram](#system-architecture-diagram)
-13. [Conclusion](#conclusion)
+5. [Password Recovery System](#password-recovery-system)
+6. [Expenses Management](#expenses-management)
+7. [User Settings Management](#user-settings-management)
+8. [Financial Sources Tracking](#financial-sources-tracking)
+9. [Security and Access Control](#security-and-access-control)
+10. [Auto-Generated API Interface](#auto-generated-api-interface)
+11. [Error Handling Patterns](#error-handling-patterns)
+12. [Query Optimization and Indexing](#query-optimization-and-indexing)
+13. [System Architecture Diagram](#system-architecture-diagram)
+14. [Conclusion](#conclusion)
 
 ## Introduction
 This document provides comprehensive architectural documentation for the backend of an expense tracking application powered by Convex. The backend serves as a unified layer that integrates database storage, serverless functions, authentication, and real-time synchronization. The architecture is designed to be secure, scalable, and developer-friendly, leveraging Convex's full-stack capabilities to streamline development and deployment. This document details the data models, function modules, security mechanisms, and integration patterns that define the system.
@@ -72,15 +78,15 @@ E --> I
 
 **Diagram sources**
 - [schema.ts](file://convex/schema.ts#L1-L66)
-- [auth.ts](file://convex/auth.ts#L1-L131)
+- [auth.ts](file://convex/auth.ts#L1-L260)
 - [expenses.ts](file://convex/expenses.ts#L1-L324)
-- [userSettings.ts](file://convex/userSettings.ts#L1-L59)
-- [cardsAndIncome.ts](file://convex/cardsAndIncome.ts#L1-L384)
-- [api.d.ts](file://convex/_generated/api.d.ts#L1-L45)
+- [RecoveryCodeCard.tsx](file://src/components/RecoveryCodeCard.tsx#L1-L155)
+- [forgot-password/page.tsx](file://src/app/forgot-password/page.tsx#L1-L112)
+- [reset-password/page.tsx](file://src/app/reset-password/page.tsx#L1-L227)
 
 **Section sources**
 - [schema.ts](file://convex/schema.ts#L1-L66)
-- [auth.ts](file://convex/auth.ts#L1-L131)
+- [auth.ts](file://convex/auth.ts#L1-L260)
 - [expenses.ts](file://convex/expenses.ts#L1-L324)
 
 ## Core Data Models
@@ -92,6 +98,8 @@ The data model is defined in `schema.ts` using Convex's schema definition API. I
 - `hashedPassword`: string (required)
 - `tokenIdentifier`: string (required)
 - `hasSeenOnboarding`: boolean (optional)
+- `hashedRecoveryCode`: optional string (optional)
+- `recoveryCodeCreatedAt`: optional number (timestamp)
 
 **Indexes:**
 - `by_username`: [username] - for username lookup
@@ -184,6 +192,8 @@ string username
 string hashedPassword
 string tokenIdentifier
 boolean hasSeenOnboarding
+string hashedRecoveryCode
+number recoveryCodeCreatedAt
 }
 expenses {
 number amount
@@ -284,10 +294,45 @@ AuthController-->>Client : {userId, token}
 ```
 
 **Diagram sources**
-- [auth.ts](file://convex/auth.ts#L1-L131)
+- [auth.ts](file://convex/auth.ts#L1-L260)
 
 **Section sources**
-- [auth.ts](file://convex/auth.ts#L1-L131)
+- [auth.ts](file://convex/auth.ts#L1-L260)
+
+## Password Recovery System
+The password recovery system implements a secure recovery code mechanism that allows users to reset their passwords when they forget them.
+
+### Key Functions
+- `generateRecoveryCode`: Generates a 10-character alphanumeric recovery code, hashes it, and stores it securely in the database
+- `hasRecoveryCode`: Checks if the current user has a recovery code set up
+- `validateRecoveryCode`: Validates a provided recovery code and returns user information if valid
+- `resetPasswordWithRecoveryCode`: Resets the user's password using a valid recovery code and issues a new authentication token
+
+### Implementation Details
+The system generates recovery codes in the format AB12-CD34-EF (10 characters with hyphens for readability). The actual code is stored in hashed form in the database using the same hashing algorithm as passwords. When a user requests a password reset, they must provide the recovery code, which is then hashed and compared against the stored hash. If valid, the user can set a new password.
+
+### Recovery Code Generation
+```mermaid
+sequenceDiagram
+participant Client
+participant AuthController
+participant Database
+Client->>AuthController : generateRecoveryCode(token)
+AuthController->>AuthController : validate token via getUserByToken
+AuthController->>AuthController : create recovery code (AB12-CD34-EF)
+AuthController->>AuthController : hash recovery code
+AuthController->>AuthController : get current timestamp
+AuthController->>Database : update user with hashedRecoveryCode and recoveryCodeCreatedAt
+Database-->>AuthController : success
+AuthController-->>Client : return recovery code (unhashed)
+```
+
+**Section sources**
+- [auth.ts](file://convex/auth.ts#L172-L259)
+- [schema.ts](file://convex/schema.ts#L9-L10)
+- [RecoveryCodeCard.tsx](file://src/components/RecoveryCodeCard.tsx#L1-L155)
+- [forgot-password/page.tsx](file://src/app/forgot-password/page.tsx#L1-L112)
+- [reset-password/page.tsx](file://src/app/reset-password/page.tsx#L1-L227)
 
 ## Expenses Management
 The expenses module in `expenses.ts` provides comprehensive CRUD operations for expense records with automatic category and "for" value management.
@@ -438,6 +483,13 @@ Every data access operation includes a userId check to ensure users can only acc
 - Prevention of cross-user data manipulation
 - Validation of card ownership in transfer operations
 
+### Recovery Code Security
+The recovery code system implements additional security measures:
+- Recovery codes are stored in hashed form, never in plaintext
+- The system does not store the original recovery code, only its hash
+- Users are advised to store recovery codes securely through UI warnings
+- The recovery code functionality is separate from regular authentication flows
+
 ### Error Handling
 Unauthorized access attempts result in `ConvexError` with descriptive messages. The system uses consistent error patterns across all modules to provide clear feedback to the frontend.
 
@@ -464,13 +516,13 @@ end
 ```
 
 **Diagram sources**
-- [auth.ts](file://convex/auth.ts#L1-L131)
+- [auth.ts](file://convex/auth.ts#L1-L260)
 - [expenses.ts](file://convex/expenses.ts#L1-L324)
 - [cardsAndIncome.ts](file://convex/cardsAndIncome.ts#L1-L384)
 - [userSettings.ts](file://convex/userSettings.ts#L1-L59)
 
 **Section sources**
-- [auth.ts](file://convex/auth.ts#L1-L131)
+- [auth.ts](file://convex/auth.ts#L1-L260)
 - [expenses.ts](file://convex/expenses.ts#L1-L324)
 - [cardsAndIncome.ts](file://convex/cardsAndIncome.ts#L1-L384)
 - [userSettings.ts](file://convex/userSettings.ts#L1-L59)
@@ -484,6 +536,10 @@ The generated API exposes all public functions organized by module:
 - `api.auth.login`
 - `api.auth.logout`
 - `api.auth.getCurrentUser`
+- `api.auth.generateRecoveryCode`
+- `api.auth.hasRecoveryCode`
+- `api.auth.validateRecoveryCode`
+- `api.auth.resetPasswordWithRecoveryCode`
 - `api.expenses.createExpense`
 - `api.expenses.getExpenses`
 - `api.expenses.updateExpense`
@@ -546,6 +602,9 @@ The system employs consistent error handling patterns across all modules using `
 - "Transfer amount must be positive." - during fund transfer
 - "One or both cards not found or not authorized." - during fund transfer
 - "Insufficient funds for the transfer." - during fund transfer
+- "Invalid recovery code" - during password recovery
+- "Password must be at least 6 characters long" - during password reset
+- "Recovery code is missing." - when attempting password reset without code
 
 ### Error Propagation
 Errors are thrown within function handlers and automatically propagated to the frontend through the Convex runtime. The frontend can catch these errors and display appropriate user messages.
@@ -603,14 +662,14 @@ style E fill:#f96,stroke:#333
 
 **Diagram sources**
 - [schema.ts](file://convex/schema.ts#L1-L66)
-- [auth.ts](file://convex/auth.ts#L1-L131)
+- [auth.ts](file://convex/auth.ts#L1-L260)
 - [expenses.ts](file://convex/expenses.ts#L1-L324)
 - [userSettings.ts](file://convex/userSettings.ts#L1-L59)
 - [cardsAndIncome.ts](file://convex/cardsAndIncome.ts#L1-L384)
 
 **Section sources**
 - [schema.ts](file://convex/schema.ts#L1-L66)
-- [auth.ts](file://convex/auth.ts#L1-L131)
+- [auth.ts](file://convex/auth.ts#L1-L260)
 
 ## Conclusion
 The backend architecture of this expense tracker application demonstrates a well-structured implementation using Convex as a unified backend solution. The system effectively integrates database storage, serverless functions, authentication, and real-time capabilities within a single framework. Key strengths include:
@@ -623,5 +682,6 @@ The backend architecture of this expense tracker application demonstrates a well
 - Card transfer functionality with proper financial tracking
 - Exclusion of Card Transfer category from dashboard calculations for accurate financial reporting
 - Language preference support for enhanced user experience with English (en) and Persian (fa) options
+- Secure password recovery system with recovery codes for account access restoration
 
 The architecture is scalable and maintainable, with potential improvements including enhanced query optimization for large datasets and migration to a more secure password hashing algorithm in production. The Convex platform enables rapid development while maintaining high performance and reliability.

@@ -15,7 +15,9 @@ export default function GlobalError({
   useEffect(() => {
     // Log the error for debugging
     console.error('Global error caught:', error);
-    console.log('Current pathname when error occurred:', window?.location?.pathname);
+    if (typeof window !== 'undefined') {
+      console.log('Current pathname when error occurred:', window.location.pathname);
+    }
     
     // Don't auto-redirect on global errors to prevent redirect loops
     // Let the user stay on the current page and handle the error gracefully

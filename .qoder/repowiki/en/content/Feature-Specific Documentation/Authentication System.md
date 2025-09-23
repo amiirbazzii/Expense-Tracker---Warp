@@ -2,17 +2,29 @@
 
 <cite>
 **Referenced Files in This Document**   
-- [auth.ts](file://convex/auth.ts) - *Updated in recent commits for username normalization and error handling*
+- [auth.ts](file://convex/auth.ts) - *Updated with recovery code system for password reset*
 - [AuthContext.tsx](file://src/contexts/AuthContext.tsx) - *Updated for offline-first authentication and token caching*
 - [ProtectedRoute.tsx](file://src/components/ProtectedRoute.tsx) - *Updated for offline capability integration and centralized authentication flow*
-- [login/page.tsx](file://src/app/login/page.tsx) - *Updated for improved error messaging and offline support*
+- [login/page.tsx](file://src/app/login/page.tsx) - *Updated for improved error messaging, offline support, and password recovery link*
 - [register/page.tsx](file://src/app/register/page.tsx) - *Updated for improved error messaging*
 - [schema.ts](file://convex/schema.ts)
 - [OfflineFirstProvider.tsx](file://src/providers/OfflineFirstProvider.tsx) - *Added for offline capability management*
 - [OfflineFirstWrapper.tsx](file://src/providers/OfflineFirstWrapper.tsx) - *Added for offline context wrapping*
+- [forgot-password/page.tsx](file://src/app/forgot-password/page.tsx) - *Added for recovery code based password reset*
+- [reset-password/page.tsx](file://src/app/reset-password/page.tsx) - *Added for password reset with recovery code*
+- [RecoveryCodeCard.tsx](file://src/components/RecoveryCodeCard.tsx) - *Added for recovery code generation and display*
+- [settings/page.tsx](file://src/app/settings/page.tsx) - *Updated to include recovery code management*
 </cite>
 
 ## Update Summary
+- **Password Recovery System**: Implemented complete recovery code-based password reset system with new pages and components
+- **New Password Reset Flow**: Added forgot-password and reset-password pages for recovery code verification and password reset
+- **Recovery Code Management**: Added RecoveryCodeCard component in settings for generating and managing recovery codes
+- **Enhanced Login Page**: Added "Forgot Password?" link to login page for password recovery access
+- **Backend Recovery Functions**: Added validateRecoveryCode and resetPasswordWithRecoveryCode mutations in auth.ts
+- **User Settings Integration**: Integrated recovery code functionality into user settings with generate and regenerate options
+- **Security Enhancements**: Implemented secure recovery code generation, hashing, and validation process
+- **Improved Error Handling**: Enhanced error messaging for password recovery scenarios
 - **Centralized Authentication Flow**: Authentication logic has been centralized in ProtectedRoute, eliminating redundant checks in individual pages
 - **Enhanced Error Handling**: Improved error handling in ProtectedRoute with try-catch for offline capability hook initialization
 - **Reduced Authentication Timeout**: Changed from 15 seconds to 5 seconds in AuthContext for faster response to authentication query timeouts
@@ -36,34 +48,42 @@
 11. [Extension Opportunities](#extension-opportunities)
 
 ## Authentication System Overview
-The authentication system in the Expense Tracker application provides secure user registration, login, session management, and token persistence using Convex backend functions and React Context. The system enables users to create accounts, authenticate their identity, and access protected routes while maintaining session state across application restarts. This document details the implementation of the authentication flow from UI forms to backend logic, including password hashing, token handling, and integration with route protection mechanisms. The system has been enhanced with offline-first capabilities, allowing users to authenticate using cached credentials when disconnected from the network.
+The authentication system in the Expense Tracker application provides secure user registration, login, session management, and token persistence using Convex backend functions and React Context. The system enables users to create accounts, authenticate their identity, and access protected routes while maintaining session state across application restarts. This document details the implementation of the authentication flow from UI forms to backend logic, including password hashing, token handling, and integration with route protection mechanisms. The system has been enhanced with offline-first capabilities, allowing users to authenticate using cached credentials when disconnected from the network. A comprehensive password recovery system has been implemented using recovery codes, enabling users to reset their passwords when they forget them.
 
 **Section sources**
-- [auth.ts](file://convex/auth.ts#L1-L154)
+- [auth.ts](file://convex/auth.ts#L1-L261)
 - [AuthContext.tsx](file://src/contexts/AuthContext.tsx#L1-L146)
 
 ## Core Components
 The authentication system consists of several key components that work together to provide a seamless and secure user experience:
 
-- **auth.ts**: Backend implementation of authentication logic using Convex mutations and queries
+- **auth.ts**: Backend implementation of authentication logic using Convex mutations and queries, now including recovery code functionality
 - **AuthContext.tsx**: Frontend state management using React Context to maintain user session with offline-first enhancements
 - **ProtectedRoute.tsx**: Component that restricts access to authenticated users only, with support for offline capabilities and centralized authentication flow
-- **login/page.tsx**: UI component for user login functionality with offline mode support
+- **login/page.tsx**: UI component for user login functionality with offline mode support and password recovery link
 - **register/page.tsx**: UI component for user registration functionality
+- **forgot-password/page.tsx**: New UI component for recovery code entry during password reset process
+- **reset-password/page.tsx**: New UI component for setting a new password after recovery code verification
+- **RecoveryCodeCard.tsx**: New component for generating and displaying recovery codes in user settings
+- **settings/page.tsx**: Updated settings page with integrated recovery code management
 - **OfflineFirstProvider.tsx**: Provider that manages offline capabilities and synchronization state
 - **OfflineFirstWrapper.tsx**: Wrapper component that provides offline context based on authentication state
 
-These components form a cohesive system where user interactions in the UI trigger frontend logic that communicates with backend authentication functions, while session state is maintained throughout the user's interaction with the application, including when operating in offline mode.
+These components form a cohesive system where user interactions in the UI trigger frontend logic that communicates with backend authentication functions, while session state is maintained throughout the user's interaction with the application, including when operating in offline mode. The newly added password recovery components provide a secure way for users to regain access to their accounts when they forget their passwords.
 
 **Section sources**
-- [auth.ts](file://convex/auth.ts#L1-L154)
+- [auth.ts](file://convex/auth.ts#L1-L261)
 - [AuthContext.tsx](file://src/contexts/AuthContext.tsx#L1-L146)
 - [ProtectedRoute.tsx](file://src/components/ProtectedRoute.tsx#L1-L97)
+- [forgot-password/page.tsx](file://src/app/forgot-password/page.tsx#L1-L113)
+- [reset-password/page.tsx](file://src/app/reset-password/page.tsx#L1-L227)
+- [RecoveryCodeCard.tsx](file://src/components/RecoveryCodeCard.tsx#L1-L155)
+- [settings/page.tsx](file://src/app/settings/page.tsx#L1-L211)
 - [OfflineFirstProvider.tsx](file://src/providers/OfflineFirstProvider.tsx#L1-L100)
 - [OfflineFirstWrapper.tsx](file://src/providers/OfflineFirstWrapper.tsx#L1-L18)
 
 ## Authentication Flow
-The authentication flow in the Expense Tracker application follows a standard pattern for web applications, with specific implementations tailored to the Convex backend and React frontend architecture. The flow begins with user interaction through the registration or login forms, proceeds through frontend state management, communicates with backend authentication functions, and concludes with session establishment and route protection. The system now includes offline-first capabilities, allowing users to access cached credentials when disconnected from the network.
+The authentication flow in the Expense Tracker application follows a standard pattern for web applications, with specific implementations tailored to the Convex backend and React frontend architecture. The flow begins with user interaction through the registration or login forms, proceeds through frontend state management, communicates with backend authentication functions, and concludes with session establishment and route protection. The system now includes offline-first capabilities, allowing users to access cached credentials when disconnected from the network. Additionally, a new password recovery flow has been implemented using recovery codes, providing users with a secure way to reset their passwords when forgotten.
 
 ```mermaid
 sequenceDiagram
@@ -89,15 +109,28 @@ end
 Context->>Context : Update state and localStorage
 Context-->>UI : Authentication complete
 UI->>UI : Redirect to protected route
+Note right of UI : Password Recovery Flow
+UI->>UI : Click "Forgot Password?"
+UI->>Backend : Enter recovery code
+Backend->>DB : Validate hashed recovery code
+DB-->>Backend : User found
+Backend-->>UI : Verify code & redirect to reset
+UI->>UI : Enter new password
+UI->>Backend : Submit new password with code
+Backend->>Backend : Hash new password & update
+Backend->>DB : Update user record with new password
+Backend-->>UI : Success & redirect to login
 ```
 
 **Diagram sources**
-- [auth.ts](file://convex/auth.ts#L1-L154)
+- [auth.ts](file://convex/auth.ts#L1-L261)
 - [AuthContext.tsx](file://src/contexts/AuthContext.tsx#L1-L146)
-- [login/page.tsx](file://src/app/login/page.tsx#L1-L162)
+- [login/page.tsx](file://src/app/login/page.tsx#L1-L171)
+- [forgot-password/page.tsx](file://src/app/forgot-password/page.tsx#L1-L113)
+- [reset-password/page.tsx](file://src/app/reset-password/page.tsx#L1-L227)
 
 ## Backend Authentication Implementation
-The backend authentication logic is implemented in the `auth.ts` file within the convex directory. This file contains Convex mutations and queries that handle user registration, login, session retrieval, and logout functionality.
+The backend authentication logic is implemented in the `auth.ts` file within the convex directory. This file contains Convex mutations and queries that handle user registration, login, session retrieval, logout functionality, and the new password recovery system.
 
 ### User Registration
 The registration process begins when a user submits the registration form. The backend checks if the username already exists, normalizes the username to lowercase, hashes the password, generates a token, creates a new user record, and explicitly initializes the `hasSeenOnboarding` flag to false.
@@ -204,11 +237,115 @@ G --> H["Update user record"]
 H --> I["Clear frontend token"]
 ```
 
+### Password Recovery System
+The system implements a secure password recovery mechanism using randomly generated recovery codes. When a user forgets their password, they can use a recovery code to verify their identity and reset their password.
+
+#### Recovery Code Generation
+Users can generate a recovery code from their settings page. The system creates a 10-character alphanumeric code formatted with hyphens (e.g., AB12-CD34-EF).
+
+```typescript
+// Helper function to generate recovery code (10 characters alphanumeric)
+function createRecoveryCode(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 10; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  // Format as AB12-CD34-EF
+  return `${result.slice(0, 4)}-${result.slice(4, 8)}-${result.slice(8)}`;
+}
+
+// Generate recovery code for user
+export const generateRecoveryCode = mutation({
+  args: {
+    token: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken({ ctx, token: args.token });
+    if (!user) {
+      throw new ConvexError({ message: "Authentication required" });
+    }
+
+    const recoveryCode = createRecoveryCode();
+    const hashedRecoveryCode = hashRecoveryCode(recoveryCode);
+    const recoveryCodeCreatedAt = Date.now();
+
+    await ctx.db.patch(user._id, {
+      hashedRecoveryCode,
+      recoveryCodeCreatedAt,
+    });
+
+    return { recoveryCode };
+  },
+});
+```
+
+#### Recovery Code Validation
+When a user enters a recovery code on the forgot-password page, the system validates it by hashing the provided code and searching for a matching user.
+
+```typescript
+// Validate recovery code and allow password reset
+export const validateRecoveryCode = mutation({
+  args: {
+    recoveryCode: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const hashedRecoveryCode = hashRecoveryCode(args.recoveryCode);
+    
+    const users = await ctx.db.query("users").collect();
+    const user = users.find(u => u.hashedRecoveryCode === hashedRecoveryCode);
+
+    if (!user) {
+      throw new ConvexError({ message: "Invalid recovery code" });
+    }
+
+    return { userId: user._id, username: user.username };
+  },
+});
+```
+
+#### Password Reset with Recovery Code
+After successful recovery code validation, users can reset their password using the reset-password page. The system updates the user's password and generates a new authentication token.
+
+```typescript
+// Reset password using recovery code
+export const resetPasswordWithRecoveryCode = mutation({
+  args: {
+    recoveryCode: v.string(),
+    newPassword: v.string(),
+  },
+  handler: async (ctx, args) => {
+    if (args.newPassword.length < 6) {
+      throw new ConvexError({ message: "Password must be at least 6 characters long" });
+    }
+
+    const hashedRecoveryCode = hashRecoveryCode(args.recoveryCode);
+    
+    const users = await ctx.db.query("users").collect();
+    const user = users.find(u => u.hashedRecoveryCode === hashedRecoveryCode);
+
+    if (!user) {
+      throw new ConvexError({ message: "Invalid recovery code" });
+    }
+
+    const hashedPassword = hashPassword(args.newPassword);
+    const tokenIdentifier = generateToken();
+
+    await ctx.db.patch(user._id, {
+      hashedPassword,
+      tokenIdentifier,
+    });
+
+    return { userId: user._id, token: tokenIdentifier };
+  },
+});
+```
+
 **Diagram sources**
-- [auth.ts](file://convex/auth.ts#L1-L154)
+- [auth.ts](file://convex/auth.ts#L1-L261)
 
 **Section sources**
-- [auth.ts](file://convex/auth.ts#L1-L154)
+- [auth.ts](file://convex/auth.ts#L1-L261)
 
 ## Frontend State Management
 The frontend authentication state is managed using React Context in the `AuthContext.tsx` file. This context provides a centralized way to manage user authentication state across the application with enhanced offline-first capabilities.
@@ -493,10 +630,10 @@ ProtectedRoute --> OfflineFirstProvider : "checks offline capability"
 - [OfflineFirstProvider.tsx](file://src/providers/OfflineFirstProvider.tsx#L1-L100)
 
 ## User Interface Components
-The user interface for authentication consists of two main components: the login page and the registration page. These components provide forms for users to authenticate or create new accounts. The login page has been enhanced with offline-first functionality, allowing users to access cached credentials when disconnected from the network.
+The user interface for authentication consists of several components: the login page, registration page, and the new password recovery components. These components provide forms for users to authenticate, create new accounts, or reset forgotten passwords. The login page has been enhanced with offline-first functionality, allowing users to access cached credentials when disconnected from the network. The new password recovery flow provides a secure way for users to reset their passwords when they forget them.
 
 ### Login Page
-The login page implements a form that collects username and password, handles form submission, and provides specific feedback to the user based on error types. It now includes offline mode detection and cached credential usage.
+The login page implements a form that collects username and password, handles form submission, and provides specific feedback to the user based on error types. It now includes offline mode detection, cached credential usage, and a link to the password recovery flow.
 
 ```typescript
 const handleSubmit = async (e: React.FormEvent) => {
@@ -581,9 +718,183 @@ const handleSubmit = async (e: React.FormEvent) => {
 };
 ```
 
+### Forgot Password Page
+The forgot-password page allows users to enter their recovery code to initiate the password reset process. It validates the recovery code with the backend and redirects to the reset-password page upon successful validation.
+
+```typescript
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  if (!recoveryCode.trim()) {
+    toast.error("Please enter your recovery code.");
+    return;
+  }
+
+  setIsLoading(true);
+  try {
+    const result = await validateRecoveryMutation({ recoveryCode: recoveryCode.trim() });
+    toast.success("Recovery code verified!");
+    
+    // Navigate to reset password page with the validated user info
+    router.push(`/reset-password?code=${encodeURIComponent(recoveryCode.trim())}&username=${encodeURIComponent(result.username)}`);
+  } catch (error: unknown) {
+    const message = error instanceof ConvexError 
+      ? (error.data as { message: string }).message 
+      : error instanceof Error 
+      ? error.message 
+      : "Invalid recovery code. Please try again.";
+    toast.error(message);
+  } finally {
+    setIsLoading(false);
+  }
+};
+```
+
+### Reset Password Page
+The reset-password page allows users to set a new password after their recovery code has been validated. It includes password strength validation and securely submits the new password with the recovery code to the backend.
+
+```typescript
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  if (!newPassword.trim() || !confirmPassword.trim()) {
+    toast.error("Please fill in all password fields.");
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    toast.error("Passwords do not match.");
+    return;
+  }
+
+  if (newPassword.length < 6) {
+    toast.error("Password must be at least 6 characters long.");
+    return;
+  }
+
+  if (!recoveryCode) {
+    toast.error("Recovery code is missing.");
+    return;
+  }
+
+  setIsLoading(true);
+  try {
+    const result = await resetPasswordMutation({ 
+      recoveryCode,
+      newPassword 
+    });
+    
+    toast.success("Password reset successfully! Logging you in...");
+    
+    // Store the new token and redirect
+    localStorage.setItem("auth-token", result.token);
+    router.push("/expenses");
+  } catch (error: unknown) {
+    const message = error instanceof ConvexError 
+      ? (error.data as { message: string }).message 
+      : error instanceof Error 
+      ? error.message 
+      : "Failed to reset password. Please try again.";
+    toast.error(message);
+    
+    // If recovery code is invalid, redirect back to forgot password
+    if (message.toLowerCase().includes("invalid recovery code")) {
+      setTimeout(() => router.push("/forgot-password"), 2000);
+    }
+  } finally {
+    setIsLoading(false);
+  }
+};
+```
+
+### Recovery Code Card
+The RecoveryCodeCard component in the settings page allows users to generate and manage their recovery codes. It displays a modal with the generated code and provides options to show/hide and copy the code.
+
+```typescript
+function RecoveryCodeCard() {
+  const { token } = useAuth();
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [isCodeVisible, setIsCodeVisible] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+
+  const hasRecoveryCode = useQuery(api.auth.hasRecoveryCode, token ? { token } : "skip");
+  const generateRecoveryMutation = useMutation(api.auth.generateRecoveryCode);
+
+  const handleGenerateCode = async () => {
+    if (!token) return;
+    
+    try {
+      const result = await generateRecoveryMutation({ token });
+      setGeneratedCode(result.recoveryCode);
+      setShowGenerateModal(true);
+      toast.success("Recovery code generated successfully!");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to generate recovery code");
+    }
+  };
+
+  const handleCopyCode = async () => {
+    if (!generatedCode) return;
+    
+    try {
+      await navigator.clipboard.writeText(generatedCode);
+      setIsCopied(true);
+      toast.success("Recovery code copied to clipboard!");
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy to clipboard");
+    }
+  };
+
+  const handleCloseModal = () => {
+    setShowGenerateModal(false);
+    setGeneratedCode(null);
+    setIsCodeVisible(false);
+    setIsCopied(false);
+  };
+
+  return (
+    <>
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Security</h3>
+        
+        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Shield className="text-blue-600" size={20} />
+              <div>
+                <div className="font-medium text-gray-900">Recovery Code</div>
+                <div className="text-sm text-gray-600">
+                  {hasRecoveryCode 
+                    ? "You have a recovery code set up" 
+                    : "Set up a recovery code for password reset"
+                  }
+                </div>
+              </div>
+            </div>
+            
+            <button
+              onClick={handleGenerateCode}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+            >
+              {hasRecoveryCode ? "Regenerate" : "Generate"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+```
+
 **Section sources**
-- [login/page.tsx](file://src/app/login/page.tsx#L1-L162)
+- [login/page.tsx](file://src/app/login/page.tsx#L1-L171)
 - [register/page.tsx](file://src/app/register/page.tsx#L1-L152)
+- [forgot-password/page.tsx](file://src/app/forgot-password/page.tsx#L1-L113)
+- [reset-password/page.tsx](file://src/app/reset-password/page.tsx#L1-L227)
+- [RecoveryCodeCard.tsx](file://src/components/RecoveryCodeCard.tsx#L1-L155)
+- [settings/page.tsx](file://src/app/settings/page.tsx#L1-L211)
 
 ## Data Model and Schema
 The user data model is defined in the `schema.ts` file, which specifies the structure of the users table and its indexes.
@@ -608,12 +919,18 @@ The table has two indexes:
 - `by_username`: Enables efficient lookup by username during login
 - `by_token`: Enables efficient session validation by token
 
+Additionally, the password recovery system uses the following fields in the user schema:
+- **hashedRecoveryCode**: Stores the hashed version of the recovery code
+- **recoveryCodeCreatedAt**: Timestamp when the recovery code was generated
+
 ```mermaid
 erDiagram
 USERS {
 string username PK
 string hashedPassword
 string tokenIdentifier
+string hashedRecoveryCode
+number recoveryCodeCreatedAt
 boolean hasSeenOnboarding
 }
 USERS ||--o{ EXPENSES : "has"
@@ -662,6 +979,12 @@ The authentication system includes comprehensive error handling for various scen
 - **Handling**: When getCurrentUser query returns null, the system automatically clears the invalid token and removes it from localStorage
 - **User Experience**: Users are seamlessly redirected to login when their session is no longer valid
 
+**Password Recovery Issues**
+- **Invalid Recovery Code**: When a user enters an incorrect recovery code, the system displays "Invalid recovery code. Please try again." and allows them to re-enter the code
+- **Missing Recovery Code**: If a user hasn't generated a recovery code, they're prompted to do so from the settings page
+- **Expired Recovery Code**: Currently, recovery codes don't expire, but this could be implemented by checking the recoveryCodeCreatedAt timestamp
+- **Recovery Code Security**: The system emphasizes that recovery codes should be stored securely and never shared, as they allow anyone to reset the password
+
 ```mermaid
 flowchart TD
 A["Authentication Error"] --> B{"Error Type"}
@@ -672,17 +995,22 @@ B --> |Network| F["Show connection error"]
 B --> |Offline| G["Use cached credentials"]
 B --> |Timeout| H["Check network status and respond accordingly"]
 B --> |Invalid Token| I["Clear token and redirect to login"]
+B --> |Recovery Code| J["Validate recovery code and guide user through reset process"]
 ```
 
 **Diagram sources**
-- [auth.ts](file://convex/auth.ts#L1-L154)
+- [auth.ts](file://convex/auth.ts#L1-L261)
 - [AuthContext.tsx](file://src/contexts/AuthContext.tsx#L1-L146)
-- [login/page.tsx](file://src/app/login/page.tsx#L1-L162)
+- [login/page.tsx](file://src/app/login/page.tsx#L1-L171)
+- [forgot-password/page.tsx](file://src/app/forgot-password/page.tsx#L1-L113)
+- [reset-password/page.tsx](file://src/app/reset-password/page.tsx#L1-L227)
 
 **Section sources**
-- [auth.ts](file://convex/auth.ts#L1-L154)
+- [auth.ts](file://convex/auth.ts#L1-L261)
 - [AuthContext.tsx](file://src/contexts/AuthContext.tsx#L1-L146)
-- [login/page.tsx](file://src/app/login/page.tsx#L1-L162)
+- [login/page.tsx](file://src/app/login/page.tsx#L1-L171)
+- [forgot-password/page.tsx](file://src/app/forgot-password/page.tsx#L1-L113)
+- [reset-password/page.tsx](file://src/app/reset-password/page.tsx#L1-L227)
 
 ## Security Considerations
 The authentication system implements several security measures to protect user data and prevent common vulnerabilities.
@@ -722,6 +1050,14 @@ This approach allows the frontend to access error details through `error.data` w
 - Tokens are invalidated on logout by generating a new one
 - Invalid tokens are automatically cleared when detected (getCurrentUser returns null)
 
+### Recovery Code Security
+The password recovery system implements several security measures:
+- **Random Generation**: Recovery codes are randomly generated 10-character alphanumeric strings
+- **Secure Storage**: Recovery codes are hashed before storage using the same method as passwords
+- **One-way Verification**: The system only stores the hash of the recovery code, not the plain text version
+- **User Education**: Users are warned about the sensitivity of recovery codes and advised to store them securely
+- **Regeneration Option**: Users can regenerate their recovery code if they suspect it has been compromised
+
 ### Security Recommendations
 1. **Upgrade Password Hashing**: Replace the simple hash function with bcrypt or Argon2
 2. **Implement HTTPS**: Ensure all authentication requests are transmitted over encrypted connections
@@ -730,9 +1066,12 @@ This approach allows the frontend to access error details through `error.data` w
 5. **Implement Token Expiration**: Add expiration times to tokens for enhanced security
 6. **Add CSRF Protection**: Implement CSRF tokens for additional protection against cross-site request forgery
 7. **Enhance Offline Security**: Consider encrypting stored tokens and implementing token refresh mechanisms for offline scenarios
+8. **Recovery Code Expiration**: Implement expiration for recovery codes to enhance security
+9. **Multi-Factor Authentication**: Add additional authentication factors beyond just recovery codes
+10. **Audit Logging**: Implement logging of authentication events for security monitoring
 
 **Section sources**
-- [auth.ts](file://convex/auth.ts#L1-L154)
+- [auth.ts](file://convex/auth.ts#L1-L261)
 
 ## Extension Opportunities
 The authentication system can be extended to support additional authentication methods and security features.
@@ -764,6 +1103,13 @@ Extend the offline-first capabilities with:
 - Synchronized authentication state across devices
 - Encrypted local token storage
 
+### Advanced Recovery Options
+Expand the recovery system with additional options:
+- Email-based password reset
+- Security questions
+- Trusted device recognition
+- Account recovery contacts
+
 ```mermaid
 flowchart TD
 A["Current System"] --> B["OAuth Integration"]
@@ -771,19 +1117,23 @@ A --> C["Multi-Factor Authentication"]
 A --> D["Remember Me"]
 A --> E["Single Sign-On"]
 A --> F["Enhanced Offline Authentication"]
-B --> G["Support Google, Facebook, GitHub"]
-C --> H["SMS, Email, Authenticator App"]
-D --> I["Extended token expiration"]
-E --> J["Centralized authentication service"]
-F --> K["Biometric verification"]
-F --> L["Encrypted token storage"]
-F --> M["Time-limited access"]
+A --> G["Advanced Recovery Options"]
+B --> H["Support Google, Facebook, GitHub"]
+C --> I["SMS, Email, Authenticator App"]
+D --> J["Extended token expiration"]
+E --> K["Centralized authentication service"]
+F --> L["Biometric verification"]
+F --> M["Encrypted token storage"]
+F --> N["Time-limited access"]
+G --> O["Email-based reset"]
+G --> P["Security questions"]
+G --> Q["Trusted devices"]
 ```
 
 **Diagram sources**
-- [auth.ts](file://convex/auth.ts#L1-L154)
+- [auth.ts](file://convex/auth.ts#L1-L261)
 - [AuthContext.tsx](file://src/contexts/AuthContext.tsx#L1-L146)
 
 **Section sources**
-- [auth.ts](file://convex/auth.ts#L1-L154)
+- [auth.ts](file://convex/auth.ts#L1-L261)
 - [AuthContext.tsx](file://src/contexts/AuthContext.tsx#L1-L146)
