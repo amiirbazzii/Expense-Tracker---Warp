@@ -2,10 +2,19 @@
 
 <cite>
 **Referenced Files in This Document**   
-- [ErrorBoundary.tsx](file://src/components/ErrorBoundary.tsx#L1-L129)
-- [layout.tsx](file://src/app/layout.tsx#L13-L90)
-- [global-error.tsx](file://src/app/global-error.tsx#L1-L40)
+- [ErrorBoundary.tsx](file://src/components/ErrorBoundary.tsx#L1-L129) - *Updated to maintain auto-redirect behavior for component errors*
+- [global-error.tsx](file://src/app/global-error.tsx#L1-L48) - *Modified to prevent redirect loops by removing auto-redirect*
+- [not-found.tsx](file://src/app/not-found.tsx#L1-L41) - *Updated to prevent redirect loops on 404 errors*
+- [layout.tsx](file://src/app/layout.tsx#L13-L90) - *Contains root-level ErrorBoundary wrapper*
 </cite>
+
+## Update Summary
+**Changes Made**   
+- Updated documentation to reflect changes in error handling strategy across components
+- Removed outdated information about global error auto-redirect behavior
+- Added clarification on redirect loop prevention in global error handlers
+- Maintained accurate description of ErrorBoundary's auto-redirect functionality
+- Updated section sources to reflect current file states and recent modifications
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -50,7 +59,7 @@ GlobalError --> ErrorBoundary : "complementary strategy"
 
 **Diagram sources**
 - [ErrorBoundary.tsx](file://src/components/ErrorBoundary.tsx#L16-L129)
-- [global-error.tsx](file://src/app/global-error.tsx#L1-L40)
+- [global-error.tsx](file://src/app/global-error.tsx#L1-L48)
 
 **Section sources**
 - [ErrorBoundary.tsx](file://src/components/ErrorBoundary.tsx#L1-L129)
@@ -77,16 +86,17 @@ C --> F
 D --> G
 E --> H[Auto-redirect to Home]
 F --> H
-G --> H
+G --> I[Manual Recovery Options]
 style E fill:#f9f,stroke:#333
 style F fill:#f9f,stroke:#333
 style G fill:#f9f,stroke:#333
 style H fill:#bbf,stroke:#333
+style I fill:#ccf,stroke:#333
 ```
 
 **Diagram sources**
 - [ErrorBoundary.tsx](file://src/components/ErrorBoundary.tsx#L1-L129)
-- [global-error.tsx](file://src/app/global-error.tsx#L1-L40)
+- [global-error.tsx](file://src/app/global-error.tsx#L1-L48)
 
 ## Detailed Component Analysis
 
@@ -192,7 +202,7 @@ This strategic placement ensures that any unhandled error in the component tree 
 - [layout.tsx](file://src/app/layout.tsx#L73-L90)
 
 ### Complementary Global Error Page
-The application also implements Next.js's global error handling through the `global-error.tsx` file, which serves as a backup error boundary for server-side errors or cases where the client-side ErrorBoundary might fail:
+The application also implements Next.js's global error handling through the `global-error.tsx` file, which serves as a backup error boundary for server-side errors or cases where the client-side ErrorBoundary might fail. Unlike the ErrorBoundary component, the global error page has been updated to prevent redirect loops by removing automatic redirection:
 
 ```mermaid
 sequenceDiagram
@@ -204,8 +214,7 @@ Client->>Server : Request page
 alt Server-side error
 Server->>Client : Return global-error page
 Client->>GlobalError : Render
-GlobalError->>Client : Show loading spinner
-GlobalError->>Client : Redirect to home
+GlobalError->>Client : Show error message with refresh option
 else Client-side error
 Client->>ErrorBoundary : Catch error
 ErrorBoundary->>Client : Show fallback UI
@@ -214,13 +223,13 @@ end
 ```
 
 **Diagram sources**
-- [global-error.tsx](file://src/app/global-error.tsx#L1-L40)
+- [global-error.tsx](file://src/app/global-error.tsx#L1-L48)
 - [ErrorBoundary.tsx](file://src/components/ErrorBoundary.tsx#L1-L129)
 
 **Section sources**
-- [global-error.tsx](file://src/app/global-error.tsx#L1-L40)
+- [global-error.tsx](file://src/app/global-error.tsx#L1-L48)
 
-The global error page implements similar redirect behavior to maintain consistency in user experience, using the Next.js router to navigate back to the home page after a brief delay.
+The global error page now displays a user-friendly interface with a "Refresh Page" button instead of automatically redirecting, preventing potential redirect loops while still allowing users to recover from errors. This change was made specifically to address issues where automatic redirects could create infinite loops in certain error scenarios.
 
 ## Usage Patterns
 
@@ -289,12 +298,12 @@ export function useErrorHandler() {
 This hook automatically listens to unhandled promise rejections and global JavaScript errors, providing a safety net for asynchronous operations that might fail outside the React component lifecycle.
 
 **Section sources**
-- [ErrorBoundary.tsx](file://src/components/ErrorBoundary.tsx#L111-L129)
+- [ErrorBoundary.tsx](file://src/components/ErrorBoundary.tsx#L92-L129)
 
 ## Error Recovery Mechanisms
 
 ### Automatic Recovery Flow
-The primary error recovery mechanism is the automatic redirection to the home page after a 1-second delay. This approach balances the need to inform users of an error with the goal of quickly returning them to a functional state.
+The primary error recovery mechanism for component-level errors is the automatic redirection to the home page after a 1-second delay. This approach balances the need to inform users of an error with the goal of quickly returning them to a functional state.
 
 ```mermaid
 stateDiagram-v2
@@ -335,7 +344,11 @@ componentWillUnmount() {
 This ensures that the redirect timer is cleared when the component is unmounted, preventing the callback from executing on an unmounted component.
 
 **Section sources**
-- [ErrorBoundary.tsx](file://src/components/ErrorBoundary.tsx#L62-L66)
+- [ErrorBoundary.tsx](file://src/components/ErrorBoundary.tsx#L46-L50)
 
 ## Conclusion
-The ErrorBoundary implementation in the Expense Tracker application provides a robust and user-friendly error handling solution. By combining React's error boundary pattern with global error event listeners and strategic application integration, it creates a comprehensive safety net that prevents application crashes while guiding users back to a stable state. The configurable redirect behavior and complementary global error page ensure consistent error handling across different scenarios. The implementation demonstrates best practices in error handling, including proper state management, memory cleanup, and informative logging for debugging. This approach significantly improves the application's reliability and user experience by gracefully handling unexpected errors and providing clear recovery paths.
+The ErrorBoundary implementation in the Expense Tracker application provides a robust and user-friendly error handling solution. By combining React's error boundary pattern with global error event listeners and strategic application integration, it creates a comprehensive safety net that prevents application crashes while guiding users back to a stable state. The configurable redirect behavior and complementary global error page ensure consistent error handling across different scenarios. 
+
+Recent updates have refined the error handling strategy by removing automatic redirects from the global error page and 404 page to prevent redirect loops, while maintaining the ErrorBoundary's auto-redirect functionality for component-level errors. This distinction ensures that server-side errors and routing issues don't trigger infinite redirect cycles, while client-side component errors still benefit from automatic recovery.
+
+The implementation demonstrates best practices in error handling, including proper state management, memory cleanup, and informative logging for debugging. This approach significantly improves the application's reliability and user experience by gracefully handling unexpected errors and providing clear recovery paths.

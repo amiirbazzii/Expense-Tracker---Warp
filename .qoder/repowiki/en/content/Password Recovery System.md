@@ -2,16 +2,23 @@
 
 <cite>
 **Referenced Files in This Document**
-- [convex/auth.ts](file://convex/auth.ts)
+- [convex/auth.ts](file://convex/auth.ts) - *Updated in recent commit*
 - [convex/schema.ts](file://convex/schema.ts)
 - [src/app/forgot-password/page.tsx](file://src/app/forgot-password/page.tsx)
 - [src/app/reset-password/page.tsx](file://src/app/reset-password/page.tsx)
-- [src/components/RecoveryCodeCard.tsx](file://src/components/RecoveryCodeCard.tsx)
-- [src/app/settings/page.tsx](file://src/app/settings/page.tsx)
+- [src/components/RecoveryCodeCard.tsx](file://src/components/RecoveryCodeCard.tsx) - *Modified in recent commit*
+- [src/app/settings/page.tsx](file://src/app/settings/page.tsx) - *Temporarily disabled recovery code feature*
 - [src/contexts/AuthContext.tsx](file://src/contexts/AuthContext.tsx)
 - [README.md](file://README.md)
 - [package.json](file://package.json)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Updated documentation to reflect temporary disabling of recovery code functionality due to routing issues
+- Modified the Frontend Integration section to accurately describe current implementation state
+- Added troubleshooting information for the disabled recovery code feature
+- Updated source references to indicate modified files and changes
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -334,6 +341,12 @@ export function RecoveryCodeCard() {
 }
 ```
 
+**Note**: The RecoveryCodeCard component has been temporarily disabled due to a production routing issue where settings redirects to expenses page. This is currently being investigated.
+
+**Section sources**
+- [src/components/RecoveryCodeCard.tsx](file://src/components/RecoveryCodeCard.tsx#L10-L25)
+- [src/app/settings/page.tsx](file://src/app/settings/page.tsx#L23-L39) - *Temporarily disabled*
+
 ### Forgot Password Interface
 
 The forgot password page provides a clean interface for entering recovery codes:
@@ -364,13 +377,19 @@ The forgot password page provides a clean interface for entering recovery codes:
 </form>
 ```
 
+**Section sources**
+- [src/app/forgot-password/page.tsx](file://src/app/forgot-password/page.tsx#L63-L83)
+
 ### Settings Integration
 
-The recovery code card is integrated into the settings page, allowing users to manage their security preferences:
+The recovery code card is integrated into the settings page, allowing users to manage their security preferences. However, due to a production routing issue, this feature has been temporarily disabled:
 
 ```typescript
-// Safe recovery code component with error handling
+// Safe recovery code component with error handling - temporarily disabled
 const SafeRecoveryCodeCard = () => {
+  // Temporarily return null to debug redirect issue
+  return null;
+  
   try {
     return <RecoveryCodeCard />;
   } catch (error) {
@@ -387,9 +406,7 @@ const SafeRecoveryCodeCard = () => {
 ```
 
 **Section sources**
-- [src/components/RecoveryCodeCard.tsx](file://src/components/RecoveryCodeCard.tsx#L10-L25)
-- [src/app/forgot-password/page.tsx](file://src/app/forgot-password/page.tsx#L63-L83)
-- [src/app/settings/page.tsx](file://src/app/settings/page.tsx#L25-L40)
+- [src/app/settings/page.tsx](file://src/app/settings/page.tsx#L23-L39) - *Temporarily disabled to resolve routing issue*
 
 ## Error Handling
 
@@ -440,11 +457,14 @@ toast.error("Password must be at least 6 characters long.");
 
 ### Graceful Degradation
 
-The SafeRecoveryCodeCard component ensures graceful degradation when the recovery code feature encounters errors:
+The SafeRecoveryCodeCard component ensures graceful degradation when the recovery code feature encounters errors. Currently, it has been temporarily disabled to resolve a routing issue:
 
 ```typescript
-// Error boundary for recovery code component
+// Error boundary for recovery code component - temporarily disabled
 const SafeRecoveryCodeCard = () => {
+  // Temporarily return null to debug redirect issue
+  return null;
+  
   try {
     return <RecoveryCodeCard />;
   } catch (error) {
@@ -463,7 +483,7 @@ const SafeRecoveryCodeCard = () => {
 **Section sources**
 - [src/app/reset-password/page.tsx](file://src/app/reset-password/page.tsx#L67-L95)
 - [src/app/forgot-password/page.tsx](file://src/app/forgot-password/page.tsx#L27-L45)
-- [src/app/settings/page.tsx](file://src/app/settings/page.tsx#L25-L40)
+- [src/app/settings/page.tsx](file://src/app/settings/page.tsx#L23-L39) - *Temporarily disabled*
 
 ## Testing and Validation
 
@@ -551,6 +571,16 @@ test('user can recover password using recovery code', async () => {
 2. Check network connectivity
 3. Ensure recovery code feature is enabled
 4. Review browser console for JavaScript errors
+
+#### Temporary Feature Disablement
+
+**Problem**: Recovery code feature is not visible in settings.
+
+**Solution**:
+1. This is expected behavior due to a temporary disablement to resolve a routing issue
+2. The feature has been temporarily disabled in the settings page to prevent unintended redirects
+3. Monitor release notes for when the feature will be re-enabled
+4. The backend functionality remains intact; only the frontend component is disabled
 
 ### Debugging Tools
 
@@ -662,5 +692,7 @@ The Expense Tracker's password recovery system provides a robust, secure, and us
 - **Integration**: Seamlessly integrates with the existing authentication system
 
 The modular design allows for easy maintenance and future enhancements, such as recovery code expiration policies or additional security features. The comprehensive error handling and testing framework ensure reliability in production environments.
+
+**Important Note**: The recovery code feature in the settings page has been temporarily disabled to resolve a production routing issue where settings redirects to expenses. The backend functionality remains fully operational, and users can still use existing recovery codes for password reset. This is a temporary measure while the routing issue is being investigated and resolved.
 
 Future improvements could include recovery code expiration, rate limiting, and enhanced audit logging to further strengthen the system's security and usability.

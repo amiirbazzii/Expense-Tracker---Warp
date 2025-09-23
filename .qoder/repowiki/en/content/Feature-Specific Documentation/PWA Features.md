@@ -3,8 +3,8 @@
 <cite>
 **Referenced Files in This Document**   
 - [manifest.json](file://public/manifest.json) - *Updated in recent commit*
-- [sw.js](file://public/sw.js) - *Updated in recent commit*
-- [next.config.js](file://next.config.js) - *PWA configuration with runtime caching*
+- [sw.js](file://public/sw.js) - *Updated in recent commit to fix routing issues*
+- [next.config.js](file://next.config.js) - *PWA configuration with runtime caching and route exclusions*
 - [NetworkStatusIndicator.tsx](file://src/components/NetworkStatusIndicator.tsx) - *Connectivity UI component*
 - [OfflineContext.tsx](file://src/contexts/OfflineContext.tsx) - *Offline state and queue management*
 - [ServiceWorkerRegistration.tsx](file://src/components/ServiceWorkerRegistration.tsx) - *Manual service worker registration*
@@ -12,13 +12,12 @@
 
 ## Update Summary
 **Changes Made**   
-- Updated web app manifest details to reflect new application name "Spendly" and updated icon paths
-- Revised service worker implementation to reflect custom `sw.js` instead of `next-pwa` automated generation
-- Updated installability criteria to align with current manual service worker registration
-- Enhanced offline data management section with detailed cache strategies and fallback logic
-- Added background sync implementation details from service worker code
-- Removed references to `next.config.mjs` as configuration is now handled in `next.config.js`
-- Updated section sources to reflect actual implementation files
+- Updated service worker implementation details to reflect changes in `sw.js` that prevent caching of sensitive navigation routes
+- Revised runtime caching section to align with updated `next.config.js` configuration excluding specific routes from caching
+- Added clarification on routing issue resolution for settings page redirecting to expenses
+- Enhanced background sync and offline data management sections with accurate cache strategy descriptions
+- Updated section sources to reflect actual implementation files and line-specific references
+- Removed outdated manual service worker code example in favor of current Workbox-based implementation
 
 ## Table of Contents
 1. [PWA Features](#pwa-features)
@@ -83,50 +82,49 @@ The manifest also includes high-resolution PNG icons (192x192 and 512x512 pixels
 
 ## Service Worker Implementation
 
-The service worker implementation in `sw.js` provides comprehensive offline functionality through custom caching strategies and resource management. Unlike automated PWA solutions, this implementation offers fine-grained control over caching behavior and offline fallbacks.
+The service worker implementation uses Workbox (via `next-pwa`) to provide comprehensive offline functionality with intelligent caching strategies. The generated service worker in `sw.js` handles precaching of essential assets and implements runtime caching for various resource types.
 
-The service worker uses a versioned cache strategy with two primary caches:
-- **STATIC_CACHE**: Stores essential application resources with versioning ("expense-tracker-v3-static")
-- **DYNAMIC_CACHE**: Stores runtime-generated content and API responses
+The service worker configuration includes:
+- **Precache manifest**: Generated list of static assets with revision hashes
+- **Cache versioning**: Automatic cache naming based on build artifacts
+- **Route handling**: Different caching strategies for different resource types
+- **Navigation requests**: Special handling for document routes
+- **Asset caching**: Optimized strategies for images, fonts, and static resources
 
-The implementation includes:
-- **CACHE_VERSION**: Version identifier for cache invalidation
-- **ESSENTIAL_CACHE**: Array of critical application routes and assets to precache
-- **CACHE_STRATEGIES**: Configuration object defining caching approaches
-- **Background sync**: Event listener for background synchronization
-- **Push notifications**: Handler for future push notification support
-
-The service worker lifecycle includes:
-1. **Install event**: Precaches essential resources during installation
-2. **Activate event**: Cleans up old caches and takes control of clients
-3. **Fetch event**: Intercepts network requests with intelligent routing
-4. **Message event**: Enables communication with the main thread
+The implementation avoids caching sensitive navigation routes like `/settings`, `/dashboard`, `/expenses`, `/income`, and `/cards` to prevent routing issues in production. This change resolves a previously identified bug where the settings page would incorrectly redirect to expenses due to stale cached responses.
 
 ```javascript
-const CACHE_VERSION = 'expense-tracker-v3';
-const STATIC_CACHE = `${CACHE_VERSION}-static`;
-const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`;
-const OFFLINE_PAGE = '/offline';
+// Generated service worker using Workbox
+importScripts();
+self.skipWaiting();
+clientsClaim();
 
-const ESSENTIAL_CACHE = [
-  '/',
-  '/login',
-  '/register', 
-  '/expenses',
-  '/dashboard',
-  '/settings',
-  '/offline',
-  '/income',
-  '/cards',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/favicon.ico'
-];
+// Precache critical assets with revision tracking
+precacheAndRoute([
+  {url: "/_next/app-build-manifest.json", revision: "e560a3f..."},
+  {url: "/_next/static/XaqGXCZAUTbQ5L96ZoaH7/_buildManifest.js", revision: "1ae7db5..."},
+  // ... additional precached assets
+]);
+
+// Cache first strategy for images
+registerRoute(
+  /\.(?:png|jpg|jpeg|svg|gif|ico|webp|avif)$/,
+  new CacheFirst({
+    cacheName: "images",
+    plugins: [new ExpirationPlugin({maxEntries: 60, maxAgeSeconds: 2592000})]
+  })
+);
+
+// Stale while revalidate for static resources
+registerRoute(
+  /\.(?:js|css|woff|woff2|ttf|eot)$/,
+  new StaleWhileRevalidate({cacheName: "static-resources"})
+);
 ```
 
 **Section sources**
-- [sw.js](file://public/sw.js#L1-L50)
+- [sw.js](file://public/sw.js#L1-L100)
+- [next.config.js](file://next.config.js#L15-L109)
 
 ## Installability Criteria
 
@@ -140,7 +138,7 @@ For a web application to be installable as a PWA, it must meet specific criteria
 - **Mobile-Friendly Design**: Responsive layout using Tailwind CSS
 - **Secure Context**: Served over HTTPS in production
 
-The application's installability is achieved through manual service worker registration via the `ServiceWorkerRegistration` component, which registers `sw.js` in production environments. This approach provides more control over the registration process compared to automated PWA plugins.
+The application's installability is achieved through manual service worker registration via the `ServiceWorkerRegistration` component, which registers `sw.js` in production environments. This approach works with the `next-pwa` plugin to ensure proper service worker lifecycle management.
 
 ```tsx
 export function ServiceWorkerRegistration() {
@@ -210,7 +208,7 @@ export function NetworkStatusIndicator() {
 The component is rendered in the main layout, ensuring it's available across all pages. It serves as both a visual indicator and accessibility feature, helping users understand when their actions might be queued for later synchronization.
 
 **Section sources**
-- [NetworkStatusIndicator.tsx](file://src/components/NetworkStatusIndicator.tsx#L1-L22)
+- [NetworkStatusIndicator.tsx](file://src/components/NetworkStatusIndicator.tsx#L5-L21)
 
 ## Offline Data Management
 
@@ -252,7 +250,7 @@ Context->>DB : Remove synced expenses
 
 ## Background Sync and Runtime Caching
 
-The PWA implements advanced caching strategies through the custom service worker in `sw.js`, which provides comprehensive control over caching behavior and offline functionality.
+The PWA implements advanced caching strategies through the Workbox-based service worker configured in `next.config.js`, which provides comprehensive control over caching behavior and offline functionality.
 
 ### Runtime Caching Configuration:
 - **Navigation Requests**: Handled with network-first strategy and intelligent offline fallbacks
@@ -260,37 +258,55 @@ The PWA implements advanced caching strategies through the custom service worker
 - **Static Assets**: Handled with cache-first strategy for optimal performance
 - **Generic Requests**: Handled with network-first strategy and dynamic caching
 
-The background sync feature captures sync events through the service worker's sync event listener. When connectivity is restored, the service worker triggers a background sync event that prompts the application to synchronize pending operations.
+The runtime caching configuration specifically excludes certain routes (`/settings`, `/dashboard`, `/expenses`, `/income`, `/cards`) from being cached to prevent routing issues in production. This targeted exclusion ensures that these critical navigation pages always fetch fresh content, resolving the previously identified redirect problem.
 
 ```javascript
-// Background sync for pending operations (if supported)
-if ('sync' in self.registration) {
-  self.addEventListener('sync', (event) => {
-    if (event.tag === 'background-sync') {
-      console.log('Service Worker: Background sync triggered');
-      event.waitUntil(
-        self.clients.matchAll().then(clients => {
-          clients.forEach(client => {
-            client.postMessage({ type: 'BACKGROUND_SYNC' });
-          });
-        })
-      );
-    }
-  });
-}
+// Runtime caching configuration in next.config.js
+runtimeCaching: [
+  {
+    urlPattern: /\.(?:png|jpg|jpeg|svg|gif|ico|webp|avif)$/,
+    handler: 'CacheFirst',
+    options: {
+      cacheName: 'images',
+      expiration: {
+        maxEntries: 60,
+        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+      },
+    },
+  },
+  {
+    urlPattern: /\.(?:js|css|woff|woff2|ttf|eot)$/,
+    handler: 'StaleWhileRevalidate',
+    options: {
+      cacheName: 'static-resources',
+    },
+  },
+  {
+    urlPattern: ({ request, url }) => {
+      const pathname = new URL(url).pathname;
+      const noCacheRoutes = ['/settings', '/dashboard', '/expenses', '/income', '/cards'];
+      return request.destination !== 'document' && !noCacheRoutes.some(route => pathname.startsWith(route));
+    },
+    handler: 'NetworkFirst',
+    options: {
+      cacheName: 'offlineCache',
+      expiration: {
+        maxEntries: 200,
+        maxAgeSeconds: 24 * 60 * 60, // 1 day
+      },
+      cacheableResponse: {
+        statuses: [0, 200],
+      },
+    },
+  },
+]
 ```
 
-The service worker implements multiple caching strategies:
-- **handleNavigationRequest**: Provides smart offline fallbacks based on route
-- **handleApiRequest**: Serves API responses from cache when offline
-- **handleStaticAsset**: Uses cache-first strategy for static assets
-- **handleGenericRequest**: General request handling with fallback
-
-Cache invalidation is managed through versioned cache names and cleanup during the activate event, ensuring old caches are removed when new service worker versions are installed.
+Cache invalidation is automatically managed through Workbox's revision system, which uses content hashing to determine when cached assets should be updated. The service worker precaches essential assets with revision information, ensuring users receive the latest version after deployments.
 
 **Section sources**
 - [sw.js](file://public/sw.js#L1-L289)
-- [next.config.js](file://next.config.js#L1-L38)
+- [next.config.js](file://next.config.js#L15-L109)
 
 ## Testing and Lighthouse Auditing
 
@@ -322,4 +338,4 @@ The application should score 90+ on Lighthouse PWA audits to ensure optimal user
 **Section sources**
 - [manifest.json](file://public/manifest.json#L1-L27)
 - [sw.js](file://public/sw.js#L1-L289)
-- [next.config.js](file://next.config.js#L1-L38)
+- [next.config.js](file://next.config.js#L1-L109)

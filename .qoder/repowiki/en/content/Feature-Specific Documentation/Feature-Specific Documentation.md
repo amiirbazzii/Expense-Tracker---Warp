@@ -8,14 +8,14 @@
 - [userSettings.ts](file://convex/userSettings.ts#L1-L59)
 - [AuthContext.tsx](file://src/contexts/AuthContext.tsx#L1-L96)
 - [OfflineContext.tsx](file://src/contexts/OfflineContext.tsx#L1-L171)
-- [SettingsContext.tsx](file://src/contexts/SettingsContext.tsx#L1-L57)
+- [SettingsContext.tsx](file://src/contexts/SettingsContext.tsx#L1-L67) - *Updated with error handling*
 - [page.tsx](file://src/app/page.tsx#L1-L30)
 - [login/page.tsx](file://src/app/login/page.tsx#L1-L171) - *Updated with offline-first authentication and password recovery*
 - [register/page.tsx](file://src/app/register/page.tsx#L1-L146)
 - [expenses/page.tsx](file://src/app/expenses/page.tsx#L1-L525) - *Updated with offline queue and authentication error handling*
 - [expenses/edit/[id]/page.tsx](file://src/app/expenses/edit/[id]/page.tsx#L1-L394) - *Updated with CurrencyInput component*
 - [dashboard/page.tsx](file://src/app/dashboard/page.tsx#L1-L126) - *Updated with bottom sheet integration*
-- [settings/page.tsx](file://src/app/settings/page.tsx#L1-L211) - *Updated with recovery code management*
+- [settings/page.tsx](file://src/app/settings/page.tsx#L1-L218) - *Updated with redirect loop fix and temporary RecoveryCodeCard disable*
 - [income/page.tsx](file://src/app/income/page.tsx#L1-L320) - *Updated with undo functionality*
 - [ExpenseCard.tsx](file://src/components/cards/ExpenseCard.tsx#L1-L180) - *Updated with deletion undo support*
 - [IncomeCard.tsx](file://src/components/cards/IncomeCard.tsx#L1-L165) - *Updated with deletion undo support*
@@ -31,17 +31,16 @@
 - [OfflineFirstProvider.tsx](file://src/providers/OfflineFirstProvider.tsx#L1-L326) - *Updated with initialization improvements*
 - [forgot-password/page.tsx](file://src/app/forgot-password/page.tsx#L1-L113) - *Added recovery code password reset system*
 - [reset-password/page.tsx](file://src/app/reset-password/page.tsx#L1-L227) - *Added recovery code password reset system*
-- [RecoveryCodeCard.tsx](file://src/components/RecoveryCodeCard.tsx#L1-L155) - *Added recovery code management component*
+- [RecoveryCodeCard.tsx](file://src/components/RecoveryCodeCard.tsx#L1-L155) - *Added recovery code management component, temporarily disabled due to redirect issues*
 </cite>
 
 ## Update Summary
 **Changes Made**   
-- Added comprehensive documentation for the new recovery code password reset system
-- Updated Authentication section to include forgot password and reset password workflows
-- Enhanced Settings Customization section with recovery code management details
-- Added new diagrams for password recovery flow and recovery code generation
-- Updated source tracking to include new files: forgot-password/page.tsx, reset-password/page.tsx, and RecoveryCodeCard.tsx
-- Added detailed explanation of recovery code security practices
+- Updated Settings Customization section to reflect changes in SettingsContext error handling
+- Modified Recovery Code Management section to indicate temporary disablement of RecoveryCodeCard due to redirect loop issues
+- Added explanation of SafeRecoveryCodeCard wrapper implementation in settings page
+- Updated source tracking to reflect current file states and modifications
+- Added notes about temporary limitations in recovery code functionality
 
 ## Table of Contents
 1. [Authentication](#authentication)
@@ -144,8 +143,8 @@ Client->>Client : Prompt user to save code safely
 ```
 
 **Section sources**
-- [settings/page.tsx](file://src/app/settings/page.tsx#L1-L211) - *Contains recovery code UI*
-- [RecoveryCodeCard.tsx](file://src/components/RecoveryCodeCard.tsx#L1-L155) - *Recovery code component*
+- [settings/page.tsx](file://src/app/settings/page.tsx#L1-L218) - *Contains recovery code UI (temporarily disabled)*
+- [RecoveryCodeCard.tsx](file://src/components/RecoveryCodeCard.tsx#L1-L155) - *Recovery code component (currently not rendered)*
 - [auth.ts](file://convex/auth.ts#L1-L260) - *Contains generateRecoveryCode mutation*
 
 #### Forgot Password Flow
@@ -567,37 +566,41 @@ Client->>Client : Show success toast
 ```
 
 **Section sources**
-- [settings/page.tsx](file://src/app/settings/page.tsx#L1-L211)
+- [settings/page.tsx](file://src/app/settings/page.tsx#L1-L218)
+- [SettingsContext.tsx](file://src/contexts/SettingsContext.tsx#L1-L67) - *Includes error handling for settings queries*
 
 ### Recovery Code Management
-The settings page includes a security section where users can generate and manage their recovery codes for password reset purposes.
+The settings page includes a security section where users can manage their recovery codes for password reset purposes. Due to recent redirect loop issues, this functionality has been temporarily disabled while investigations continue.
 
-```mermaid
-sequenceDiagram
-participant Client as "SettingsPage"
-participant Component as "RecoveryCodeCard"
-participant Mutation as "auth.generateRecoveryCode"
-participant DB as "Database"
-Client->>Component : Render recovery code section
-Component->>Component : Query auth.hasRecoveryCode to check status
-Component-->>Client : Display "Generate" or "Regenerate" button
-Client->>Component : Click generate button
-Component->>Mutation : Call generateRecoveryCode with auth token
-Mutation->>DB : Verify user authentication
-DB-->>Mutation : Return user record
-Mutation->>Mutation : Generate and hash recovery code
-Mutation->>DB : Store hashed code in user record
-DB-->>Mutation : Success
-Mutation-->>Component : Return unhashed code
-Component->>Component : Display code in secure modal with show/copy options
-Component->>Component : Provide safety instructions
-Component->>Component : Require acknowledgment before closing
+#### Current Implementation Status
+The RecoveryCodeCard component has been wrapped in a SafeRecoveryCodeCard wrapper that currently returns null to prevent redirect loops. This temporary measure was implemented after identifying issues with the authentication flow causing infinite redirects.
+
+```tsx
+const SafeRecoveryCodeCard = () => {
+  // Temporarily return null to debug redirect issue
+  return null;
+  
+  try {
+    return <RecoveryCodeCard />;
+  } catch (error) {
+    console.warn('RecoveryCodeCard error:', error);
+    return (
+      <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+        <p className="text-sm text-yellow-800">
+          Recovery code feature temporarily unavailable. Please try refreshing the page.
+        </p>
+      </div>
+    );
+  }
+};
 ```
 
+**Updated** The recovery code management feature is currently disabled due to redirect loop issues identified in commit `986c9de5f89db5c10ecd63e7adf51c4f77a2f3f4`. The component remains in the codebase but is not rendered in the UI.
+
 **Section sources**
-- [settings/page.tsx](file://src/app/settings/page.tsx#L1-L211) - *Contains recovery code UI integration*
-- [RecoveryCodeCard.tsx](file://src/components/RecoveryCodeCard.tsx#L1-L155) - *Complete recovery code component*
-- [auth.ts](file://convex/auth.ts#L1-L260) - *Backend mutations for recovery code system*
+- [settings/page.tsx](file://src/app/settings/page.tsx#L1-L218) - *Contains SafeRecoveryCodeCard implementation*
+- [RecoveryCodeCard.tsx](file://src/components/RecoveryCodeCard.tsx#L1-L155) - *Component exists but not rendered*
+- [SettingsContext.tsx](file://src/contexts/SettingsContext.tsx#L1-L67) - *Added error handling for settings queries*
 
 ## Offline Functionality
 
@@ -668,7 +671,7 @@ Client->>Client : Show appropriate toast message
 ```
 
 **Section sources**
-- [settings/page.tsx](file://src/app/settings/page.tsx#L1-L211)
+- [settings/page.tsx](file://src/app/settings/page.tsx#L1-L218)
 
 ### Enhanced Network Status Indicator
 The application now features an enhanced network status indicator that provides detailed information about connection status and sync operations.
@@ -738,8 +741,8 @@ NativeLike --> OfflineAccess["Full offline functionality available"]
 ```
 
 **Section sources**
-- [public/manifest.json](file://public/manifest.json)
-- [public/sw.js](file://public/sw.js)
+- [manifest.json](file://public/manifest.json)
+- [sw.js](file://public/sw.js)
 
 ### Service Worker Behavior
 The service worker provides offline caching and background synchronization capabilities with an enhanced caching strategy for critical application routes.
@@ -765,7 +768,7 @@ SyncEvent --> Idle
 ```
 
 **Section sources**
-- [public/sw.js](file://public/sw.js) - *Enhanced caching strategy*
+- [sw.js](file://public/sw.js) - *Enhanced caching strategy*
 - [ServiceWorkerRegistration.tsx](file://src/components/ServiceWorkerRegistration.tsx) - *Handles registration*
 
 ### Offline Authentication Flow
@@ -793,8 +796,8 @@ RetryLogin --> NormalLogin
 
 **Diagram sources**
 - [login/page.tsx](file://src/app/login/page.tsx#L1-L171) - *Handles offline authentication*
-- [public/sw.js](file://public/sw.js) - *Caches critical routes*
+- [sw.js](file://public/sw.js) - *Caches critical routes*
 
 **Section sources**
 - [login/page.tsx](file://src/app/login/page.tsx#L1-L171)
-- [public/sw.js](file://public/sw.js)
+- [sw.js](file://public/sw.js)

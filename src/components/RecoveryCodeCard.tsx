@@ -1,55 +1,62 @@
 "use client";
 
-import { useState } from "react";
+import { memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import { useAuth } from "@/contexts/AuthContext";
 import { Shield, Eye, EyeOff, Copy, CheckCircle } from "lucide-react";
-import { toast } from "sonner";
+import { useRecoveryCode } from "@/hooks/useRecoveryCode";
 
-export function RecoveryCodeCard() {
-  const { token } = useAuth();
-  const [showGenerateModal, setShowGenerateModal] = useState(false);
-  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
-  const [isCodeVisible, setIsCodeVisible] = useState(false);
-  const [isCopied, setIsCopied] = useState(false);
+// Memoized sub-components for better performance
+const RecoveryCodeActions = memo(({ onGenerate, isLoading }: { onGenerate: () => void; isLoading: boolean }) => (
+  <button
+    onClick={onGenerate}
+    disabled={isLoading}
+    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+  >
+    {isLoading ? "Generating..." : "Generate"}
+  </button>
+));
+RecoveryCodeActions.displayName = 'RecoveryCodeActions';
 
-  const hasRecoveryCode = useQuery(api.auth.hasRecoveryCode, token ? { token } : "skip");
-  const generateRecoveryMutation = useMutation(api.auth.generateRecoveryCode);
+const CodeVisibilityToggle = memo(({ isVisible, onToggle }: { isVisible: boolean; onToggle: () => void }) => (
+  <button
+    onClick={onToggle}
+    className="flex items-center space-x-2 px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm transition-colors"
+    type="button"
+  >
+    {isVisible ? <EyeOff size={16} /> : <Eye size={16} />}
+    <span>{isVisible ? "Hide" : "Show"}</span>
+  </button>
+));
+CodeVisibilityToggle.displayName = 'CodeVisibilityToggle';
 
-  const handleGenerateCode = async () => {
-    if (!token) return;
-    
-    try {
-      const result = await generateRecoveryMutation({ token });
-      setGeneratedCode(result.recoveryCode);
-      setShowGenerateModal(true);
-      toast.success("Recovery code generated successfully!");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to generate recovery code");
-    }
-  };
+const CopyButton = memo(({ onCopy, isCopied }: { onCopy: () => void; isCopied: boolean }) => (
+  <button
+    onClick={onCopy}
+    className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm transition-colors"
+    type="button"
+  >
+    {isCopied ? <CheckCircle size={16} /> : <Copy size={16} />}
+    <span>{isCopied ? "Copied!" : "Copy"}</span>
+  </button>
+));
+CopyButton.displayName = 'CopyButton';
 
-  const handleCopyCode = async () => {
-    if (!generatedCode) return;
-    
-    try {
-      await navigator.clipboard.writeText(generatedCode);
-      setIsCopied(true);
-      toast.success("Recovery code copied to clipboard!");
-      setTimeout(() => setIsCopied(false), 2000);
-    } catch {
-      toast.error("Failed to copy to clipboard");
-    }
-  };
+export const RecoveryCodeCard = memo(() => {
+  const {
+    isGenerating,
+    generatedCode,
+    isModalOpen,
+    isCodeVisible,
+    isCopied,
+    generateCode,
+    copyCode,
+    toggleCodeVisibility,
+    closeModal,
+    statusText,
+    maskedCode,
+  } = useRecoveryCode();
 
-  const handleCloseModal = () => {
-    setShowGenerateModal(false);
-    setGeneratedCode(null);
-    setIsCodeVisible(false);
-    setIsCopied(false);
-  };
+
 
   return (
     <>
@@ -63,33 +70,28 @@ export function RecoveryCodeCard() {
               <div>
                 <div className="font-medium text-gray-900">Recovery Code</div>
                 <div className="text-sm text-gray-600">
-                  {hasRecoveryCode 
-                    ? "You have a recovery code set up" 
-                    : "Set up a recovery code for password reset"
-                  }
+                  {statusText}
                 </div>
               </div>
             </div>
             
-            <button
-              onClick={handleGenerateCode}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
-            >
-              {hasRecoveryCode ? "Regenerate" : "Generate"}
-            </button>
+            <RecoveryCodeActions
+              onGenerate={generateCode}
+              isLoading={isGenerating}
+            />
           </div>
         </div>
       </div>
 
       {/* Generate Recovery Code Modal */}
       <AnimatePresence>
-        {showGenerateModal && generatedCode && (
+        {isModalOpen && generatedCode && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-            onClick={handleCloseModal}
+            onClick={closeModal}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
@@ -111,25 +113,19 @@ export function RecoveryCodeCard() {
               <div className="mb-6">
                 <div className="relative">
                   <div className="bg-gray-100 p-4 rounded-lg font-mono text-lg text-center border-2 border-dashed border-gray-300 text-gray-900">
-                    {isCodeVisible ? generatedCode : "••••-••••-••"}
+                    {maskedCode}
                   </div>
                   
                   <div className="flex justify-center space-x-2 mt-3">
-                    <button
-                      onClick={() => setIsCodeVisible(!isCodeVisible)}
-                      className="flex items-center space-x-2 px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm"
-                    >
-                      {isCodeVisible ? <EyeOff size={16} /> : <Eye size={16} />}
-                      <span>{isCodeVisible ? "Hide" : "Show"}</span>
-                    </button>
+                    <CodeVisibilityToggle
+                      isVisible={isCodeVisible}
+                      onToggle={toggleCodeVisibility}
+                    />
                     
-                    <button
-                      onClick={handleCopyCode}
-                      className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
-                    >
-                      {isCopied ? <CheckCircle size={16} /> : <Copy size={16} />}
-                      <span>{isCopied ? "Copied!" : "Copy"}</span>
-                    </button>
+                    <CopyButton
+                      onCopy={copyCode}
+                      isCopied={isCopied}
+                    />
                   </div>
                 </div>
               </div>
@@ -142,7 +138,7 @@ export function RecoveryCodeCard() {
               </div>
 
               <button
-                onClick={handleCloseModal}
+                onClick={closeModal}
                 className="w-full py-3 bg-gray-900 text-white rounded-md hover:bg-gray-800"
               >
                 I've Saved It Safely
@@ -153,4 +149,6 @@ export function RecoveryCodeCard() {
       </AnimatePresence>
     </>
   );
-}
+});
+
+RecoveryCodeCard.displayName = 'RecoveryCodeCard';

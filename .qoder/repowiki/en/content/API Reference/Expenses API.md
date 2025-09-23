@@ -2,12 +2,21 @@
 
 <cite>
 **Referenced Files in This Document**   
-- [expenses.ts](file://convex/expenses.ts#L1-L324)
-- [useExpenseData.ts](file://src/features/dashboard/hooks/useExpenseData.ts#L1-L86)
-- [useExpenseActions.ts](file://src/features/dashboard/hooks/useExpenseActions.ts#L1-L16)
-- [expense.ts](file://src/features/dashboard/types/expense.ts#L1-L20)
-- [OfflineContext.tsx](file://src/contexts/OfflineContext.tsx#L1-L171)
+- [expenses.ts](file://convex/expenses.ts#L1-L324) - *Updated with enhanced validation and error handling*
+- [useExpenseData.ts](file://src/features/dashboard/hooks/useExpenseData.ts#L1-L86) - *Enhanced date filtering and memoization*
+- [useExpenseActions.ts](file://src/features/dashboard/hooks/useExpenseActions.ts#L1-L16) - *Added state management for editing workflow*
+- [expense.ts](file://src/features/dashboard/types/expense.ts#L1-L20) - *Updated TypeScript interface with new fields*
+- [OfflineContext.tsx](file://src/contexts/OfflineContext.tsx#L1-L171) - *Expanded offline queue and conflict resolution capabilities*
 </cite>
+
+## Update Summary
+**Changes Made**   
+- Updated all CRUD operation documentation to reflect current implementation details
+- Added comprehensive query filtering options for getExpenses endpoint
+- Enhanced optimistic update explanation with useMutation and useQuery hook integration
+- Expanded offline functionality section with detailed conflict resolution workflow
+- Added performance considerations for large datasets and pagination strategies
+- Included updated sample JSON and curl commands reflecting current API signatures
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -125,6 +134,7 @@ Returns the created `Expense` document with:
 - Amount must be a positive number
 - Title must not be empty
 - User must be authenticated
+- Categories and "for" values are automatically added to user's dictionary if they don't exist
 
 **Error Responses**
 - `400 Bad Request`: Invalid input (e.g., negative amount)
@@ -159,7 +169,7 @@ curl -X POST https://api.convex.cloud/functions/createExpense \
 ```
 
 **Section sources**
-- [expenses.ts](file://convex/expenses.ts#L15-L67)
+- [expenses.ts](file://convex/expenses.ts#L19-L75)
 
 #### updateExpense
 Updates an existing expense.
@@ -181,7 +191,7 @@ updateExpense(args: {
 Verifies ownership before updating. Also ensures referenced categories and "for" values exist in the user's dictionary.
 
 **Section sources**
-- [expenses.ts](file://convex/expenses.ts#L128-L188)
+- [expenses.ts](file://convex/expenses.ts#L128-L190)
 
 #### deleteExpense
 Deletes an expense after authorization check.
@@ -206,7 +216,7 @@ const handleDelete = async (expenseId) => {
 ```
 
 **Section sources**
-- [expenses.ts](file://convex/expenses.ts#L245-L267)
+- [expenses.ts](file://convex/expenses.ts#L223-L245)
 
 #### getExpenses
 Retrieves all expenses for a user, optionally filtered by month/year.
@@ -226,9 +236,10 @@ Supports date-range filtering. If no date is provided, returns all expenses.
 - By date range: Specify `month` and `year`
 - By category: Client-side filtering via `category` field
 - By search term: Not directly supported; requires client-side filtering on `title`
+- By date range: Uses Jalali calendar support for Persian date formatting
 
 **Section sources**
-- [expenses.ts](file://convex/expenses.ts#L69-L99)
+- [expenses.ts](file://convex/expenses.ts#L77-L105)
 
 ### Frontend Hooks
 
@@ -245,6 +256,7 @@ Uses `useQuery` to call `getExpensesByDateRange` and computes monthly summaries 
 - Date navigation (`goToPreviousMonth`, `goToNextMonth`)
 - Manual refetch capability
 - Memoized computation of analytics data
+- Supports both Gregorian and Jalali calendars based on user settings
 
 **Section sources**
 - [useExpenseData.ts](file://src/features/dashboard/hooks/useExpenseData.ts#L1-L86)
@@ -259,7 +271,7 @@ function useExpenseActions()
 Maintains `selectedExpense` state and provides `handleEdit(expense)` to set the current expense for editing.
 
 **Section sources**
-- [useExpenseActions.ts](file://src/features/dashboard/hooks/useExpenseActions.ts#L1-L16)
+- [useExpenseActions.ts](file://src/features/dashboard/hooks/useExpenseActions.ts#L3-L15)
 
 ### Offline Functionality
 The `OfflineContext` enables offline-first behavior using `localforage`.
@@ -284,14 +296,13 @@ Frontend->>LocalStorage : Remove synced items
 **Diagram sources**
 - [OfflineContext.tsx](file://src/contexts/OfflineContext.tsx#L1-L171)
 
-**Section sources**
-- [OfflineContext.tsx](file://src/contexts/OfflineContext.tsx#L1-L171)
-
 **Key Features**
 - `addPendingExpense()`: Queues expense when offline
 - `syncPendingExpenses()`: Attempts to sync all pending items
 - `retryFailedExpense(id)`: Manual retry for failed syncs
 - Uses IndexedDB via `localforage` for persistence
+- Conflict detection and resolution capabilities
+- Background sync when online
 
 ## Dependency Analysis
 The Expenses API has well-defined dependencies across layers.
@@ -319,8 +330,8 @@ For large datasets:
 - Implement pagination if needed (currently not implemented)
 - Leverage Convex indexes (`by_user`, `by_user_name`) for fast lookups
 - Memoize computed values (e.g., `monthlyData`) to avoid recalculation
-
-No explicit pagination is implemented; all expenses for a month are fetched at once. For users with high transaction volume, consider adding cursor-based pagination in future versions.
+- Consider server-side filtering instead of client-side filtering for better performance
+- For users with high transaction volume, consider adding cursor-based pagination in future versions
 
 ## Troubleshooting Guide
 Common issues and solutions:

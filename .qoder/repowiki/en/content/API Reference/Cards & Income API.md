@@ -2,13 +2,23 @@
 
 <cite>
 **Referenced Files in This Document**   
-- [cardsAndIncome.ts](file://convex/cardsAndIncome.ts#L19-L285)
-- [schema.ts](file://convex/schema.ts#L38-L61)
-- [page.tsx](file://src/app/cards/page.tsx#L1-L178)
-- [income/page.tsx](file://src/app/income/page.tsx#L1-L308)
-- [api.d.ts](file://convex/_generated/api.d.ts#L1-L43)
-- [CardBalances.tsx](file://src/features/dashboard/components/CardBalances/CardBalances.tsx#L1-L35)
+- [cardsAndIncome.ts](file://convex/cardsAndIncome.ts#L19-L285) - *Updated with new income category handling*
+- [schema.ts](file://convex/schema.ts#L38-L61) - *Updated with incomeCategories table definition*
+- [page.tsx](file://src/app/cards/page.tsx#L1-L178) - *Updated for card management UI*
+- [income/page.tsx](file://src/app/income/page.tsx#L1-L308) - *Updated for income form handling*
+- [api.d.ts](file://convex/_generated/api.d.ts#L1-L43) - *Generated API types*
+- [CardBalances.tsx](file://src/features/dashboard/components/CardBalances/CardBalances.tsx#L1-L35) - *Added balance calculation component*
 </cite>
+
+## Update Summary
+**Changes Made**   
+- Updated function names to match actual implementation (`createIncome` instead of `addIncomeSource`, `getIncome` instead of `getIncomeSources`)
+- Added detailed documentation for income category persistence and automatic creation
+- Updated return type information to reflect actual document structure
+- Enhanced error handling documentation with additional validation rules
+- Added transfer funds functionality documentation
+- Updated frontend usage examples with current implementation details
+- Revised diagrams to reflect accurate data relationships
 
 ## Table of Contents
 1. [Introduction](#introduction)

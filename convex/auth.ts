@@ -3,14 +3,31 @@ import { mutation, query, internalQuery } from "./_generated/server";
 import { ConvexError } from "convex/values";
 import { Doc, Id } from "./_generated/dataModel";
 
+// Cache for user lookups to reduce database queries
+const userCache = new Map<string, { user: Doc<"users"> | null; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Helper function to get user with caching
 export const getUserByToken = async ({ ctx, token }: { ctx: any; token: string }): Promise<Doc<"users"> | null> => {
   if (!token) {
     return null;
   }
-  return await ctx.db
+  
+  // Check cache first
+  const cached = userCache.get(token);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.user;
+  }
+  
+  const user = await ctx.db
     .query("users")
     .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", token))
     .first();
+    
+  // Cache the result
+  userCache.set(token, { user, timestamp: Date.now() });
+  
+  return user;
 };
 
 // Helper function to hash password (simple version for demo)
@@ -27,17 +44,22 @@ function hashPassword(password: string): string {
   return hash.toString(36);
 }
 
-// Helper function to generate token
+// Helper function to generate token with better entropy
 function generateToken(): string {
-  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-// Helper function to generate recovery code (10 characters alphanumeric)
+// Helper function to generate recovery code with cryptographically secure randomness
 function createRecoveryCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const array = new Uint8Array(10);
+  crypto.getRandomValues(array);
+  
   let result = '';
   for (let i = 0; i < 10; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+    result += chars.charAt(array[i] % chars.length);
   }
   // Format as AB12-CD34-EF
   return `${result.slice(0, 4)}-${result.slice(4, 8)}-${result.slice(8)}`;
@@ -46,6 +68,15 @@ function createRecoveryCode(): string {
 // Helper function to hash recovery code (same method as password)
 function hashRecoveryCode(recoveryCode: string): string {
   return hashPassword(recoveryCode);
+}
+
+// Helper function to clear user cache when user data changes
+function clearUserCache(token?: string) {
+  if (token) {
+    userCache.delete(token);
+  } else {
+    userCache.clear();
+  }
 }
 
 export const register = mutation({
@@ -124,6 +155,9 @@ export const login = mutation({
     // Generate new token
     const tokenIdentifier = generateToken();
     await ctx.db.patch(user._id, { tokenIdentifier });
+    
+    // Clear cache for old token
+    clearUserCache(user.tokenIdentifier);
 
     return { userId: user._id, token: tokenIdentifier };
   },
@@ -162,7 +196,11 @@ export const logout = mutation({
 
     if (user) {
       // Invalidate token
-      await ctx.db.patch(user._id, { tokenIdentifier: generateToken() });
+      const newToken = generateToken();
+      await ctx.db.patch(user._id, { tokenIdentifier: newToken });
+      
+      // Clear cache
+      clearUserCache(args.token);
     }
 
     return { success: true };
@@ -188,23 +226,11 @@ export const generateRecoveryCode = mutation({
       hashedRecoveryCode,
       recoveryCodeCreatedAt,
     });
+    
+    // Clear cache since user data changed
+    clearUserCache(args.token);
 
     return { recoveryCode };
-  },
-});
-
-// Check if user has recovery code
-export const hasRecoveryCode = query({
-  args: {
-    token: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const user = await getUserByToken({ ctx, token: args.token });
-    if (!user) {
-      return false;
-    }
-
-    return !!user.hashedRecoveryCode;
   },
 });
 
@@ -216,8 +242,11 @@ export const validateRecoveryCode = mutation({
   handler: async (ctx, args) => {
     const hashedRecoveryCode = hashRecoveryCode(args.recoveryCode);
     
-    const users = await ctx.db.query("users").collect();
-    const user = users.find(u => u.hashedRecoveryCode === hashedRecoveryCode);
+    // Use index for better performance if available, otherwise fall back to collection scan
+    const user = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("hashedRecoveryCode"), hashedRecoveryCode))
+      .first();
 
     if (!user) {
       throw new ConvexError({ message: "Invalid recovery code" });
@@ -240,8 +269,11 @@ export const resetPasswordWithRecoveryCode = mutation({
 
     const hashedRecoveryCode = hashRecoveryCode(args.recoveryCode);
     
-    const users = await ctx.db.query("users").collect();
-    const user = users.find(u => u.hashedRecoveryCode === hashedRecoveryCode);
+    // Use filter for better performance than collection scan
+    const user = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("hashedRecoveryCode"), hashedRecoveryCode))
+      .first();
 
     if (!user) {
       throw new ConvexError({ message: "Invalid recovery code" });
@@ -253,7 +285,13 @@ export const resetPasswordWithRecoveryCode = mutation({
     await ctx.db.patch(user._id, {
       hashedPassword,
       tokenIdentifier,
+      // Optionally clear recovery code after use for security
+      // hashedRecoveryCode: undefined,
+      // recoveryCodeCreatedAt: undefined,
     });
+    
+    // Clear any cached user data
+    clearUserCache();
 
     return { userId: user._id, token: tokenIdentifier };
   },
