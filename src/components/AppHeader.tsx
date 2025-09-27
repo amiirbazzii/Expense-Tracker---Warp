@@ -30,6 +30,7 @@ export function AppHeader({ title: overrideTitle }: { title?: string }) {
   const isMain = pathname in MAIN_PAGES;
   const title = overrideTitle || deriveTitleFromPath(pathname);
   const [logoError, setLogoError] = useState(false);
+  const [usePngFallback, setUsePngFallback] = useState(false);
 
   if (isMain) {
     // Main pages: logo + page name
@@ -44,12 +45,22 @@ export function AppHeader({ title: overrideTitle }: { title?: string }) {
             ) : (
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg overflow-hidden bg-white">
                 <Image
-                  src="/logo.png"
+                  src={(usePngFallback ? "/logo.png" : "/logo.webp") + "?v=2"}
                   alt="Spendly Logo"
                   width={24}
                   height={24}
                   priority
-                  onError={() => setLogoError(true)}
+                  quality={100}
+                  unoptimized
+                  onError={() => {
+                    if (!usePngFallback) {
+                      // Try PNG fallback once if WebP fails
+                      setUsePngFallback(true);
+                    } else {
+                      // If PNG also fails, show placeholder
+                      setLogoError(true);
+                    }
+                  }}
                 />
               </div>
             )}
