@@ -71,7 +71,7 @@ export default function OnboardingPage() {
           left={<h1 className="text-xl font-bold text-gray-900">Account Setup</h1>}
         />
         
-        <div className="max-w-md mx-auto p-4 pt-24 pb-20">
+        <div className="max-w-md mx-auto p-4 pt-[92px] pb-20">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

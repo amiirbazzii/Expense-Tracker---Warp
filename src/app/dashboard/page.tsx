@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { BottomNav } from "@/components/BottomNav";
-import { HeaderRow } from "@/components/HeaderRow";
+import AppHeader from "@/components/AppHeader";
 import { Calendar } from 'lucide-react';
 import { useState } from "react";
 import { useQuery } from "convex/react";
@@ -68,13 +68,9 @@ export default function DashboardPage() {
   return (
     <>
       <div className="min-h-screen bg-gray-50">
-        <HeaderRow
-          left={
-            <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
-          }
-        />
+        <AppHeader />
         
-        <div className="max-w-md mx-auto p-4 pt-24 pb-20">
+        <div className="max-w-md mx-auto p-4 pt-[92px] pb-20">
           {/* Card Balances */}
            <TotalBalanceCard className="mb-6" />
           <motion.div

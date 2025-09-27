@@ -8,7 +8,7 @@ import { api } from "../../../convex/_generated/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { BottomNav } from "@/components/BottomNav";
-import { HeaderRow } from "@/components/HeaderRow";
+import AppHeader from "@/components/AppHeader";
 import { SmartSelectInput } from "@/components/SmartSelectInput";
 import { 
   CreditCard, 
@@ -328,11 +328,9 @@ export default function ExpensesPage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-white">
-        <HeaderRow
-          left={<h1 className="text-xl font-bold text-gray-900">Expenses</h1>}
-        />
+        <AppHeader />
         
-        <div className="max-w-lg mx-auto p-4 pt-20 pb-24">
+        <div className="max-w-lg mx-auto p-4 pt-[92px] pb-24">
           {/* Input Form Section - header + fields (no card wrapper) */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <div className="mb-4">

@@ -18,7 +18,7 @@ import {
   Type,
   Cloud,
   HardDrive,
-  Sync
+  Loader2
 } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -316,7 +316,7 @@ export default function ExpensesPageLocalFirst() {
       case 'syncing':
         return (
           <div className="flex items-center space-x-2 text-blue-600 text-sm">
-            <Sync className="w-4 h-4 animate-spin" />
+            <Loader2 className="w-4 h-4 animate-spin" />
             <span>Syncing...</span>
           </div>
         );
@@ -373,7 +373,7 @@ export default function ExpensesPageLocalFirst() {
           right={<SyncStatusIndicator />}
         />
         
-        <div className="max-w-lg mx-auto p-4 pt-20 pb-24">
+        <div className="max-w-lg mx-auto p-4 pt-[92px] pb-24">
           {/* Input Form Section */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <div className="mb-4">
@@ -498,26 +498,35 @@ export default function ExpensesPageLocalFirst() {
               <div className="text-center py-8 text-gray-500">Loading expenses...</div>
             ) : displayedExpenses.length > 0 ? (
               <div className="space-y-2 mt-4">
-                {displayedExpenses.map((expense) => (
-                  <ExpenseCard 
-                    key={expense.id} 
-                    expense={{
-                      _id: expense.id,
-                      amount: expense.amount,
-                      title: expense.title,
-                      category: expense.category,
-                      for: expense.for,
-                      date: expense.date,
-                      cardId: expense.cardId,
-                      _creationTime: expense.createdAt,
-                      userId: '' // Mock value
-                    } as any} 
-                    cardName={cardMap[expense.cardId!] || 'Unknown Card'}
-                    onDelete={() => handleDeleteExpense(expense.id)}
-                    status={expense.syncStatus}
-                    onRetry={() => {/* Handle retry if needed */}}
-                  />
-                ))}
+                {displayedExpenses.map((expense) => {
+                  const cardStatus: 'pending' | 'failed' | undefined =
+                    expense.syncStatus === 'failed'
+                      ? 'failed'
+                      : expense.syncStatus === 'pending' || expense.syncStatus === 'syncing'
+                      ? 'pending'
+                      : undefined; // treat 'synced' (and any other) as undefined
+
+                  return (
+                    <ExpenseCard 
+                      key={expense.id} 
+                      expense={{
+                        _id: expense.id,
+                        amount: expense.amount,
+                        title: expense.title,
+                        category: expense.category,
+                        for: expense.for,
+                        date: expense.date,
+                        cardId: expense.cardId,
+                        _creationTime: expense.createdAt,
+                        userId: '' // Mock value
+                      } as any} 
+                      cardName={cardMap[expense.cardId!] || 'Unknown Card'}
+                      onDelete={() => handleDeleteExpense(expense.id)}
+                      status={cardStatus}
+                      onRetry={() => {/* Handle retry if needed */}}
+                    />
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-12">

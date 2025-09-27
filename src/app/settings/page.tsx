@@ -8,7 +8,7 @@ import { useSettings, Currency, Calendar } from "@/contexts/SettingsContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { BottomNav } from "@/components/BottomNav";
 import { OfflineBanner } from "@/components/OfflineBanner";
-import { HeaderRow } from "@/components/HeaderRow";
+import AppHeader from "@/components/AppHeader";
 import { RecoveryCodeCard } from "@/components/RecoveryCodeCard";
 import { User, LogOut, Wifi, WifiOff, RefreshCw, CreditCard, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
@@ -69,15 +69,9 @@ export default function SettingsPage() {
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-50">
         <OfflineBanner />
-         <HeaderRow
-                  left={
-                    <>
-                      <h1 className="text-xl font-bold text-gray-900">Settings</h1>
-                    </>
-                  }
-                />
+        <AppHeader />
         
-        <div className="max-w-md mx-auto p-4 pt-24 pb-20">
+        <div className="max-w-md mx-auto p-4 pt-[92px] pb-20">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

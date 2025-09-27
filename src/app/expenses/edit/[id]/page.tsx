@@ -7,8 +7,8 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { X, Calendar, DollarSign, User, ArrowLeft, CheckCircle, CreditCard, PencilLine, Tag } from "lucide-react";
-import { HeaderRow } from "@/components/HeaderRow";
+import { X, Calendar, DollarSign, User, CheckCircle, CreditCard, PencilLine, Tag } from "lucide-react";
+import AppHeader from "@/components/AppHeader";
 import { format } from "date-fns";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useRouter, useParams } from "next/navigation";
@@ -267,23 +267,9 @@ export default function EditExpensePage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-50">
-        <HeaderRow
-          left={
-            <>
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={() => router.back()}
-                className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                title="Go Back"
-              >
-                <ArrowLeft size={20} />
-              </motion.button>
-              <h1 className="text-xl font-bold text-gray-900">Edit Expense</h1>
-            </>
-          }
-        />
-        
-        <div className="max-w-md mx-auto p-4 pt-24 pb-20">
+        <AppHeader title="Edit Expense" />
+
+        <div className="max-w-md mx-auto p-4 pt-[92px] pb-20">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
