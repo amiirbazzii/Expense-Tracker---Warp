@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { CreditCard } from "lucide-react";
+import { Chip } from "@/components/Chip";
 
 interface Card {
   cardId: string;
@@ -34,34 +35,36 @@ export const CardFilter = ({ cards, selectedCardId, onSelectCard }: CardFilterPr
             minWidth: '100%'
           }}
         >
-          <motion.button
+          <motion.div
             whileTap={{ scale: 0.95 }}
             onClick={() => onSelectCard(null)}
-            className={`px-4 py-2 text-sm font-medium rounded-full flex-shrink-0 whitespace-nowrap transition-colors duration-200 ${
-              selectedCardId === null
-                ? "bg-blue-600 text-white shadow-md"
-                : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
-            }`}
+            className="flex-shrink-0 whitespace-nowrap cursor-pointer"
+            role="button"
+            aria-pressed={selectedCardId === null}
           >
-            All
-          </motion.button>
+            <Chip variant={selectedCardId === null ? 'enabled' : 'default'}>
+              All
+            </Chip>
+          </motion.div>
           {cards.map((card) => (
-            <motion.button
+            <motion.div
               key={card.cardId}
               whileTap={{ scale: 0.95 }}
               onClick={() => onSelectCard(card.cardId)}
-              className={`px-4 py-2 text-sm font-medium rounded-full flex items-center space-x-2 flex-shrink-0 whitespace-nowrap transition-colors duration-200 ${
-                selectedCardId === card.cardId
-                  ? "bg-blue-600 text-white shadow-md"
-                  : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
-              }`}
+              className="flex-shrink-0 whitespace-nowrap cursor-pointer"
+              role="button"
+              aria-pressed={selectedCardId === card.cardId}
             >
-              <CreditCard size={16} />
-              <span>{card.cardName}</span>
-            </motion.button>
+              <Chip
+                variant={selectedCardId === card.cardId ? 'enabled' : 'default'}
+                leftIcon={<CreditCard size={16} />}
+              >
+                {card.cardName}
+              </Chip>
+            </motion.div>
           ))}
         </div>
       </div>
     </div>
   );
-};
+} 
