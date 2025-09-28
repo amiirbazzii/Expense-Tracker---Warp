@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "convex/react";
+import { useState } from "react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { CreditCard, ChevronRight } from "lucide-react";
@@ -8,6 +9,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { formatCurrency } from "@/lib/formatters";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/Button";
+import { Chip } from "@/components/Chip";
 
 interface TotalBalanceCardProps {
   className?: string;
@@ -18,6 +20,7 @@ export function TotalBalanceCard({ className }: TotalBalanceCardProps) {
   const { settings } = useSettings();
   const router = useRouter();
   const cardBalances = useQuery(api.cardsAndIncome.getCardBalances, token ? { token } : "skip");
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const totalBalance = cardBalances?.reduce((sum, card) => sum + card.balance, 0);
   const cardsCount = cardBalances?.length;
@@ -40,22 +43,24 @@ export function TotalBalanceCard({ className }: TotalBalanceCardProps) {
       </div>
 
       <div className="flex items-center gap-2">
-        <span
-          className="inline-flex items-center rounded-full border px-3 text-[12px] font-medium text-[#707070]"
-          style={{ borderColor: '#D9D9D9', backgroundColor: 'rgba(255, 255, 255, 0.5)' }}
-        >
+        <Chip>
           {`${cardsLabel} cards`}
-        </span>
+        </Chip>
         <ChevronRight className="text-gray-600" size={20} />
       </div>
     </div>
   );
 
-  if (totalBalance === undefined || cardsCount === undefined) {
+  if (isNavigating || totalBalance === undefined || cardsCount === undefined) {
     return (
       <Button 
         className={`w-full ${className || ''}`}
-        onClick={() => router.push('/cards')}
+        onClick={() => {
+          if (!isNavigating) {
+            setIsNavigating(true);
+            router.push('/cards');
+          }
+        }}
         loading
         disabled
       >
@@ -67,7 +72,12 @@ export function TotalBalanceCard({ className }: TotalBalanceCardProps) {
   return (
     <Button 
       className={`w-full ${className || ''}`}
-      onClick={() => router.push('/cards')}
+      onClick={() => {
+        if (!isNavigating) {
+          setIsNavigating(true);
+          router.push('/cards');
+        }
+      }}
     >
       {content}
     </Button>
