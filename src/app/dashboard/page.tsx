@@ -72,7 +72,7 @@ export default function DashboardPage() {
         
         <div className="max-w-md mx-auto p-4 pt-[92px] pb-20">
           {/* Card Balances */}
-           <TotalBalanceCard className="mb-6" />
+           <TotalBalanceCard className="mb-6 rounded-2xl" />
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
