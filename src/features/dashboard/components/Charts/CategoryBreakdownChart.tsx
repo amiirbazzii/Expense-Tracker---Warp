@@ -37,8 +37,8 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
 
   const total = entries.reduce((acc, [, v]) => acc + (v || 0), 0);
 
-  // Prepare legend data with consistent color mapping
-  const legend = entries.map(([label, value], i) => ({
+  // Prepare legend data with consistent color mapping (all categories)
+  const allLegend = entries.map(([label, value], i) => ({
     label,
     value,
     color: DEFAULT_COLORS[i % DEFAULT_COLORS.length],
@@ -70,6 +70,22 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
     }
   }, [d]);
 
+  // Toggle categories from legend (must be defined before segments)
+  const [excluded, setExcluded] = useState<Set<string>>(new Set());
+  const toggleLegend = (label: string) => {
+    setExcluded(prev => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label); else next.add(label);
+      return next;
+    });
+    // If currently selected category becomes excluded, clear selection
+    if (selected?.label === label) setSelected(null);
+  };
+
+  // Enabled data derived from exclusions
+  const enabledLegend = useMemo(() => allLegend.filter(it => !excluded.has(it.label)), [allLegend, excluded]);
+  const enabledTotal = useMemo(() => enabledLegend.reduce((acc, it) => acc + (it.value || 0), 0), [enabledLegend]);
+
   // Compute dash segments with small gaps
   const gapPct = 0.012; // ~1.2% gap between segments
   const segments = useMemo(() => {
@@ -77,14 +93,14 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
     const gap = pathLength * gapPct;
     const list: { color: string; len: number; offset: number; label: string; value: number }[] = [];
     let offset = 0;
-    for (let i = 0; i < legend.length; i++) {
-      const portion = total === 0 ? 0 : legend[i].value / total;
+    for (let i = 0; i < enabledLegend.length; i++) {
+      const portion = enabledTotal === 0 ? 0 : enabledLegend[i].value / enabledTotal;
       const len = Math.max(0, pathLength * portion - gap);
-      list.push({ color: legend[i].color, len, offset, label: legend[i].label, value: legend[i].value });
+      list.push({ color: enabledLegend[i].color, len, offset, label: enabledLegend[i].label, value: enabledLegend[i].value });
       offset += pathLength * portion;
     }
     return list;
-  }, [legend, pathLength, total]);
+  }, [enabledLegend, pathLength, enabledTotal]);
 
   // Animate drawing progress from 0 to 1 on mount and whenever data changes
   const progress = useMotionValue(0);
@@ -103,7 +119,7 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
       unsub();
       progress.set(0);
     };
-  }, [pathLength, total, legend.length]);
+  }, [pathLength, enabledTotal, enabledLegend.length]);
 
   // Selection state for click-to-focus behavior
   const [selected, setSelected] = useState<{ label: string; value: number } | null>(null);
@@ -121,7 +137,7 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
   }, []);
 
   const centerTitle = selected ? `Total ${selected.label}` : (title ?? "Total");
-  const centerValue = selected ? selected.value : total;
+  const centerValue = selected ? selected.value : enabledTotal;
 
   return (
     <motion.div
@@ -192,14 +208,23 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
         {/* Legend */}
         <div className="mt-6 w-full">
           <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-3">
-            {legend.map((item) => (
-              <div key={item.label} className="flex items-center gap-[4px]">
-                <svg width={14} height={6} className="shrink-0" aria-hidden="true" focusable="false">
-                  <rect x={0} y={0} width={14} height={6} rx={3} ry={3} fill={item.color} />
-                </svg>
-                <span className="text-[12px] font-medium text-black leading-none">{item.label}</span>
-              </div>
-            ))}
+            {allLegend.map((item: typeof allLegend[number]) => {
+              const disabled = excluded.has(item.label);
+              return (
+                <button
+                  type="button"
+                  key={item.label}
+                  onClick={() => toggleLegend(item.label)}
+                  className="flex items-center gap-[4px] select-none"
+                  aria-pressed={!disabled}
+                >
+                  <svg width={14} height={6} className="shrink-0" aria-hidden="true" focusable="false" style={{ opacity: disabled ? 0.35 : 1 }}>
+                    <rect x={0} y={0} width={14} height={6} rx={3} ry={3} fill={item.color} />
+                  </svg>
+                  <span className={`text-[12px] font-medium leading-none ${disabled ? 'text-gray-400 line-through' : 'text-black'}`}>{item.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
