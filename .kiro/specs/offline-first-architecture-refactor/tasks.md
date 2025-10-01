@@ -45,11 +45,12 @@
   - Create priority-based sync ordering
   - _Requirements: 1.4, 2.4_
 
-- [ ] 7. Add background sync with Service Worker integration
+- [x] 7. Add background sync with Service Worker integration
   - Implement Service Worker for background operations
   - Add sync when app is not active
   - Implement push notifications for sync completion
   - Add periodic conflict detection
+  - Test with vitest
   - _Requirements: 2.7_
 
 ## User Interface Integration Tasks
