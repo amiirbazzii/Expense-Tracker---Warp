@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { LocalIncome, LocalCategory, LocalCard, LocalForValue } from '@/lib/types/local-storage';
-import { useLocalFirst } from './useLocalFirst';
+import { useCallback, useMemo } from 'react';
+import { LocalIncome, LocalCategory, LocalCard, LocalForValue, LocalExpense } from '@/lib/types/local-storage';
+import { useIncome, useCategories, useCards } from './useLocalFirst';
+import { useLocalFirstExpenses } from './useLocalFirstExpenses';
 
 export interface IncomeFormData {
   amount: number;
@@ -24,94 +25,62 @@ export interface UseLocalFirstIncomeReturn {
 }
 
 export function useLocalFirstIncome(): UseLocalFirstIncomeReturn {
-  const { localStorageManager, isInitialized } = useLocalFirst();
-  
-  const [income, setIncome] = useState<LocalIncome[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const incomeResult = useIncome();
 
-  const loadIncome = useCallback(async () => {
-    if (!isInitialized || !localStorageManager) return;
-    
-    try {
-      const localIncome = await localStorageManager.getIncome();
-      setIncome(localIncome);
-    } catch (error) {
-      console.error('Failed to load income:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [localStorageManager, isInitialized]);
-
-  useEffect(() => {
-    loadIncome();
-  }, [loadIncome]);
+  const income = incomeResult.data;
+  const isLoading = incomeResult.isLoading;
 
   const createIncome = useCallback(async (data: IncomeFormData): Promise<LocalIncome> => {
-    if (!localStorageManager) {
-      throw new Error('Storage not initialized');
-    }
-
     try {
-      const newIncome = await localStorageManager.saveIncome({
-        ...data,
-        cloudId: undefined
-      });
+      const incomeData = {
+        amount: data.amount,
+        cardId: data.cardId,
+        date: data.date,
+        source: data.title,
+        category: data.category[0] || '',
+        notes: data.description
+      };
 
-      setIncome(prev => [newIncome, ...prev]);
-      return newIncome;
+      return await incomeResult.createIncome(incomeData);
     } catch (error) {
       console.error('Failed to create income:', error);
       throw error;
     }
-  }, [localStorageManager]);
+  }, [incomeResult.createIncome]);
 
   const updateIncome = useCallback(async (
-    id: string, 
+    id: string,
     updates: Partial<IncomeFormData>
   ): Promise<LocalIncome | null> => {
-    if (!localStorageManager) {
-      throw new Error('Storage not initialized');
-    }
-
     try {
-      const updatedIncome = await localStorageManager.updateIncome(id, updates);
-      
-      if (!updatedIncome) return null;
+      const incomeUpdates: Partial<LocalIncome> = {};
 
-      setIncome(prev => 
-        prev.map(inc => inc.id === id ? updatedIncome : inc)
-      );
+      if (updates.amount !== undefined) incomeUpdates.amount = updates.amount;
+      if (updates.cardId !== undefined) incomeUpdates.cardId = updates.cardId;
+      if (updates.date !== undefined) incomeUpdates.date = updates.date;
+      if (updates.title !== undefined) incomeUpdates.source = updates.title;
+      if (updates.category !== undefined) incomeUpdates.category = updates.category[0] || '';
+      if (updates.description !== undefined) incomeUpdates.notes = updates.description;
 
-      return updatedIncome;
+      return await incomeResult.updateIncome(id, incomeUpdates);
     } catch (error) {
       console.error('Failed to update income:', error);
       throw error;
     }
-  }, [localStorageManager]);
+  }, [incomeResult.updateIncome]);
 
   const deleteIncome = useCallback(async (id: string): Promise<boolean> => {
-    if (!localStorageManager) {
-      throw new Error('Storage not initialized');
-    }
-
     try {
-      const success = await localStorageManager.deleteIncome(id);
-      
-      if (success) {
-        setIncome(prev => prev.filter(inc => inc.id !== id));
-      }
-
-      return success;
+      return await incomeResult.deleteIncome(id);
     } catch (error) {
       console.error('Failed to delete income:', error);
       throw error;
     }
-  }, [localStorageManager]);
+  }, [incomeResult.deleteIncome]);
 
   const refreshData = useCallback(async () => {
-    setIsLoading(true);
-    await loadIncome();
-  }, [loadIncome]);
+    await incomeResult.refreshData();
+  }, [incomeResult.refreshData]);
 
   return useMemo(() => ({
     income,
@@ -125,27 +94,10 @@ export function useLocalFirstIncome(): UseLocalFirstIncomeReturn {
 
 // Hook for managing categories
 export function useLocalFirstCategories() {
-  const { localStorageManager, isInitialized } = useLocalFirst();
-  
-  const [categories, setCategories] = useState<LocalCategory[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const categoriesResult = useCategories();
 
-  const loadCategories = useCallback(async () => {
-    if (!isInitialized || !localStorageManager) return;
-    
-    try {
-      const localCategories = await localStorageManager.getCategories();
-      setCategories(localCategories);
-    } catch (error) {
-      console.error('Failed to load categories:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [localStorageManager, isInitialized]);
-
-  useEffect(() => {
-    loadCategories();
-  }, [loadCategories]);
+  const categories = categoriesResult.data;
+  const isLoading = categoriesResult.isLoading;
 
   const createCategory = useCallback(async (data: {
     name: string;
@@ -153,33 +105,30 @@ export function useLocalFirstCategories() {
     color?: string;
     icon?: string;
   }): Promise<LocalCategory> => {
-    if (!localStorageManager) {
-      throw new Error('Storage not initialized');
-    }
-
     try {
-      const newCategory = await localStorageManager.saveCategory({
-        ...data,
-        cloudId: undefined
+      return await categoriesResult.createCategory({
+        name: data.name,
+        type: data.type
       });
-
-      setCategories(prev => [...prev, newCategory].sort((a, b) => a.name.localeCompare(b.name)));
-      return newCategory;
     } catch (error) {
       console.error('Failed to create category:', error);
       throw error;
     }
-  }, [localStorageManager]);
+  }, [categoriesResult.createCategory]);
 
-  const getExpenseCategories = useMemo(() => 
-    categories.filter(cat => cat.type === 'expense'),
+  const getExpenseCategories = useMemo(() =>
+    categories.filter((cat: LocalCategory) => cat.type === 'expense'),
     [categories]
   );
 
-  const getIncomeCategories = useMemo(() => 
-    categories.filter(cat => cat.type === 'income'),
+  const getIncomeCategories = useMemo(() =>
+    categories.filter((cat: LocalCategory) => cat.type === 'income'),
     [categories]
   );
+
+  const refreshData = useCallback(async () => {
+    // The useCategories hook handles data refreshing internally
+  }, []);
 
   return {
     categories,
@@ -187,33 +136,16 @@ export function useLocalFirstCategories() {
     incomeCategories: getIncomeCategories,
     isLoading,
     createCategory,
-    refreshData: loadCategories
+    refreshData
   };
 }
 
 // Hook for managing cards
 export function useLocalFirstCards() {
-  const { localStorageManager, isInitialized } = useLocalFirst();
-  
-  const [cards, setCards] = useState<LocalCard[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const cardsResult = useCards();
 
-  const loadCards = useCallback(async () => {
-    if (!isInitialized || !localStorageManager) return;
-    
-    try {
-      const localCards = await localStorageManager.getCards();
-      setCards(localCards);
-    } catch (error) {
-      console.error('Failed to load cards:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [localStorageManager, isInitialized]);
-
-  useEffect(() => {
-    loadCards();
-  }, [loadCards]);
+  const cards = cardsResult.data;
+  const isLoading = cardsResult.isLoading;
 
   const createCard = useCallback(async (data: {
     name: string;
@@ -221,30 +153,25 @@ export function useLocalFirstCards() {
     balance?: number;
     color?: string;
   }): Promise<LocalCard> => {
-    if (!localStorageManager) {
-      throw new Error('Storage not initialized');
-    }
-
     try {
-      const newCard = await localStorageManager.saveCard({
-        ...data,
-        balance: data.balance || 0,
-        cloudId: undefined
+      return await cardsResult.createCard({
+        name: data.name
       });
-
-      setCards(prev => [...prev, newCard].sort((a, b) => a.name.localeCompare(b.name)));
-      return newCard;
     } catch (error) {
       console.error('Failed to create card:', error);
       throw error;
     }
-  }, [localStorageManager]);
+  }, [cardsResult.createCard]);
+
+  const refreshData = useCallback(async () => {
+    // The useCards hook handles data refreshing internally
+  }, []);
 
   return {
     cards,
     isLoading,
     createCard,
-    refreshData: loadCards
+    refreshData
   };
 }
 
@@ -252,14 +179,54 @@ export function useLocalFirstCards() {
 export function useLocalFirstMetadata() {
   const { categories, expenseCategories, incomeCategories, isLoading: categoriesLoading } = useLocalFirstCategories();
   const { cards, isLoading: cardsLoading } = useLocalFirstCards();
-  
+
   // For values are typically static but could be made dynamic
   const forValues: LocalForValue[] = useMemo(() => [
-    { id: '1', name: 'Personal', type: 'personal' },
-    { id: '2', name: 'Family', type: 'family' },
-    { id: '3', name: 'Business', type: 'business' },
-    { id: '4', name: 'Investment', type: 'investment' },
-    { id: '5', name: 'Emergency', type: 'emergency' }
+    {
+      id: '1',
+      localId: 'local_1',
+      value: 'Personal',
+      syncStatus: 'synced' as const,
+      version: 1,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    },
+    {
+      id: '2',
+      localId: 'local_2',
+      value: 'Family',
+      syncStatus: 'synced' as const,
+      version: 1,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    },
+    {
+      id: '3',
+      localId: 'local_3',
+      value: 'Business',
+      syncStatus: 'synced' as const,
+      version: 1,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    },
+    {
+      id: '4',
+      localId: 'local_4',
+      value: 'Investment',
+      syncStatus: 'synced' as const,
+      version: 1,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    },
+    {
+      id: '5',
+      localId: 'local_5',
+      value: 'Emergency',
+      syncStatus: 'synced' as const,
+      version: 1,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    }
   ], []);
 
   const isLoading = categoriesLoading || cardsLoading;
@@ -286,21 +253,21 @@ export function useLocalFirstDashboard() {
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
-    
-    const monthlyExpenses = expenses.filter(expense => {
+
+    const monthlyExpenses = expenses.filter((expense: LocalExpense) => {
       const expenseDate = new Date(expense.date);
-      return expenseDate.getMonth() === currentMonth && 
-             expenseDate.getFullYear() === currentYear;
+      return expenseDate.getMonth() === currentMonth &&
+        expenseDate.getFullYear() === currentYear;
     });
 
-    const monthlyIncome = income.filter(inc => {
+    const monthlyIncome = income.filter((inc: LocalIncome) => {
       const incomeDate = new Date(inc.date);
-      return incomeDate.getMonth() === currentMonth && 
-             incomeDate.getFullYear() === currentYear;
+      return incomeDate.getMonth() === currentMonth &&
+        incomeDate.getFullYear() === currentYear;
     });
 
-    const totalExpenses = monthlyExpenses.reduce((sum, exp) => sum + exp.amount, 0);
-    const totalIncome = monthlyIncome.reduce((sum, inc) => sum + inc.amount, 0);
+    const totalExpenses = monthlyExpenses.reduce((sum: number, exp: LocalExpense) => sum + exp.amount, 0);
+    const totalIncome = monthlyIncome.reduce((sum: number, inc: LocalIncome) => sum + inc.amount, 0);
 
     return {
       expenses: monthlyExpenses,
@@ -316,8 +283,8 @@ export function useLocalFirstDashboard() {
   // Calculate chart data
   const chartData = useMemo(() => {
     // Category breakdown for pie chart
-    const categoryBreakdown = monthlyData.expenses.reduce((acc, expense) => {
-      expense.category.forEach(cat => {
+    const categoryBreakdown = monthlyData.expenses.reduce((acc: Record<string, number>, expense: LocalExpense) => {
+      expense.category.forEach((cat: string) => {
         acc[cat] = (acc[cat] || 0) + expense.amount;
       });
       return acc;
@@ -327,9 +294,9 @@ export function useLocalFirstDashboard() {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const recentExpenses = expenses.filter(expense => expense.date >= thirtyDaysAgo.getTime());
-    
-    const dailySpending = recentExpenses.reduce((acc, expense) => {
+    const recentExpenses = expenses.filter((expense: LocalExpense) => expense.date >= thirtyDaysAgo.getTime());
+
+    const dailySpending = recentExpenses.reduce((acc: Record<string, number>, expense: LocalExpense) => {
       const day = new Date(expense.date).toISOString().split('T')[0]; // YYYY-MM-DD
       acc[day] = (acc[day] || 0) + expense.amount;
       return acc;

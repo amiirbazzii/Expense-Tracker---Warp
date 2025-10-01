@@ -60,16 +60,16 @@ jest.mock('convex/browser', () => ({
 jest.mock('convex/react', () => ({
   useMutation: jest.fn(() => jest.fn()),
   useQuery: jest.fn(() => undefined),
-  ConvexProvider: ({ children }: { children: React.ReactNode }) => children,
+  ConvexProvider: 'div',
 }));
 
 // Mock framer-motion to avoid animation issues in tests
 jest.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-    span: ({ children, ...props }: any) => <span {...props}>{children}</span>,
+    div: 'div',
+    span: 'span',
   },
-  AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
+  AnimatePresence: 'div',
 }));
 
 // Mock sonner toast library
@@ -222,4 +222,4 @@ declare global {
       toHaveSyncStatus(status: string): R;
     }
   }
-}"
+}
