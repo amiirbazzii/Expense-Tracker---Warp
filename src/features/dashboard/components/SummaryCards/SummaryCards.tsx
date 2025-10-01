@@ -22,7 +22,7 @@ export function SummaryCards({ totalIncome, totalExpenses, isLoading }: SummaryC
 
   return (
     <div className="flex flex-row gap-4 w-full">
-      <div className="p-5 rounded-xl flex-1">
+      <div className="p-1 rounded-xl flex-1">
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center space-x-2">
@@ -40,7 +40,7 @@ export function SummaryCards({ totalIncome, totalExpenses, isLoading }: SummaryC
         </div>
       </div>
       
-      <div className="p-5 rounded-xl flex-1">
+      <div className="p-1 rounded-xl flex-1">
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center space-x-2">
