@@ -73,14 +73,14 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
   // Compute dash segments with small gaps
   const gapPct = 0.012; // ~1.2% gap between segments
   const segments = useMemo(() => {
-    if (!pathLength) return [] as { color: string; len: number; offset: number }[];
+    if (!pathLength) return [] as { color: string; len: number; offset: number; label: string; value: number }[];
     const gap = pathLength * gapPct;
-    const list: { color: string; len: number; offset: number }[] = [];
+    const list: { color: string; len: number; offset: number; label: string; value: number }[] = [];
     let offset = 0;
     for (let i = 0; i < legend.length; i++) {
       const portion = total === 0 ? 0 : legend[i].value / total;
       const len = Math.max(0, pathLength * portion - gap);
-      list.push({ color: legend[i].color, len, offset });
+      list.push({ color: legend[i].color, len, offset, label: legend[i].label, value: legend[i].value });
       offset += pathLength * portion;
     }
     return list;
@@ -105,7 +105,23 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
     };
   }, [pathLength, total, legend.length]);
 
-  const centerTitle = title ?? "Total";
+  // Selection state for click-to-focus behavior
+  const [selected, setSelected] = useState<{ label: string; value: number } | null>(null);
+  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSegmentClick = (label: string, value: number) => {
+    // clear any previous timer
+    if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+    setSelected({ label, value });
+    resetTimerRef.current = setTimeout(() => setSelected(null), 3000);
+  };
+
+  useEffect(() => () => {
+    if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+  }, []);
+
+  const centerTitle = selected ? `Total ${selected.label}` : (title ?? "Total");
+  const centerValue = selected ? selected.value : total;
 
   return (
     <motion.div
@@ -141,12 +157,19 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
                 strokeLinecap="round"
                 strokeDasharray={dash}
                 strokeDashoffset={-seg.offset}
+                style={{ cursor: "pointer" }}
+                onClick={() => handleSegmentClick(seg.label, seg.value)}
               />
             );
           })}
 
-          {/* Center labels */}
-          <g>
+          {/* Center labels with bounce on change */}
+          <motion.g
+            key={`${centerTitle}-${centerValue}`}
+            initial={{ scale: 0.92, opacity: 0.9 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", bounce: 0.5, stiffness: 160, damping: 26 }}
+          >
             <text
               x={width / 2}
               y={y + h / 2 - 12}
@@ -161,9 +184,9 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
               textAnchor="middle"
               style={{ fill: "#D02E2E", fontSize: 32, fontWeight: 800 }}
             >
-              {settings ? formatCurrency(total, settings.currency) : total.toLocaleString()}
+              {settings ? formatCurrency(centerValue, settings.currency) : centerValue.toLocaleString()}
             </text>
-          </g>
+          </motion.g>
         </svg>
 
         {/* Legend */}
