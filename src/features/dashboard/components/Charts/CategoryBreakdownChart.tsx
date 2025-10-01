@@ -47,10 +47,10 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
   // SVG sizing
   const width = 640; // logical SVG width
   const height = 190; // logical SVG height
-  const paddingX = 6;
+  const paddingX = 10;
   const paddingY = 6;
   const capsuleHeight = 180;
-  const strokeWidth = 10;
+  const strokeWidth = 12;
   const rx = capsuleHeight / 2; // fully rounded ends
 
   const x = paddingX;
@@ -164,18 +164,30 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
             const visible = Math.max(0, Math.min(seg.len, progressValue * seg.len));
             const dash = `${visible} ${pathLength}`;
             return (
-              <path
-                key={idx}
-                d={d}
-                fill="none"
-                stroke={seg.color}
-                strokeWidth={strokeWidth}
-                strokeLinecap="round"
-                strokeDasharray={dash}
-                strokeDashoffset={-seg.offset}
-                style={{ cursor: "pointer" }}
-                onClick={() => handleSegmentClick(seg.label, seg.value)}
-              />
+              <g key={idx}>
+                {/* Visible stroke */}
+                <path
+                  d={d}
+                  fill="none"
+                  stroke={seg.color}
+                  strokeWidth={strokeWidth}
+                  strokeLinecap="round"
+                  strokeDasharray={dash}
+                  strokeDashoffset={-seg.offset}
+                />
+                {/* Invisible hit area to increase click/tap target */}
+                <path
+                  d={d}
+                  fill="none"
+                  stroke="transparent"
+                  strokeWidth={strokeWidth + 18}
+                  strokeLinecap="round"
+                  strokeDasharray={dash}
+                  strokeDashoffset={-seg.offset}
+                  style={{ cursor: "pointer", pointerEvents: 'stroke' }}
+                  onClick={() => handleSegmentClick(seg.label, seg.value)}
+                />
+              </g>
             );
           })}
 
