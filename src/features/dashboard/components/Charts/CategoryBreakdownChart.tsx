@@ -46,11 +46,11 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
 
   // SVG sizing
   const width = 640; // logical SVG width
-  const height = 190; // logical SVG height
+  const height = 200; // logical SVG height
   const paddingX = 10;
   const paddingY = 6;
   const capsuleHeight = 180;
-  const strokeWidth = 16;
+  const strokeWidth = 15;
   const rx = capsuleHeight / 2; // fully rounded ends
 
   const x = paddingX;
@@ -150,7 +150,7 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
       <div className="w-full flex flex-col items-center">
         <svg
           viewBox={`0 0 ${width} ${height}`}
-          className="w-full h-[100px]"
+          className="w-full h-[120px]"
         >
           {/* Invisible base path to measure length */}
           <path ref={pathRef} d={d} fill="none" stroke="transparent" strokeWidth={strokeWidth} />
@@ -210,7 +210,7 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
               x={width / 2}
               y={y + h / 2 + 24 + 4}
               textAnchor="middle"
-              style={{ fill: "#D02E2E", fontSize: 38, fontWeight: 800 }}
+              style={{ fill: "#D02E2E", fontSize: 34, fontWeight: 800 }}
             >
               {settings ? formatCurrency(centerValue, settings.currency) : centerValue.toLocaleString()}
             </text>
@@ -218,7 +218,7 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
         </svg>
 
         {/* Legend */}
-        <div className="mt-6 w-full">
+        <div className="mt-4 w-full">
           <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-3">
             {allLegend.map((item: typeof allLegend[number]) => {
               const disabled = excluded.has(item.label);
