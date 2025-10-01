@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, animate, useMotionValue } from "framer-motion";
 import { useSettings } from "@/contexts/SettingsContext";
 import { formatCurrency } from "@/lib/formatters";
 
@@ -10,15 +10,15 @@ interface CategoryBreakdownChartProps {
 
 // A friendly palette aligned with the Figma example
 const DEFAULT_COLORS = [
-  "#E58C17", // Car (orange-brown)
-  "#6B74F6", // Food (indigo)
-  "#DAB500", // Installment (yellow)
-  "#5B8DDF", // Book (blue)
-  "#5A5A5A", // Gadget (gray)
-  "#35A3C8", // Furniture (teal)
-  "#E25555", // Travel (red)
-  "#58C46B", // Apparel (green)
-  "#E07AD9", // Health (pink)
+  "#E58C17", // (orange-brown)
+  "#6B74F6", // (indigo)
+  "#DAB500", // (yellow)
+  "#5B8DDF", // (blue)
+  "#5A5A5A", // (gray)
+  "#35A3C8", // (teal)
+  "#E25555", // (red)
+  "#58C46B", // (green)
+  "#E07AD9", // (pink)
 ];
 
 export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakdownChartProps) {
@@ -73,19 +73,37 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
   // Compute dash segments with small gaps
   const gapPct = 0.012; // ~1.2% gap between segments
   const segments = useMemo(() => {
-    if (!pathLength) return [] as { color: string; dash: string; offset: number }[];
+    if (!pathLength) return [] as { color: string; len: number; offset: number }[];
     const gap = pathLength * gapPct;
-    const list: { color: string; dash: string; offset: number }[] = [];
+    const list: { color: string; len: number; offset: number }[] = [];
     let offset = 0;
     for (let i = 0; i < legend.length; i++) {
       const portion = total === 0 ? 0 : legend[i].value / total;
       const len = Math.max(0, pathLength * portion - gap);
-      const dash = `${len} ${pathLength}`; // render only the segment and let the rest be empty
-      list.push({ color: legend[i].color, dash, offset });
+      list.push({ color: legend[i].color, len, offset });
       offset += pathLength * portion;
     }
     return list;
   }, [legend, pathLength, total]);
+
+  // Animate drawing progress from 0 to 1 on mount and whenever data changes
+  const progress = useMotionValue(0);
+  const [progressValue, setProgressValue] = useState(0);
+  useEffect(() => {
+    const controls = animate(progress, 1, {
+      type: "spring",
+      bounce: 0.5, // pronounced bounce
+      stiffness: 140,
+      damping: 30,
+      delay: 0.05,
+    });
+    const unsub = progress.on("change", setProgressValue);
+    return () => {
+      controls.stop();
+      unsub();
+      progress.set(0);
+    };
+  }, [pathLength, total, legend.length]);
 
   const centerTitle = title ?? "Total";
 
@@ -109,18 +127,23 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
           <path d={d} fill="none" stroke="#F1F5F9" strokeWidth={strokeWidth} />
 
           {/* Segments */}
-          {segments.map((seg, idx) => (
-            <path
-              key={idx}
-              d={d}
-              fill="none"
-              stroke={seg.color}
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
-              strokeDasharray={seg.dash}
-              strokeDashoffset={-seg.offset}
-            />
-          ))}
+          {segments.map((seg, idx) => {
+            // Fill each segment from 0 -> its own full length simultaneously
+            const visible = Math.max(0, Math.min(seg.len, progressValue * seg.len));
+            const dash = `${visible} ${pathLength}`;
+            return (
+              <path
+                key={idx}
+                d={d}
+                fill="none"
+                stroke={seg.color}
+                strokeWidth={strokeWidth}
+                strokeLinecap="round"
+                strokeDasharray={dash}
+                strokeDashoffset={-seg.offset}
+              />
+            );
+          })}
 
           {/* Center labels */}
           <g>
