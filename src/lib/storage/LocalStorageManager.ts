@@ -1242,4 +1242,6 @@ export class LocalStorageManager {
       });
     });
   }
+
+
 }

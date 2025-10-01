@@ -49,11 +49,11 @@ export function ConflictResolutionModal({
 
   const handleIndividualResolve = async (resolution: 'local' | 'cloud' | 'merge') => {
     if (!currentConflict) return;
-    
+
     setIsResolving(true);
     try {
       await onResolveIndividual(currentConflict.entityId, resolution);
-      
+
       // Move to next conflict or close if done
       if (currentConflictIndex < conflicts.length - 1) {
         setCurrentConflictIndex(currentConflictIndex + 1);
@@ -125,22 +125,20 @@ export function ConflictResolutionModal({
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setSelectedStrategy('local_wins')}
-                  className={`p-3 text-left border rounded-lg transition-colors ${
-                    selectedStrategy === 'local_wins'
+                  className={`p-3 text-left border rounded-lg transition-colors ${selectedStrategy === 'local_wins'
                       ? 'border-blue-500 bg-blue-50 text-blue-700'
                       : 'border-gray-200 hover:border-gray-300'
-                  }`}
+                    }`}
                 >
                   <div className="font-medium">Keep Local</div>
                   <div className="text-sm text-gray-600">Use your device's data</div>
                 </button>
                 <button
                   onClick={() => setSelectedStrategy('cloud_wins')}
-                  className={`p-3 text-left border rounded-lg transition-colors ${
-                    selectedStrategy === 'cloud_wins'
+                  className={`p-3 text-left border rounded-lg transition-colors ${selectedStrategy === 'cloud_wins'
                       ? 'border-blue-500 bg-blue-50 text-blue-700'
                       : 'border-gray-200 hover:border-gray-300'
-                  }`}
+                    }`}
                 >
                   <div className="font-medium">Keep Cloud</div>
                   <div className="text-sm text-gray-600">Use cloud data</div>
@@ -148,16 +146,15 @@ export function ConflictResolutionModal({
               </div>
               <button
                 onClick={() => setSelectedStrategy('merge')}
-                className={`w-full p-3 text-left border rounded-lg transition-colors ${
-                  selectedStrategy === 'merge'
+                className={`w-full p-3 text-left border rounded-lg transition-colors ${selectedStrategy === 'merge'
                     ? 'border-blue-500 bg-blue-50 text-blue-700'
                     : 'border-gray-200 hover:border-gray-300'
-                }`}
+                  }`}
               >
                 <div className="font-medium">Smart Merge</div>
                 <div className="text-sm text-gray-600">Automatically combine compatible changes</div>
               </button>
-              
+
               <Button
                 onClick={handleBulkResolve}
                 disabled={isResolving}
@@ -269,7 +266,7 @@ export function ConflictResolutionModal({
                   {currentConflict.autoResolvable ? 'Auto Merge' : 'Smart Merge'}
                 </Button>
               </div>
-              
+
               {hasMultipleConflicts && currentConflictIndex < conflicts.length - 1 && (
                 <Button
                   onClick={() => setCurrentConflictIndex(currentConflictIndex + 1)}

@@ -72,7 +72,6 @@ export function useConflictResolution(options: UseConflictResolutionOptions = {}
 
       setConflicts([]);
       setShowResolutionModal(false);
-      return resolutions;
     } catch (error) {
       options.onError?.(error as Error);
       throw error;
@@ -140,8 +139,6 @@ export function useConflictResolution(options: UseConflictResolutionOptions = {}
 
         // Remove resolved conflict from list
         setConflicts(prev => prev.filter(c => c.entityId !== conflictId));
-        
-        return resolved;
       }
     } catch (error) {
       options.onError?.(error as Error);

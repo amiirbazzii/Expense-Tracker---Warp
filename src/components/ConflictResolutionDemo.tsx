@@ -142,13 +142,13 @@ export function ConflictResolutionDemo({
         <div className="space-y-4">
           {/* Demo Controls */}
           <div className="flex flex-wrap gap-3">
-            <Button onClick={handleDetectConflicts} variant="outline">
+            <Button onClick={handleDetectConflicts}>
               Detect Real Conflicts
             </Button>
-            <Button onClick={handleSimulateConflicts} variant="outline">
+            <Button onClick={handleSimulateConflicts}>
               Simulate Conflicts
             </Button>
-            <Button onClick={openHistoryViewer} variant="outline">
+            <Button onClick={openHistoryViewer}>
               View History
             </Button>
           </div>
