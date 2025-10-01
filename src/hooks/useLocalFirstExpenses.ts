@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { LocalExpense, DataFilters, SyncStatus } from '@/lib/types/local-storage';
-import { useLocalFirst } from './useLocalFirst';
+import { LocalExpense, DataFilters, SyncStatus } from '../lib/types/local-storage';
+import { useExpenses } from './useLocalFirst';
 import { useOfflineQueue } from './useOfflineQueue';
 
 export interface ExpenseFormData {
@@ -19,85 +19,68 @@ export interface UseLocalFirstExpensesReturn {
   // Data
   expenses: LocalExpense[];
   isLoading: boolean;
-  
+
   // Operations
   createExpense: (data: ExpenseFormData) => Promise<LocalExpense>;
   updateExpense: (id: string, updates: Partial<ExpenseFormData>) => Promise<LocalExpense | null>;
   deleteExpense: (id: string) => Promise<boolean>;
-  
+
   // State
   syncStatus: SyncStatus;
   pendingCount: number;
   lastSyncTime: Date | null;
-  
+
   // Utilities
   refreshData: () => Promise<void>;
   exportExpenses: () => Promise<LocalExpense[]>;
 }
 
 export function useLocalFirstExpenses(filters?: DataFilters): UseLocalFirstExpensesReturn {
-  const { localStorageManager, isOnline, isInitialized } = useLocalFirst();
-  const { addOperation } = useOfflineQueue();
-  
-  const [expenses, setExpenses] = useState<LocalExpense[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>('synced');
-  const [pendingCount, setPendingCount] = useState(0);
-  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  // Use the existing useExpenses hook from useLocalFirst
+  const expensesResult = useExpenses(filters);
+  const { addToQueue } = useOfflineQueue('expense-operations');
 
-  // Load expenses from local storage
-  const loadExpenses = useCallback(async () => {
-    if (!isInitialized || !localStorageManager) return;
-    
-    try {
-      const localExpenses = await localStorageManager.getExpenses(filters);
-      setExpenses(localExpenses);
-      
-      // Calculate pending count
-      const pending = localExpenses.filter(exp => exp.syncStatus === 'pending').length;
-      setPendingCount(pending);
-      
-      // Update sync status based on pending operations
-      setSyncStatus(pending > 0 ? 'pending' : 'synced');
-      
-      // Get last sync time from sync state
-      const syncState = await localStorageManager.getSyncState();
-      if (syncState?.lastSync) {
-        setLastSyncTime(new Date(syncState.lastSync));
-      }
-    } catch (error) {
-      console.error('Failed to load expenses:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [localStorageManager, isInitialized, filters]);
+  // Track online status
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
 
-  // Initial load and refresh on dependency changes
   useEffect(() => {
-    loadExpenses();
-  }, [loadExpenses]);
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Use data from the useExpenses hook
+  const expenses = expensesResult.data;
+  const isLoading = expensesResult.isLoading;
+  const syncStatus = expensesResult.syncStatus;
+  const pendingCount = expensesResult.pendingCount;
+  const lastSyncTime = expensesResult.lastSyncedAt;
 
   // Create new expense
   const createExpense = useCallback(async (data: ExpenseFormData): Promise<LocalExpense> => {
-    if (!localStorageManager) {
-      throw new Error('Storage not initialized');
-    }
-
     try {
-      // Save locally first (optimistic update)
-      const newExpense = await localStorageManager.saveExpense({
-        ...data,
-        cloudId: undefined
-      });
+      // Convert ExpenseFormData to the format expected by useExpenses
+      const expenseData = {
+        amount: data.amount,
+        title: data.title,
+        category: data.category,
+        for: [data.forValue], // Convert single forValue to array
+        date: data.date,
+        cardId: data.cardId
+      };
 
-      // Update state immediately
-      setExpenses(prev => [newExpense, ...prev]);
-      setPendingCount(prev => prev + 1);
-      setSyncStatus('pending');
+      const newExpense = await expensesResult.createExpense(expenseData);
 
       // Queue for sync if online
       if (isOnline) {
-        await addOperation({
+        addToQueue({
           id: `create_expense_${newExpense.id}`,
           type: 'create',
           entityType: 'expenses',
@@ -114,40 +97,33 @@ export function useLocalFirstExpenses(filters?: DataFilters): UseLocalFirstExpen
       console.error('Failed to create expense:', error);
       throw error;
     }
-  }, [localStorageManager, isOnline, addOperation]);
+  }, [expensesResult.createExpense, isOnline, addToQueue]);
 
   // Update existing expense
   const updateExpense = useCallback(async (
-    id: string, 
+    id: string,
     updates: Partial<ExpenseFormData>
   ): Promise<LocalExpense | null> => {
-    if (!localStorageManager) {
-      throw new Error('Storage not initialized');
-    }
-
     try {
-      // Update locally first
-      const updatedExpense = await localStorageManager.updateExpense(id, updates);
-      
+      // Convert ExpenseFormData updates to the format expected by useExpenses
+      const expenseUpdates: Partial<LocalExpense> = {};
+
+      if (updates.amount !== undefined) expenseUpdates.amount = updates.amount;
+      if (updates.title !== undefined) expenseUpdates.title = updates.title;
+      if (updates.category !== undefined) expenseUpdates.category = updates.category;
+      if (updates.forValue !== undefined) expenseUpdates.for = [updates.forValue];
+      if (updates.date !== undefined) expenseUpdates.date = updates.date;
+      if (updates.cardId !== undefined) expenseUpdates.cardId = updates.cardId;
+
+      const updatedExpense = await expensesResult.updateExpense(id, expenseUpdates);
+
       if (!updatedExpense) {
         return null;
       }
 
-      // Update state immediately
-      setExpenses(prev => 
-        prev.map(exp => exp.id === id ? updatedExpense : exp)
-      );
-
-      // Only increment pending if this expense wasn't already pending
-      const existingExpense = expenses.find(exp => exp.id === id);
-      if (existingExpense?.syncStatus !== 'pending') {
-        setPendingCount(prev => prev + 1);
-        setSyncStatus('pending');
-      }
-
       // Queue for sync if online
       if (isOnline) {
-        await addOperation({
+        addToQueue({
           id: `update_expense_${id}`,
           type: 'update',
           entityType: 'expenses',
@@ -164,34 +140,23 @@ export function useLocalFirstExpenses(filters?: DataFilters): UseLocalFirstExpen
       console.error('Failed to update expense:', error);
       throw error;
     }
-  }, [localStorageManager, isOnline, addOperation, expenses]);
+  }, [expensesResult.updateExpense, isOnline, addToQueue]);
 
   // Delete expense
   const deleteExpense = useCallback(async (id: string): Promise<boolean> => {
-    if (!localStorageManager) {
-      throw new Error('Storage not initialized');
-    }
-
     try {
-      // Delete locally first
-      const success = await localStorageManager.deleteExpense(id);
-      
+      // Find the expense before deletion for sync queue
+      const expenseToDelete = expenses.find(exp => exp.id === id);
+
+      const success = await expensesResult.deleteExpense(id);
+
       if (!success) {
         return false;
       }
 
-      // Update state immediately
-      const expenseToDelete = expenses.find(exp => exp.id === id);
-      setExpenses(prev => prev.filter(exp => exp.id !== id));
-
-      // Adjust pending count
-      if (expenseToDelete?.syncStatus === 'pending') {
-        setPendingCount(prev => Math.max(0, prev - 1));
-      }
-
       // Queue for sync if online and expense was previously synced
       if (isOnline && expenseToDelete?.cloudId) {
-        await addOperation({
+        addToQueue({
           id: `delete_expense_${id}`,
           type: 'delete',
           entityType: 'expenses',
@@ -208,27 +173,22 @@ export function useLocalFirstExpenses(filters?: DataFilters): UseLocalFirstExpen
       console.error('Failed to delete expense:', error);
       throw error;
     }
-  }, [localStorageManager, isOnline, addOperation, expenses]);
+  }, [expensesResult.deleteExpense, isOnline, addToQueue, expenses]);
 
   // Refresh data from storage
   const refreshData = useCallback(async () => {
-    setIsLoading(true);
-    await loadExpenses();
-  }, [loadExpenses]);
+    await expensesResult.refreshData();
+  }, [expensesResult.refreshData]);
 
   // Export expenses for backup
   const exportExpenses = useCallback(async (): Promise<LocalExpense[]> => {
-    if (!localStorageManager) {
-      return [];
-    }
-
     try {
-      return await localStorageManager.getExpenses();
+      return expenses;
     } catch (error) {
       console.error('Failed to export expenses:', error);
       return [];
     }
-  }, [localStorageManager]);
+  }, [expenses]);
 
   // Memoized return value to prevent unnecessary re-renders
   const returnValue = useMemo((): UseLocalFirstExpensesReturn => ({
@@ -263,7 +223,7 @@ export function useExpenseStatistics(expenses: LocalExpense[]) {
   return useMemo(() => {
     const totalAmount = expenses.reduce((sum, expense) => sum + expense.amount, 0);
     const expenseCount = expenses.length;
-    
+
     // Group by category
     const byCategory = expenses.reduce((acc, expense) => {
       expense.category.forEach(cat => {
@@ -271,20 +231,22 @@ export function useExpenseStatistics(expenses: LocalExpense[]) {
       });
       return acc;
     }, {} as Record<string, number>);
-    
+
     // Group by card
     const byCard = expenses.reduce((acc, expense) => {
-      acc[expense.cardId] = (acc[expense.cardId] || 0) + expense.amount;
+      if (expense.cardId) {
+        acc[expense.cardId] = (acc[expense.cardId] || 0) + expense.amount;
+      }
       return acc;
     }, {} as Record<string, number>);
-    
+
     // Monthly totals
     const monthlyTotals = expenses.reduce((acc, expense) => {
       const monthKey = new Date(expense.date).toISOString().slice(0, 7); // YYYY-MM
       acc[monthKey] = (acc[monthKey] || 0) + expense.amount;
       return acc;
     }, {} as Record<string, number>);
-    
+
     return {
       totalAmount,
       expenseCount,
@@ -298,30 +260,30 @@ export function useExpenseStatistics(expenses: LocalExpense[]) {
 
 // Hook for filtered expenses with search and category filtering
 export function useFilteredExpenses(
-  expenses: LocalExpense[], 
-  searchTerm?: string, 
+  expenses: LocalExpense[],
+  searchTerm?: string,
   categories?: string[]
 ) {
   return useMemo(() => {
     let filtered = expenses;
-    
+
     // Apply search filter
     if (searchTerm && searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(expense =>
         expense.title.toLowerCase().includes(term) ||
-        expense.description?.toLowerCase().includes(term) ||
-        expense.category.some(cat => cat.toLowerCase().includes(term))
+        expense.category.some(cat => cat.toLowerCase().includes(term)) ||
+        expense.for.some(forValue => forValue.toLowerCase().includes(term))
       );
     }
-    
+
     // Apply category filter
     if (categories && categories.length > 0) {
       filtered = filtered.filter(expense =>
         expense.category.some(cat => categories.includes(cat))
       );
     }
-    
+
     return filtered;
   }, [expenses, searchTerm, categories]);
 }
