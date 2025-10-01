@@ -47,7 +47,7 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
   // SVG sizing
   const width = 640; // logical SVG width
   const height = 190; // logical SVG height
-  const paddingX = 0;
+  const paddingX = 6;
   const paddingY = 6;
   const capsuleHeight = 180;
   const strokeWidth = 10;
