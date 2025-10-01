@@ -6,15 +6,23 @@ import {
   LocalDataExport,
   CloudDataMapping,
   EntityType,
-  LocalEntity
+  LocalEntity,
+  ConflictResolution,
+  ConflictResolutionStrategy,
+  MergeRule
 } from '../types/local-storage';
 
 /**
- * ConflictDetector provides comprehensive conflict detection capabilities
- * for local-first data synchronization. Uses hash-based comparison and
- * intelligent analysis to identify and categorize data conflicts.
+ * Enhanced ConflictDetector with CRDT-like merge strategies, field-level resolution,
+ * and comprehensive conflict history tracking for local-first data synchronization.
  */
 export class ConflictDetector {
+  private conflictHistory: ConflictResolution[] = [];
+  private mergeStrategies: Map<string, (local: any, cloud: any) => any> = new Map();
+
+  constructor() {
+    this.initializeMergeStrategies();
+  }
   
   /**
    * Main conflict detection method that compares local and cloud data
@@ -481,11 +489,418 @@ export class ConflictDetector {
   }
 
   /**
-   * Merge data by comparing timestamps
+   * Initialize CRDT-like merge strategies for different field types
+   */
+  private initializeMergeStrategies(): void {
+    // Last-Writer-Wins for simple fields
+    this.mergeStrategies.set('lww', (local: any, cloud: any) => {
+      return local.updatedAt > cloud.updatedAt ? local : cloud;
+    });
+
+    // Set union for array fields (categories, for values)
+    this.mergeStrategies.set('set_union', (local: any[], cloud: any[]) => {
+      const combined = new Set([...local, ...cloud]);
+      return Array.from(combined);
+    });
+
+    // Numeric max for amounts (assuming higher is more recent/correct)
+    this.mergeStrategies.set('numeric_max', (local: number, cloud: number) => {
+      return Math.max(local, cloud);
+    });
+
+    // String concatenation with separator for notes/titles
+    this.mergeStrategies.set('string_concat', (local: string, cloud: string) => {
+      if (local === cloud) return local;
+      return `${local} | ${cloud}`;
+    });
+
+    // Custom merge for complex objects
+    this.mergeStrategies.set('object_merge', (local: any, cloud: any) => {
+      return { ...cloud, ...local }; // Local takes precedence
+    });
+  }
+
+  /**
+   * Perform field-level conflict detection and resolution
+   */
+  async resolveFieldLevelConflicts(
+    localEntity: LocalEntity,
+    cloudEntity: any,
+    strategy: ConflictResolutionStrategy
+  ): Promise<{ resolved: LocalEntity; conflicts: FieldConflict[] }> {
+    const fieldConflicts: FieldConflict[] = [];
+    const resolved = { ...localEntity };
+
+    // Compare each field
+    for (const [field, value] of Object.entries(localEntity)) {
+      if (this.shouldSkipField(field)) continue;
+
+      const cloudValue = cloudEntity[field];
+      if (value !== cloudValue) {
+        const conflict: FieldConflict = {
+          field,
+          localValue: value,
+          cloudValue,
+          conflictType: this.determineFieldConflictType(field, value, cloudValue),
+          autoResolvable: this.isFieldAutoResolvable(field, value, cloudValue)
+        };
+
+        fieldConflicts.push(conflict);
+
+        // Apply resolution strategy
+        const resolvedValue = await this.resolveFieldConflict(
+          field,
+          value,
+          cloudValue,
+          strategy,
+          conflict
+        );
+        
+        (resolved as any)[field] = resolvedValue;
+      }
+    }
+
+    return { resolved, conflicts: fieldConflicts };
+  }
+
+  /**
+   * Resolve individual field conflicts using CRDT-like strategies
+   */
+  private async resolveFieldConflict(
+    field: string,
+    localValue: any,
+    cloudValue: any,
+    strategy: ConflictResolutionStrategy,
+    conflict: FieldConflict
+  ): Promise<any> {
+    // Check if there's a specific merge rule for this field
+    const mergeRule = strategy.mergeRules.find(rule => rule.field === field);
+    const resolveStrategy = mergeRule?.strategy || strategy.strategy;
+
+    switch (resolveStrategy) {
+      case 'local_wins':
+        return localValue;
+      
+      case 'cloud_wins':
+        return cloudValue;
+      
+      case 'merge':
+        return this.performCRDTMerge(field, localValue, cloudValue, conflict);
+      
+      case 'user_choice':
+        // This would typically trigger UI for user selection
+        // For now, fall back to CRDT merge
+        return this.performCRDTMerge(field, localValue, cloudValue, conflict);
+      
+      default:
+        return localValue; // Default to local
+    }
+  }
+
+  /**
+   * Perform CRDT-like merge based on field type and conflict characteristics
+   */
+  private performCRDTMerge(
+    field: string,
+    localValue: any,
+    cloudValue: any,
+    conflict: FieldConflict
+  ): any {
+    switch (conflict.conflictType) {
+      case 'array_difference':
+        // Use set union for arrays
+        const mergeArrays = this.mergeStrategies.get('set_union');
+        return mergeArrays ? mergeArrays(localValue, cloudValue) : localValue;
+      
+      case 'numeric_difference':
+        // Use numeric max for amounts
+        const mergeNumeric = this.mergeStrategies.get('numeric_max');
+        return mergeNumeric ? mergeNumeric(localValue, cloudValue) : localValue;
+      
+      case 'string_difference':
+        // For titles and notes, prefer non-empty values
+        if (!localValue && cloudValue) return cloudValue;
+        if (localValue && !cloudValue) return localValue;
+        if (localValue.length > cloudValue.length) return localValue;
+        return cloudValue;
+      
+      case 'timestamp_difference':
+        // Use latest timestamp
+        return localValue > cloudValue ? localValue : cloudValue;
+      
+      case 'object_difference':
+        // Merge objects with local precedence
+        const mergeObjects = this.mergeStrategies.get('object_merge');
+        return mergeObjects ? mergeObjects(localValue, cloudValue) : localValue;
+      
+      default:
+        return localValue;
+    }
+  }
+
+  /**
+   * Determine the type of field conflict
+   */
+  private determineFieldConflictType(
+    field: string,
+    localValue: any,
+    cloudValue: any
+  ): FieldConflictType {
+    if (Array.isArray(localValue) && Array.isArray(cloudValue)) {
+      return 'array_difference';
+    }
+    
+    if (typeof localValue === 'number' && typeof cloudValue === 'number') {
+      return 'numeric_difference';
+    }
+    
+    if (typeof localValue === 'string' && typeof cloudValue === 'string') {
+      return 'string_difference';
+    }
+    
+    if (field.includes('At') || field.includes('date') || field.includes('time')) {
+      return 'timestamp_difference';
+    }
+    
+    if (typeof localValue === 'object' && typeof cloudValue === 'object') {
+      return 'object_difference';
+    }
+    
+    return 'value_difference';
+  }
+
+  /**
+   * Check if a field conflict can be automatically resolved
+   */
+  private isFieldAutoResolvable(field: string, localValue: any, cloudValue: any): boolean {
+    // Arrays can usually be merged automatically
+    if (Array.isArray(localValue) && Array.isArray(cloudValue)) {
+      return true;
+    }
+    
+    // Timestamps can be resolved by taking the latest
+    if (field.includes('At') || field.includes('date') || field.includes('time')) {
+      return true;
+    }
+    
+    // Empty vs non-empty values can be resolved
+    if ((!localValue && cloudValue) || (localValue && !cloudValue)) {
+      return true;
+    }
+    
+    // Numeric values can be resolved with max strategy
+    if (typeof localValue === 'number' && typeof cloudValue === 'number') {
+      return true;
+    }
+    
+    return false;
+  }
+
+  /**
+   * Check if a field should be skipped during conflict detection
+   */
+  private shouldSkipField(field: string): boolean {
+    const skipFields = [
+      'syncStatus', 'lastSyncedAt', 'localId', 'version', 
+      '_id', '_creationTime', 'id'
+    ];
+    return skipFields.includes(field);
+  }
+
+  /**
+   * Add conflict resolution to history
+   */
+  addToHistory(resolution: ConflictResolution): void {
+    this.conflictHistory.push(resolution);
+    
+    // Keep only last 1000 resolutions to prevent memory issues
+    if (this.conflictHistory.length > 1000) {
+      this.conflictHistory = this.conflictHistory.slice(-1000);
+    }
+  }
+
+  /**
+   * Get conflict resolution history
+   */
+  getConflictHistory(entityType?: EntityType, entityId?: string): ConflictResolution[] {
+    let history = this.conflictHistory;
+    
+    if (entityType) {
+      history = history.filter(r => r.entityType === entityType);
+    }
+    
+    if (entityId) {
+      history = history.filter(r => r.entityId === entityId);
+    }
+    
+    return history.sort((a, b) => b.resolvedAt - a.resolvedAt);
+  }
+
+  /**
+   * Get conflict statistics
+   */
+  getConflictStats(): ConflictStats {
+    const total = this.conflictHistory.length;
+    const byStrategy = this.conflictHistory.reduce((acc, resolution) => {
+      acc[resolution.strategy] = (acc[resolution.strategy] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const byEntityType = this.conflictHistory.reduce((acc, resolution) => {
+      acc[resolution.entityType] = (acc[resolution.entityType] || 0) + 1;
+      return acc;
+    }, {} as Record<EntityType, number>);
+    
+    const recentConflicts = this.conflictHistory.filter(
+      r => r.resolvedAt > Date.now() - 24 * 60 * 60 * 1000 // Last 24 hours
+    ).length;
+
+    return {
+      total,
+      byStrategy,
+      byEntityType,
+      recentConflicts,
+      averageResolutionTime: this.calculateAverageResolutionTime()
+    };
+  }
+
+  /**
+   * Calculate average time between conflict detection and resolution
+   */
+  private calculateAverageResolutionTime(): number {
+    if (this.conflictHistory.length === 0) return 0;
+    
+    // This is a simplified calculation - in practice, you'd track detection time
+    const recentResolutions = this.conflictHistory.slice(-100);
+    const intervals = recentResolutions.slice(1).map((resolution, index) => 
+      resolution.resolvedAt - recentResolutions[index].resolvedAt
+    );
+    
+    return intervals.length > 0 
+      ? intervals.reduce((sum, interval) => sum + interval, 0) / intervals.length
+      : 0;
+  }
+
+  /**
+   * Clear conflict history (for testing or privacy)
+   */
+  clearHistory(): void {
+    this.conflictHistory = [];
+  }
+
+  /**
+   * Export conflict history for backup
+   */
+  exportHistory(): ConflictResolution[] {
+    return [...this.conflictHistory];
+  }
+
+  /**
+   * Import conflict history from backup
+   */
+  importHistory(history: ConflictResolution[]): void {
+    this.conflictHistory = [...history];
+  }
+
+  /**
+   * Merge data by comparing timestamps (enhanced implementation)
    */
   private mergeByTimestamp(localData: any, cloudData: CloudDataMapping): any {
-    // Implementation would compare each entity by timestamp and keep the newer version
-    // This is a simplified version - full implementation would handle each entity type
-    return localData; // Placeholder
+    const merged = { ...localData };
+    
+    // Merge each entity type
+    for (const entityType of ['expenses', 'income', 'categories', 'cards'] as EntityType[]) {
+      if (cloudData[entityType] && localData[entityType]) {
+        merged[entityType] = this.mergeEntityTypeByTimestamp(
+          localData[entityType],
+          cloudData[entityType],
+          entityType
+        );
+      }
+    }
+    
+    return merged;
   }
+
+  /**
+   * Merge entities of a specific type by timestamp
+   */
+  private mergeEntityTypeByTimestamp(
+    localEntities: Record<string, LocalEntity>,
+    cloudEntities: any[],
+    entityType: EntityType
+  ): Record<string, LocalEntity> {
+    const merged = { ...localEntities };
+    
+    for (const cloudEntity of cloudEntities) {
+      const id = cloudEntity._id;
+      const localEntity = localEntities[id];
+      
+      if (!localEntity) {
+        // Add cloud entity if not present locally
+        merged[id] = this.convertCloudEntityToLocal(cloudEntity, entityType);
+      } else {
+        // Merge based on timestamp
+        const cloudUpdated = cloudEntity.updatedAt || cloudEntity._creationTime;
+        const localUpdated = localEntity.updatedAt;
+        
+        if (cloudUpdated > localUpdated) {
+          // Cloud is newer, but preserve local sync metadata
+          merged[id] = {
+            ...this.convertCloudEntityToLocal(cloudEntity, entityType),
+            localId: localEntity.localId,
+            syncStatus: 'synced' as SyncStatus,
+            lastSyncedAt: Date.now()
+          };
+        }
+        // If local is newer or equal, keep local version
+      }
+    }
+    
+    return merged;
+  }
+
+  /**
+   * Convert cloud entity to local entity format
+   */
+  private convertCloudEntityToLocal(cloudEntity: any, entityType: EntityType): LocalEntity {
+    const base: LocalEntity = {
+      id: cloudEntity._id,
+      localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      cloudId: cloudEntity._id,
+      syncStatus: 'synced',
+      version: 1,
+      createdAt: cloudEntity.createdAt || cloudEntity._creationTime,
+      updatedAt: cloudEntity.updatedAt || cloudEntity._creationTime,
+      lastSyncedAt: Date.now()
+    };
+
+    // Add entity-specific fields
+    return { ...base, ...cloudEntity };
+  }
+}
+
+// Additional types for enhanced conflict resolution
+interface FieldConflict {
+  field: string;
+  localValue: any;
+  cloudValue: any;
+  conflictType: FieldConflictType;
+  autoResolvable: boolean;
+}
+
+type FieldConflictType = 
+  | 'array_difference' 
+  | 'numeric_difference' 
+  | 'string_difference' 
+  | 'timestamp_difference' 
+  | 'object_difference' 
+  | 'value_difference';
+
+interface ConflictStats {
+  total: number;
+  byStrategy: Record<string, number>;
+  byEntityType: Record<EntityType, number>;
+  recentConflicts: number;
+  averageResolutionTime: number;
 }
