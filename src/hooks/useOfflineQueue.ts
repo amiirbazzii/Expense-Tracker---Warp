@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useOfflineQueueManager, useQueueOperations } from './useOfflineQueueManager';
+import { OperationType, EntityType } from '../lib/types/local-storage';
 
 export type OfflineItem<T> = {
   id: string;
@@ -7,6 +9,10 @@ export type OfflineItem<T> = {
   createdAt: number;
 };
 
+/**
+ * Legacy hook for backward compatibility
+ * @deprecated Use useOfflineQueueManager instead
+ */
 export function useOfflineQueue<T>(queueName: string) {
   const [queue, setQueue] = useState<OfflineItem<T>[]>([]);
 
@@ -63,5 +69,73 @@ export function useOfflineQueue<T>(queueName: string) {
     addToQueue,
     removeFromQueue,
     updateItemStatus,
+  };
+}
+
+/**
+ * Enhanced offline queue hook using the new OfflineQueueManager
+ */
+export function useEnhancedOfflineQueue() {
+  const queueManager = useOfflineQueueManager({
+    config: {
+      maxRetries: 5,
+      baseDelay: 1000,
+      maxDelay: 60000,
+      backoffFactor: 2,
+      jitter: true,
+      maxQueueSize: 1000,
+      batchSize: 10,
+      processingTimeout: 30000,
+      deduplicationWindow: 5000
+    },
+    autoStart: true
+  });
+
+  const queueOperations = useQueueOperations();
+
+  // Helper functions for common operations
+  const addExpenseOperation = useCallback(async (
+    type: OperationType,
+    expenseId: string,
+    expenseData: any
+  ) => {
+    const operation = queueOperations.createExpenseOperation(type, expenseId, expenseData);
+    return await queueManager.addOperation(operation);
+  }, [queueManager, queueOperations]);
+
+  const addIncomeOperation = useCallback(async (
+    type: OperationType,
+    incomeId: string,
+    incomeData: any
+  ) => {
+    const operation = queueOperations.createIncomeOperation(type, incomeId, incomeData);
+    return await queueManager.addOperation(operation);
+  }, [queueManager, queueOperations]);
+
+  const addCardOperation = useCallback(async (
+    type: OperationType,
+    cardId: string,
+    cardData: any
+  ) => {
+    const operation = queueOperations.createCardOperation(type, cardId, cardData);
+    return await queueManager.addOperation(operation);
+  }, [queueManager, queueOperations]);
+
+  const addCategoryOperation = useCallback(async (
+    type: OperationType,
+    categoryId: string,
+    categoryData: any
+  ) => {
+    const operation = queueOperations.createCategoryOperation(type, categoryId, categoryData);
+    return await queueManager.addOperation(operation);
+  }, [queueManager, queueOperations]);
+
+  return {
+    ...queueManager,
+    addExpenseOperation,
+    addIncomeOperation,
+    addCardOperation,
+    addCategoryOperation,
+    queueOperations
   };
 }
