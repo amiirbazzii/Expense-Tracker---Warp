@@ -50,7 +50,7 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
   const paddingX = 10;
   const paddingY = 6;
   const capsuleHeight = 180;
-  const strokeWidth = 12;
+  const strokeWidth = 16;
   const rx = capsuleHeight / 2; // fully rounded ends
 
   const x = paddingX;
@@ -87,7 +87,7 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
   const enabledTotal = useMemo(() => enabledLegend.reduce((acc, it) => acc + (it.value || 0), 0), [enabledLegend]);
 
   // Compute dash segments with small gaps
-  const gapPct = 0.012; // ~1.2% gap between segments
+  const gapPct = 0.015; // ~1.2% gap between segments
   const segments = useMemo(() => {
     if (!pathLength) return [] as { color: string; len: number; offset: number; label: string; value: number }[];
     const gap = pathLength * gapPct;
@@ -200,9 +200,9 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
           >
             <text
               x={width / 2}
-              y={y + h / 2 - 12}
+              y={y + h / 2 - 16}
               textAnchor="middle"
-              style={{ fill: "#111827", fontSize: 22, fontWeight: 300 }}
+              style={{ fill: "#111827", fontSize: 26, fontWeight: 300 }}
             >
               {centerTitle}
             </text>
@@ -210,7 +210,7 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
               x={width / 2}
               y={y + h / 2 + 24 + 4}
               textAnchor="middle"
-              style={{ fill: "#D02E2E", fontSize: 32, fontWeight: 800 }}
+              style={{ fill: "#D02E2E", fontSize: 38, fontWeight: 800 }}
             >
               {settings ? formatCurrency(centerValue, settings.currency) : centerValue.toLocaleString()}
             </text>
