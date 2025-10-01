@@ -1,89 +1,93 @@
-import { Pie } from "react-chartjs-2";
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, TooltipItem } from 'chart.js';
-import { PieChart } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useSettings } from "@/contexts/SettingsContext";
 import { formatCurrency } from "@/lib/formatters";
 
-// Register ChartJS components
-ChartJS.register(ArcElement, Tooltip, Legend);
-
 interface CategoryBreakdownChartProps {
   categoryTotals: Record<string, number>;
+  title?: string; // optional custom title inside the capsule
 }
 
-export function CategoryBreakdownChart({ categoryTotals }: CategoryBreakdownChartProps) {
+// A friendly palette aligned with the Figma example
+const DEFAULT_COLORS = [
+  "#E58C17", // Car (orange-brown)
+  "#6B74F6", // Food (indigo)
+  "#DAB500", // Installment (yellow)
+  "#5B8DDF", // Book (blue)
+  "#5A5A5A", // Gadget (gray)
+  "#35A3C8", // Furniture (teal)
+  "#E25555", // Travel (red)
+  "#58C46B", // Apparel (green)
+  "#E07AD9", // Health (pink)
+];
+
+export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakdownChartProps) {
   const { settings } = useSettings();
 
-  if (!categoryTotals || Object.keys(categoryTotals).length === 0) {
-    return null;
-  }
+  // Guard clauses
+  if (!categoryTotals || Object.keys(categoryTotals).length === 0) return null;
 
-  // Filter out "Card Transfer" category
-  const filteredCategoryTotals = Object.fromEntries(
-    Object.entries(categoryTotals).filter(([category]) => category !== 'Card Transfer')
+  // Filter out categories we don't want to visualize
+  const filtered = useMemo(
+    () => Object.fromEntries(Object.entries(categoryTotals).filter(([c]) => c !== "Card Transfer")),
+    [categoryTotals]
   );
+  const entries = Object.entries(filtered);
+  if (entries.length === 0) return null;
 
-  if (Object.keys(filteredCategoryTotals).length === 0) {
-    return null;
-  }
+  const total = entries.reduce((acc, [, v]) => acc + (v || 0), 0);
 
-  const chartData = {
-    labels: Object.keys(filteredCategoryTotals),
-    datasets: [
-      {
-        data: Object.values(filteredCategoryTotals),
-        backgroundColor: [
-          "#3B82F6",
-          "#EF4444",
-          "#10B981",
-          "#F59E0B",
-          "#8B5CF6",
-          "#F97316",
-          "#06B6D4",
-          "#84CC16",
-          "#EC4899",
-          "#6B7280",
-        ],
-        borderWidth: 0,
-      },
-    ],
-  };
+  // Prepare legend data with consistent color mapping
+  const legend = entries.map(([label, value], i) => ({
+    label,
+    value,
+    color: DEFAULT_COLORS[i % DEFAULT_COLORS.length],
+  }));
 
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: true,
-        position: 'bottom' as const,
-        labels: {
-          padding: 20,
-          font: {
-            size: 13,
-          },
-          usePointStyle: true,
-          boxWidth: 12,
-        },
-      },
-      tooltip: {
-        enabled: true,
-        callbacks: {
-          label: function(context: TooltipItem<'pie'>) {
-            let label = context.label || '';
-            if (label) {
-              label += ': ';
-            }
-            const value = context.raw as number;
-            if (context.raw !== null) {
-              label += settings ? formatCurrency(value, settings.currency) : `$${value.toFixed(2)}`;
-            }
-            return label;
-          }
-        }
-      },
-    },
-  };
+  // SVG sizing
+  const width = 640; // logical SVG width
+  const height = 190; // logical SVG height
+  const paddingX = 0;
+  const paddingY = 6;
+  const capsuleHeight = 180;
+  const strokeWidth = 10;
+  const rx = capsuleHeight / 2; // fully rounded ends
+
+  const x = paddingX;
+  const y = paddingY;
+  const w = width - paddingX * 2;
+  const h = capsuleHeight;
+
+  // Capsule path definition (rounded rectangle)
+  const d = `M ${x + rx},${y} H ${x + w - rx} A ${rx},${rx} 0 0 1 ${x + w},${y + rx} V ${y + h - rx} A ${rx},${rx} 0 0 1 ${x + w - rx},${y + h} H ${x + rx} A ${rx},${rx} 0 0 1 ${x},${y + h - rx} V ${y + rx} A ${rx},${rx} 0 0 1 ${x + rx},${y} Z`;
+
+  const pathRef = useRef<SVGPathElement>(null);
+  const [pathLength, setPathLength] = useState(0);
+
+  useEffect(() => {
+    if (pathRef.current) {
+      setPathLength(pathRef.current.getTotalLength());
+    }
+  }, [d]);
+
+  // Compute dash segments with small gaps
+  const gapPct = 0.012; // ~1.2% gap between segments
+  const segments = useMemo(() => {
+    if (!pathLength) return [] as { color: string; dash: string; offset: number }[];
+    const gap = pathLength * gapPct;
+    const list: { color: string; dash: string; offset: number }[] = [];
+    let offset = 0;
+    for (let i = 0; i < legend.length; i++) {
+      const portion = total === 0 ? 0 : legend[i].value / total;
+      const len = Math.max(0, pathLength * portion - gap);
+      const dash = `${len} ${pathLength}`; // render only the segment and let the rest be empty
+      list.push({ color: legend[i].color, dash, offset });
+      offset += pathLength * portion;
+    }
+    return list;
+  }, [legend, pathLength, total]);
+
+  const centerTitle = title ?? "Total";
 
   return (
     <motion.div
@@ -92,16 +96,66 @@ export function CategoryBreakdownChart({ categoryTotals }: CategoryBreakdownChar
       transition={{ delay: 0.1 }}
       className="bg-white rounded-lg shadow-sm p-6 mb-6"
     >
-      <div className="flex items-center space-x-2 mb-4">
-        <PieChart className="text-gray-600" size={20} />
-        <h2 className="text-lg font-semibold text-gray-900">Category Breakdown</h2>
-      </div>
-      
-      <div className="relative mx-auto" style={{ height: '280px', width: '100%' }}>
-        <Pie
-          data={chartData}
-          options={options}
-        />
+      {/* Capsule Chart */}
+      <div className="w-full flex flex-col items-center">
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          className="w-full h-[100px]"
+        >
+          {/* Invisible base path to measure length */}
+          <path ref={pathRef} d={d} fill="none" stroke="transparent" strokeWidth={strokeWidth} />
+
+          {/* Background track */}
+          <path d={d} fill="none" stroke="#F1F5F9" strokeWidth={strokeWidth} />
+
+          {/* Segments */}
+          {segments.map((seg, idx) => (
+            <path
+              key={idx}
+              d={d}
+              fill="none"
+              stroke={seg.color}
+              strokeWidth={strokeWidth}
+              strokeLinecap="round"
+              strokeDasharray={seg.dash}
+              strokeDashoffset={-seg.offset}
+            />
+          ))}
+
+          {/* Center labels */}
+          <g>
+            <text
+              x={width / 2}
+              y={y + h / 2 - 12}
+              textAnchor="middle"
+              style={{ fill: "#111827", fontSize: 22, fontWeight: 300 }}
+            >
+              {centerTitle}
+            </text>
+            <text
+              x={width / 2}
+              y={y + h / 2 + 24 + 4}
+              textAnchor="middle"
+              style={{ fill: "#D02E2E", fontSize: 32, fontWeight: 800 }}
+            >
+              {settings ? formatCurrency(total, settings.currency) : total.toLocaleString()}
+            </text>
+          </g>
+        </svg>
+
+        {/* Legend */}
+        <div className="mt-6 w-full">
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-3">
+            {legend.map((item) => (
+              <div key={item.label} className="flex items-center gap-[4px]">
+                <svg width={14} height={6} className="shrink-0" aria-hidden="true" focusable="false">
+                  <rect x={0} y={0} width={14} height={6} rx={3} ry={3} fill={item.color} />
+                </svg>
+                <span className="text-[12px] font-medium text-black leading-none">{item.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </motion.div>
   );
