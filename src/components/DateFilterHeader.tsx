@@ -11,6 +11,7 @@ interface DateFilterHeaderProps {
   subtitle?: string;
   variant?: 'card' | 'default';
   isMainTitle?: boolean;
+  isLoading?: boolean;
 }
 
 export function DateFilterHeader({ 
@@ -20,7 +21,8 @@ export function DateFilterHeader({
   onNextMonth, 
   subtitle, 
   variant = 'default',
-  isMainTitle = false 
+  isMainTitle = false,
+  isLoading = false 
 }: DateFilterHeaderProps) {
   const { settings } = useSettings();
 
@@ -45,6 +47,9 @@ export function DateFilterHeader({
         size="medium"
         aria-label="Previous month"
         onClick={onPreviousMonth}
+        loading={isLoading}
+        disabled={isLoading}
+        aria-busy={isLoading}
         icon={<ChevronLeft size={20} />}
       />
 
@@ -60,6 +65,9 @@ export function DateFilterHeader({
         size="medium"
         aria-label="Next month"
         onClick={onNextMonth}
+        loading={isLoading}
+        disabled={isLoading}
+        aria-busy={isLoading}
         icon={<ChevronRight size={20} />}
       />
     </div>

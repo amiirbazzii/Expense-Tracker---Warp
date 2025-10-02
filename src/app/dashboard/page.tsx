@@ -6,12 +6,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { BottomNav } from "@/components/BottomNav";
 import AppHeader from "@/components/AppHeader";
 import { Calendar } from 'lucide-react';
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 
 // Import components
 import { DateFilterHeader } from "@/components/DateFilterHeader";
+import { FullScreenLoader } from "@/components/FullScreenLoader";
 import { SummaryCards } from "../../features/dashboard/components/SummaryCards";
 import { CardFilter } from "../../features/dashboard/components/CardFilter";
 
@@ -35,6 +36,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const cards = useQuery(api.cardsAndIncome.getCardBalances, token ? { token } : "skip");
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [navigating, setNavigating] = useState(false);
 
 
   // Use custom hooks for data and actions
@@ -65,10 +67,32 @@ export default function DashboardPage() {
     }
   };
 
+  // When data loading completes after a navigation, hide the overlay
+  useEffect(() => {
+    if (navigating && !isLoading) {
+      setNavigating(false);
+    }
+  }, [isLoading, navigating]);
+
+  const handleNextMonth = () => {
+    if (isLoading) return; // guard
+    setNavigating(true);
+    goToNextMonth();
+  };
+
+  const handlePreviousMonth = () => {
+    if (isLoading) return; // guard
+    setNavigating(true);
+    goToPreviousMonth();
+  };
+
   return (
     <>
       <div className="min-h-screen bg-gray-50">
         <AppHeader />
+        {(navigating || isLoading) && (
+          <FullScreenLoader message="Loading month..." />
+        )}
         
         <div className="max-w-md mx-auto p-4 pt-[92px] pb-20">
           {/* Card Balances */}
@@ -83,10 +107,11 @@ export default function DashboardPage() {
               <DateFilterHeader 
                 monthName={monthName} 
                 year={year} 
-                onNextMonth={goToNextMonth} 
-                onPreviousMonth={goToPreviousMonth} 
+                onNextMonth={handleNextMonth} 
+                onPreviousMonth={handlePreviousMonth} 
                 subtitle="Monthly Summary"
                 isMainTitle={true}
+                isLoading={isLoading || navigating}
               />
             </div>
 
