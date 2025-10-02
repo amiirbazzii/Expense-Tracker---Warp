@@ -1,3 +1,5 @@
+"use client";
+
 import { motion } from "framer-motion";
 import { CreditCard } from "lucide-react";
 import { Chip } from "@/components/Chip";

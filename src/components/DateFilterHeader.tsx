@@ -1,3 +1,5 @@
+"use client";
+
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useSettings } from "@/contexts/SettingsContext";
 import { Button } from "@/components/Button";

@@ -1,22 +1,43 @@
-import { Bar } from "react-chartjs-2";
+"use client";
+
+import dynamic from 'next/dynamic';
+import { useEffect, useState } from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, TooltipItem } from 'chart.js';
 import { TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
 import { useSettings } from "@/contexts/SettingsContext";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
-// Register ChartJS components
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+// Dynamically import Bar to disable SSR for Chart.js components
+const Bar = dynamic(() => import('react-chartjs-2').then(m => m.Bar), { ssr: false });
 
 interface DailySpendingChartProps {
   dailyTotals: Record<string, number>;
 }
 
 export function DailySpendingChart({ dailyTotals }: DailySpendingChartProps) {
+  const [isMounted, setIsMounted] = useState(false);
   const { settings } = useSettings();
+
+  // Register Chart.js only on the client and mark component as mounted
+  useEffect(() => {
+    try {
+      ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+    } catch (_) {
+      // ignore if already registered during HMR/navigation
+    }
+    setIsMounted(true);
+  }, []);
 
   if (!dailyTotals || Object.keys(dailyTotals).length === 0) {
     return null;
+  }
+
+  // Avoid rendering chart until mounted to prevent hydration mismatch
+  if (!isMounted) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6 mb-6 h-64 animate-pulse" />
+    );
   }
 
   const chartData = {

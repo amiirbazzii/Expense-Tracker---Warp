@@ -1,3 +1,5 @@
+"use client";
+
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { useSettings } from "@/contexts/SettingsContext";
 import { formatCurrency } from "@/lib/formatters";

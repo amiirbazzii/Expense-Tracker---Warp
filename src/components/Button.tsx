@@ -1,9 +1,11 @@
+"use client";
+
 import React from 'react';
 const variants = {
   variant: {
-    default: 'bg-[#e1e1e1] border-[#cacaca] text-black shadow-[0px_2px_6px_0px_rgba(0,0,0,0.15)] [box-shadow:0px_2px_2px_0px_rgba(255,255,255,0.5)_inset]',
-    pressed: 'bg-[#cecece] border-[#b1b1b1] text-black shadow-[0px_1px_3px_0px_rgba(0,0,0,0.15)] [box-shadow:0px_2px_4px_0px_rgba(0,0,0,0.25)_inset]',
-    hover: 'bg-[#d7d7d7] border-[#b1b1b1] text-black shadow-[0px_2px_6px_0px_rgba(0,0,0,0.15)] [box-shadow:0px_2px_2px_0px_rgba(255,255,255,0.5)_inset]',
+    default: 'bg-[#e1e1e1] border-[#cacaca] text-black shadow-[0px_2px_6px_0px_RGBA(0,0,0,0.15)] [box-shadow:0px_2px_2px_0px_RGBA(255,255,255,0.5)_inset]',
+    pressed: 'bg-[#cecece] border-[#b1b1b1] text-black shadow-[0px_1px_3px_0px_RGBA(0,0,0,0.15)] [box-shadow:0px_2px_4px_0px_RGBA(0,0,0,0.25)_inset]',
+    hover: 'bg-[#d7d7d7] border-[#b1b1b1] text-black shadow-[0px_2px_6px_0px_RGBA(0,0,0,0.15)] [box-shadow:0px_2px_2px_0px_RGBA(255,255,255,0.5)_inset]',
   },
   size: {
     large: 'px-6 py-4 text-xl',
