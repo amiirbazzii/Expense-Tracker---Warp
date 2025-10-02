@@ -1,9 +1,10 @@
+"use client";
+
 import { motion } from "framer-motion";
 import { useSettings } from "@/contexts/SettingsContext";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 import { useMemo, useState } from "react";
 import { BottomSheet } from "@/components/BottomSheet";
-import { formatDate } from "@/lib/formatters";
 import type { Expense } from "../../types/expense";
 
 interface CategoryListProps {
