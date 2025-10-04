@@ -5,7 +5,36 @@ const withPWA = require('next-pwa')({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
+  sw: 'sw.js',
+  buildExcludes: [/app-build-manifest\.json$/, /middleware-manifest\.json$/],
+  publicExcludes: ['!robots.txt', '!sitemap.xml'],
+  // Enable offline support - cache the start URL
+  dynamicStartUrl: true,
+  // Don't use fallbacks - we want cached pages to load
+  // fallbacks: {
+  //   document: '/offline',
+  //   image: '/logo.png',
+  // },
+  // Aggressive caching for offline-first experience
+  cacheOnFrontEndNav: true,
+  reloadOnOnline: false, // Don't auto-reload when coming back online
   runtimeCaching: [
+    // Next.js static chunks - Cache first for offline support
+    {
+      urlPattern: /^\/_next\/static\/.*/,
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'next-static-chunks',
+        expiration: {
+          maxEntries: 200,
+          maxAgeSeconds: 365 * 24 * 60 * 60, // 1 year
+        },
+        cacheableResponse: {
+          statuses: [0, 200],
+        },
+      },
+    },
+    // Image caching with long expiration
     {
       urlPattern: /\.(?:png|jpg|jpeg|svg|gif|ico|webp|avif)$/,
       handler: 'CacheFirst',
@@ -17,29 +46,143 @@ const withPWA = require('next-pwa')({
         },
       },
     },
+    // Static resources with cache first
     {
       urlPattern: /\.(?:js|css|woff|woff2|ttf|eot)$/,
-      handler: 'StaleWhileRevalidate',
+      handler: 'CacheFirst',
       options: {
         cacheName: 'static-resources',
+        expiration: {
+          maxEntries: 100,
+          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+        },
       },
     },
+    // API requests - Network first with offline fallback
     {
-      // Avoid caching HTML document navigations to prevent stale app shell issues
-      // that can cause unexpected redirects (e.g., to /expenses) on prod.
-      // Also exclude specific routes that have been problematic
       urlPattern: ({ request, url }) => {
-        const pathname = new URL(url).pathname;
-        // Never cache these critical navigation pages
-        const noCacheRoutes = ['/settings', '/dashboard', '/expenses', '/income', '/cards'];
-        return request.destination !== 'document' && !noCacheRoutes.some(route => pathname.startsWith(route));
+        return request.method === 'POST' &&
+          (url.pathname.includes('/api/') ||
+            url.hostname.includes('convex') ||
+            url.pathname.includes('/_convex/'));
       },
       handler: 'NetworkFirst',
       options: {
-        cacheName: 'offlineCache',
+        cacheName: 'api-cache',
+        networkTimeoutSeconds: 10,
         expiration: {
-          maxEntries: 200,
-          maxAgeSeconds: 24 * 60 * 60, // 1 day
+          maxEntries: 50,
+          maxAgeSeconds: 5 * 60, // 5 minutes
+        },
+        cacheableResponse: {
+          statuses: [0, 200],
+        },
+        plugins: [
+          {
+            cacheWillUpdate: async ({ response }) => {
+              // Only cache successful responses
+              return response.status === 200 ? response : null;
+            },
+            requestWillFetch: async ({ request }) => {
+              // Add offline indicator to requests
+              const url = new URL(request.url);
+              url.searchParams.set('offline-capable', 'true');
+              return new Request(url.toString(), request);
+            }
+          }
+        ]
+      },
+    },
+    // App pages - Cache first for instant offline access
+    {
+      urlPattern: ({ request, url }) => {
+        const pathname = new URL(url).pathname;
+        // Cache main app pages aggressively for offline-first
+        const appPages = ['/dashboard', '/expenses', '/income', '/cards', '/settings', '/onboarding'];
+        return request.destination === 'document' &&
+          appPages.some(page => pathname.startsWith(page));
+      },
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'app-pages',
+        expiration: {
+          maxEntries: 30,
+          maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
+        },
+        cacheableResponse: {
+          statuses: [0, 200],
+        },
+        plugins: [
+          {
+            handlerDidError: async () => {
+              return caches.match('/offline');
+            }
+          }
+        ]
+      },
+    },
+    // Root and other navigation - Cache first for offline access
+    {
+      urlPattern: ({ request, url }) => {
+        const pathname = new URL(url).pathname;
+        return request.destination === 'document' &&
+          (pathname === '/' || pathname === '/login' || pathname === '/register');
+      },
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'auth-pages',
+        expiration: {
+          maxEntries: 10,
+          maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
+        },
+        cacheableResponse: {
+          statuses: [0, 200],
+        },
+        plugins: [
+          {
+            handlerDidError: async () => {
+              return caches.match('/offline');
+            }
+          }
+        ]
+      },
+    },
+    // Other navigation requests - Cache first for offline support
+    {
+      urlPattern: ({ request }) => request.destination === 'document',
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'pages',
+        expiration: {
+          maxEntries: 50,
+          maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
+        },
+        cacheableResponse: {
+          statuses: [0, 200],
+        },
+        plugins: [
+          {
+            handlerDidError: async () => {
+              return caches.match('/offline');
+            }
+          }
+        ]
+      },
+    },
+    // General resources with cache-first strategy for offline support
+    {
+      urlPattern: ({ url }) => {
+        const pathname = new URL(url).pathname;
+        // Cache other resources but exclude problematic routes
+        const noCacheRoutes = ['/api/', '/_next/webpack-hmr'];
+        return !noCacheRoutes.some(route => pathname.includes(route));
+      },
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'general-cache',
+        expiration: {
+          maxEntries: 100,
+          maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
         },
         cacheableResponse: {
           statuses: [0, 200],
@@ -76,7 +219,7 @@ const nextConfig = {
         fs: false,
       };
     }
-    
+
     // Optimize bundle splitting
     config.optimization = {
       ...config.optimization,
@@ -97,7 +240,7 @@ const nextConfig = {
         },
       },
     };
-    
+
     return config;
   },
   // Enable compression

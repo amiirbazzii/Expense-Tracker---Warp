@@ -13,6 +13,8 @@ import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistratio
 import { LazyAnalytics, LazySpeedInsights, LazyToaster, LazyEnhancedNetworkStatusIndicator } from "@/components/LazyComponents";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LanguageWrapper } from "@/components/LanguageWrapper";
+import { InstallPrompt } from "@/components/InstallPrompt";
+// import { OfflineCacheHelper } from "@/components/OfflineCacheHelper"; // Uncomment to help users cache pages
 
 const geistMono = localFont({
   src: "./fonts/GeistMonoVF.woff",
@@ -49,9 +51,18 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "Expense Tracker",
-  description: "Track your daily expenses with ease",
+  title: "Spendly - Expense Tracker",
+  description: "Track your daily expenses with ease - Works offline!",
   manifest: "/manifest.json",
+  applicationName: "Spendly",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Spendly",
+  },
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
     icon: [
       { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
@@ -66,8 +77,10 @@ export const metadata: Metadata = {
 export const viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
+  maximumScale: 5,
+  userScalable: true,
   themeColor: "#000000",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -100,7 +113,7 @@ export default function RootLayout({
                       {children}
                       <div id="modal-root"></div>
                       <LazyEnhancedNetworkStatusIndicator />
-                      {/* <OfflineModeIndicator /> */}
+                      <InstallPrompt />
                       <LazyToaster position="top-center" />
                     </OfflineProvider>
                   </LanguageWrapper>
