@@ -72,20 +72,34 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
     }
   }, [d]);
 
-  // Toggle categories from legend (must be defined before segments)
-  const [excluded, setExcluded] = useState<Set<string>>(new Set());
-  const toggleLegend = (label: string) => {
-    setExcluded(prev => {
-      const next = new Set(prev);
-      if (next.has(label)) next.delete(label); else next.add(label);
-      return next;
-    });
-    // If currently selected category becomes excluded, clear selection
-    if (selected?.label === label) setSelected(null);
+  // Selection state for click-to-focus behavior
+  const [selected, setSelected] = useState<string | null>(null);
+  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleLegendClick = (label: string) => {
+    // Clear any previous timer
+    if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+
+    // Toggle selection: if already selected, deselect; otherwise select
+    if (selected === label) {
+      setSelected(null);
+    } else {
+      setSelected(label);
+      // Auto-deselect after 5 seconds
+      resetTimerRef.current = setTimeout(() => setSelected(null), 5000);
+    }
   };
 
-  // Enabled data derived from exclusions
-  const enabledLegend = useMemo(() => allLegend.filter(it => !excluded.has(it.label)), [allLegend, excluded]);
+  // Enabled data derived from selection
+  const enabledLegend = useMemo(() => {
+    if (selected) {
+      // Show only the selected category
+      return allLegend.filter(it => it.label === selected);
+    }
+    // Show all categories
+    return allLegend;
+  }, [allLegend, selected]);
+
   const enabledTotal = useMemo(() => enabledLegend.reduce((acc, it) => acc + (it.value || 0), 0), [enabledLegend]);
 
   // Compute dash segments with small gaps
@@ -123,23 +137,16 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
     };
   }, [pathLength, enabledTotal, enabledLegend.length]);
 
-  // Selection state for click-to-focus behavior
-  const [selected, setSelected] = useState<{ label: string; value: number } | null>(null);
-  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleSegmentClick = (label: string, value: number) => {
-    // clear any previous timer
-    if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
-    setSelected({ label, value });
-    resetTimerRef.current = setTimeout(() => setSelected(null), 3000);
+  const handleSegmentClick = (label: string) => {
+    handleLegendClick(label);
   };
 
   useEffect(() => () => {
     if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
   }, []);
 
-  const centerTitle = selected ? `Total ${selected.label}` : (title ?? "Total");
-  const centerValue = selected ? selected.value : enabledTotal;
+  const centerTitle = selected ? `Total ${selected}` : (title ?? "Total");
+  const centerValue = enabledTotal;
 
   return (
     <motion.div
@@ -187,7 +194,7 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
                   strokeDasharray={dash}
                   strokeDashoffset={-seg.offset}
                   style={{ cursor: "pointer", pointerEvents: 'stroke' }}
-                  onClick={() => handleSegmentClick(seg.label, seg.value)}
+                  onClick={() => handleSegmentClick(seg.label)}
                 />
               </g>
             );
@@ -223,19 +230,22 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
         <div className="mt-4 w-full">
           <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-3">
             {allLegend.map((item: typeof allLegend[number]) => {
-              const disabled = excluded.has(item.label);
+              const isSelected = selected === item.label;
+              const isOtherSelected = selected && selected !== item.label;
               return (
                 <button
                   type="button"
                   key={item.label}
-                  onClick={() => toggleLegend(item.label)}
-                  className="flex items-center gap-[4px] select-none"
-                  aria-pressed={!disabled}
+                  onClick={() => handleLegendClick(item.label)}
+                  className="flex items-center gap-[4px] select-none transition-opacity"
+                  style={{ minHeight: 'auto', height: 'auto' }}
+                  aria-pressed={isSelected}
                 >
-                  <svg width={14} height={6} className="shrink-0" aria-hidden="true" focusable="false" style={{ opacity: disabled ? 0.35 : 1 }}>
+                  <svg width={14} height={6} className="shrink-0" aria-hidden="true" focusable="false" style={{ opacity: isOtherSelected ? 0.35 : 1 }}>
                     <rect x={0} y={0} width={14} height={6} rx={3} ry={3} fill={item.color} />
                   </svg>
-                  <span className={`text-[12px] font-medium leading-none ${disabled ? 'text-gray-400 line-through' : 'text-black'}`}>{item.label}</span>
+                  <span className={`text-[12px] font-medium leading-none transition-colors ${isSelected ? 'text-black font-bold' : isOtherSelected ? 'text-gray-400' : 'text-black'
+                    }`}>{item.label}</span>
                 </button>
               );
             })}
