@@ -39,12 +39,17 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
 
   const total = entries.reduce((acc, [, v]) => acc + (v || 0), 0);
 
-  // Prepare legend data with consistent color mapping (all categories)
-  const allLegend = entries.map(([label, value], i) => ({
-    label,
-    value,
-    color: DEFAULT_COLORS[i % DEFAULT_COLORS.length],
-  }));
+  // Prepare legend data sorted by highest expenses and with consistent color mapping
+  const allLegend = useMemo(() => {
+    // Sort entries by value (highest first)
+    const sortedEntries = [...entries].sort((a, b) => b[1] - a[1]);
+    
+    return sortedEntries.map(([label, value], i) => ({
+      label,
+      value,
+      color: DEFAULT_COLORS[i % DEFAULT_COLORS.length],
+    }));
+  }, [entries]);
 
   // SVG sizing
   const width = 640; // logical SVG width
