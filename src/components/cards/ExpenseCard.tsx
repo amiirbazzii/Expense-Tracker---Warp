@@ -61,14 +61,24 @@ export function ExpenseCard({ expense, cardName, onDelete, onRetry, status }: Ex
         <div className="min-w-0 flex-1">
           {/* Title row with price at the end */}
           <div className="flex items-start justify-between gap-2">
-            <h3 className="text-base leading-6 font-semibold text-gray-900 truncate pr-2">
-              {expense.title}
-            </h3>
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <h3 className="text-base leading-6 font-semibold text-gray-900 truncate pr-2">
+                {expense.title}
+              </h3>
+              {status && (
+                <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                  status === 'pending' 
+                    ? 'bg-yellow-100 text-yellow-800' 
+                    : 'bg-red-100 text-red-800'
+                }`}>
+                  {status}
+                </span>
+              )}
+            </div>
             <p className="text-[16px] leading-5 font-semibold text-red-600 whitespace-nowrap">
               -{settings ? formatCurrency(expense.amount, settings.currency) : expense.amount.toFixed(2)}
             </p>
-          </div>
-          <div className="mt-1.5 flex items-center gap-4 text-[13px] leading-5 text-gray-600">
+          </div>          <div className="mt-1.5 flex items-center gap-4 text-[13px] leading-5 text-gray-600">
             <span className="inline-flex items-center min-w-0">
               <CreditCard className="w-[14px] h-[14px] mr-1.5 text-gray-400" />
               <span className="truncate">{cardName}</span>
@@ -107,7 +117,7 @@ export function ExpenseCard({ expense, cardName, onDelete, onRetry, status }: Ex
         </div>
       </div>
       <AnimatePresence>
-        {isMenuOpen && !isOffline && (
+        {isMenuOpen && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: -10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -115,13 +125,24 @@ export function ExpenseCard({ expense, cardName, onDelete, onRetry, status }: Ex
             className="absolute right-4 top-4 mt-2 w-36 bg-white rounded-lg shadow-lg z-10 border border-gray-100 overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <button
-              onClick={handleEdit}
-              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
-            >
-              <Edit size={14} className="mr-2" />
-              Edit
-            </button>
+            {status === 'failed' && onRetry && (
+              <button
+                onClick={handleRetry}
+                className="flex items-center w-full px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 text-left"
+              >
+                <RefreshCw size={14} className="mr-2" />
+                Retry Sync
+              </button>
+            )}
+            {!status && (
+              <button
+                onClick={handleEdit}
+                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
+              >
+                <Edit size={14} className="mr-2" />
+                Edit
+              </button>
+            )}
             <button
               onClick={handleDelete}
               className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left"

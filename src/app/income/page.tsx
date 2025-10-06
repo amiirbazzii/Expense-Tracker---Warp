@@ -77,7 +77,8 @@ export default function IncomePage() {
   // Get offline backup data
   const { 
     cards: offlineCards,
-    categories: offlineCategories
+    categories: offlineCategories,
+    income: offlineIncomeData
   } = useOfflineFirstData();
   
   // Use online data if available, otherwise use offline backup
@@ -89,11 +90,14 @@ export default function IncomePage() {
     _creationTime: 0
   }));
   
-  // Extract income category names from offline categories
-  const offlineIncomeCategoryNames = offlineCategories 
-    ? (offlineCategories as any[])
-        .filter((cat: any) => cat.type === 'income')
-        .map((cat: any) => cat.name)
+  // Extract unique income category names from offline income data
+  // Since offline categories don't have a 'type' field, we get categories from actual income records
+  const offlineIncomeCategoryNames = offlineIncomeData && Array.isArray(offlineIncomeData)
+    ? Array.from(new Set(
+        offlineIncomeData
+          .map((inc: any) => inc.category)
+          .filter((cat: any) => cat && typeof cat === 'string')
+      ))
     : [];
   
   const allIncomeCategories = allIncomeCategoriesQuery !== undefined 
