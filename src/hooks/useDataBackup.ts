@@ -1,28 +1,31 @@
 import { useState } from 'react';
-import { LocalStorageManager } from '@/lib/storage/LocalStorageManager';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import { useAuth } from '@/contexts/AuthContext';
 import localforage from 'localforage';
-import { useQuery } from 'convex/react';
-import { api } from '../../convex/_generated/api';
+import { useOfflineFirstData } from './useOfflineFirstData';
 
 export function useDataBackup() {
   const [isExporting, setIsExporting] = useState(false);
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   
-  // Fetch all data from Convex
-  const allExpenses = useQuery(api.expenses.getExpenses, token ? { token } : 'skip');
-  const allIncome = useQuery(api.cardsAndIncome.getIncome, token ? { token } : 'skip');
-  const allCategories = useQuery(api.expenses.getCategories, token ? { token } : 'skip');
-  const allForValues = useQuery(api.expenses.getForValues, token ? { token } : 'skip');
-  const allCards = useQuery(api.cardsAndIncome.getCardBalances, token ? { token } : 'skip');
+  // Use offline-first data hook (automatically falls back to IndexedDB when offline)
+  const { 
+    expenses: allExpenses, 
+    income: allIncome, 
+    categories: allCategories, 
+    forValues: allForValues, 
+    cards: allCards,
+    isUsingOfflineData,
+    hasOfflineBackup,
+    offlineBackupDate
+  } = useOfflineFirstData();
 
   const exportAsJSON = async () => {
     setIsExporting(true);
     try {
       if (!allExpenses || !allIncome || !allCategories || !allForValues || !allCards) {
-        toast.error('Data is still loading, please wait...');
+        toast.error('No data available. Please create a backup first.');
         setIsExporting(false);
         return;
       }
@@ -31,6 +34,7 @@ export function useDataBackup() {
         version: '1.0.0',
         exportedAt: new Date().toISOString(),
         userId: user?._id,
+        dataSource: isUsingOfflineData ? 'IndexedDB Backup' : 'Convex Cloud',
         data: {
           expenses: allExpenses,
           income: allIncome,
@@ -40,11 +44,12 @@ export function useDataBackup() {
         }
       };
       
-      console.log('JSON export - Expenses:', allExpenses.length);
-      console.log('JSON export - Income:', allIncome.length);
-      console.log('JSON export - Categories:', allCategories.length);
-      console.log('JSON export - For Values:', allForValues.length);
-      console.log('JSON export - Cards:', allCards.length);
+      console.log(`JSON export from ${isUsingOfflineData ? 'IndexedDB' : 'Convex'}`);
+      console.log('Expenses:', allExpenses.length);
+      console.log('Income:', allIncome.length);
+      console.log('Categories:', allCategories.length);
+      console.log('For Values:', allForValues.length);
+      console.log('Cards:', allCards.length);
       
       const dataStr = JSON.stringify(exportData, null, 2);
       const dataBlob = new Blob([dataStr], { type: 'application/json' });
@@ -58,7 +63,8 @@ export function useDataBackup() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       
-      toast.success('Backup exported successfully!');
+      const source = isUsingOfflineData ? ' (from offline backup)' : '';
+      toast.success(`Backup exported successfully!${source}`);
     } catch (error) {
       console.error('Export failed:', error);
       toast.error('Failed to export backup');
@@ -71,9 +77,13 @@ export function useDataBackup() {
     setIsExporting(true);
     try {
       if (!allExpenses || !allIncome || !allCategories || !allForValues || !allCards) {
-        toast.error('Data is still loading, please wait...');
+        toast.error('No data available to backup.');
         setIsExporting(false);
         return;
+      }
+      
+      if (isUsingOfflineData) {
+        toast.info('Already using offline data. Backup will overwrite existing backup.');
       }
 
       const backupData = {
@@ -137,16 +147,17 @@ export function useDataBackup() {
     setIsExporting(true);
     try {
       if (!allExpenses || !allIncome || !allCategories || !allForValues || !allCards) {
-        toast.error('Data is still loading, please wait...');
+        toast.error('No data available. Please create a backup first.');
         setIsExporting(false);
         return;
       }
 
-      console.log('Excel export - Expenses:', allExpenses.length);
-      console.log('Excel export - Income:', allIncome.length);
-      console.log('Excel export - Categories:', allCategories.length);
-      console.log('Excel export - For Values:', allForValues.length);
-      console.log('Excel export - Cards:', allCards.length);
+      console.log(`Excel export from ${isUsingOfflineData ? 'IndexedDB' : 'Convex'}`);
+      console.log('Expenses:', allExpenses.length);
+      console.log('Income:', allIncome.length);
+      console.log('Categories:', allCategories.length);
+      console.log('For Values:', allForValues.length);
+      console.log('Cards:', allCards.length);
       
       // Create a card lookup map (ID -> Name)
       // Note: getCardBalances returns { cardId, cardName, balance, ... }
@@ -220,7 +231,8 @@ export function useDataBackup() {
       // Generate Excel file
       XLSX.writeFile(wb, `expense-tracker-export-${new Date().toISOString().split('T')[0]}.xlsx`);
       
-      toast.success('Excel file exported successfully!');
+      const source = isUsingOfflineData ? ' (from offline backup)' : '';
+      toast.success(`Excel file exported successfully!${source}`);
     } catch (error) {
       console.error('Excel export failed:', error);
       toast.error('Failed to export Excel file');
@@ -234,6 +246,9 @@ export function useDataBackup() {
     exportAsExcel,
     saveToIndexedDB,
     getLastBackupInfo,
-    isExporting
+    isExporting,
+    isUsingOfflineData,
+    hasOfflineBackup,
+    offlineBackupDate
   };
 }

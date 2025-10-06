@@ -19,7 +19,16 @@ export default function SettingsPage() {
   const { user, logout, token } = useAuth();
   const { isOnline, pendingExpenses, syncPendingExpenses } = useOffline();
   const { settings, updateSettings, isLoading: settingsLoading } = useSettings();
-  const { exportAsJSON, exportAsExcel, saveToIndexedDB, getLastBackupInfo, isExporting } = useDataBackup();
+  const { 
+    exportAsJSON, 
+    exportAsExcel, 
+    saveToIndexedDB, 
+    getLastBackupInfo, 
+    isExporting,
+    isUsingOfflineData,
+    hasOfflineBackup,
+    offlineBackupDate
+  } = useDataBackup();
   const [lastBackup, setLastBackup] = useState<{ date: Date; expenseCount: number; incomeCount: number } | null>(null);
 
   // Load last backup info on mount
@@ -199,8 +208,23 @@ export default function SettingsPage() {
             <div className="mb-6 space-y-4">
               <h3 className="text-lg font-semibold text-gray-900">Data Backup & Export</h3>
               
+              {/* Offline Mode Indicator */}
+              {isUsingOfflineData && (
+                <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                  <div className="flex items-center space-x-2 text-sm text-orange-700 font-medium">
+                    <WifiOff size={16} />
+                    <span>Using Offline Backup Data</span>
+                  </div>
+                  {offlineBackupDate && (
+                    <div className="text-xs text-orange-600 mt-1 ml-6">
+                      Backup from: {offlineBackupDate.toLocaleDateString()} at {offlineBackupDate.toLocaleTimeString()}
+                    </div>
+                  )}
+                </div>
+              )}
+              
               {/* Last Backup Info */}
-              {lastBackup && (
+              {lastBackup && !isUsingOfflineData && (
                 <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
                     <Clock size={16} />
