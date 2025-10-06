@@ -10,15 +10,15 @@ import { BottomNav } from "@/components/BottomNav";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import AppHeader from "@/components/AppHeader";
 import { RecoveryCodeCard } from "@/components/RecoveryCodeCard";
-import { User, LogOut, Wifi, WifiOff, RefreshCw, CreditCard, ChevronRight } from "lucide-react";
+import { User, LogOut, Wifi, WifiOff, RefreshCw, Download, FileJson, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { useDataBackup } from "@/hooks/useDataBackup";
 
 export default function SettingsPage() {
   const { user, logout, token } = useAuth();
   const { isOnline, pendingExpenses, syncPendingExpenses } = useOffline();
   const { settings, updateSettings, isLoading: settingsLoading } = useSettings();
-  const router = useRouter();
+  const { exportAsJSON, exportAsExcel, isExporting } = useDataBackup();
 
   // Safe recovery code component with error handling
   const SafeRecoveryCodeCard = () => {
@@ -183,6 +183,45 @@ export default function SettingsPage() {
 
             {/* Recovery Code Section */}
             <SafeRecoveryCodeCard />
+
+            {/* Data Backup & Export */}
+            <div className="mb-6 space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">Data Backup & Export</h3>
+              
+              <div className="space-y-3">
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={exportAsJSON}
+                  disabled={isExporting}
+                  className="w-full flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+                >
+                  <div className="flex items-center space-x-3">
+                    <FileJson className="text-blue-600" size={20} />
+                    <div className="text-left">
+                      <div className="font-medium text-gray-900">Export as JSON</div>
+                      <div className="text-sm text-gray-600">Complete backup of all your data</div>
+                    </div>
+                  </div>
+                  <Download className="text-blue-600" size={20} />
+                </motion.button>
+
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={exportAsExcel}
+                  disabled={isExporting}
+                  className="w-full flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+                >
+                  <div className="flex items-center space-x-3">
+                    <FileSpreadsheet className="text-green-600" size={20} />
+                    <div className="text-left">
+                      <div className="font-medium text-gray-900">Export as Excel</div>
+                      <div className="text-sm text-gray-600">Spreadsheet format for analysis</div>
+                    </div>
+                  </div>
+                  <Download className="text-green-600" size={20} />
+                </motion.button>
+              </div>
+            </div>
 
             {/* Actions */}
             <div className="space-y-4">

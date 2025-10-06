@@ -43,7 +43,7 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
   const allLegend = useMemo(() => {
     // Sort entries by value (highest first)
     const sortedEntries = [...entries].sort((a, b) => b[1] - a[1]);
-    
+
     return sortedEntries.map(([label, value], i) => ({
       label,
       value,
