@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Doc } from "../../convex/_generated/dataModel";
 import { useOnlineStatus } from "./useOnlineStatus";
+import { useOfflineFirstData } from "./useOfflineFirstData";
 import moment from 'jalali-moment';
 
 type DataType = "expense" | "income";
@@ -15,6 +16,13 @@ export function useTimeFramedData(type: DataType, token: string | null) {
   const [currentDate, setCurrentDate] = useState(moment());
   const [key, setKey] = useState(0);
   const [displayData, setDisplayData] = useState<Doc<"expenses">[] | Doc<"income">[] | undefined>(undefined);
+  
+  // Get offline backup data
+  const { 
+    expenses: offlineExpenses, 
+    income: offlineIncome,
+    isUsingOfflineData 
+  } = useOfflineFirstData();
 
   // Adjust calendar for currentDate when settings change
   useEffect(() => {
@@ -44,22 +52,31 @@ export function useTimeFramedData(type: DataType, token: string | null) {
   const fetchedData = result as Doc<"expenses">[] | Doc<"income">[] | undefined;
 
   useEffect(() => {
-    if (isOnline) {
-      if (fetchedData !== undefined) {
-        // Online: data fetched, update state and cache
-        setDisplayData(fetchedData);
-        localStorage.setItem(cacheKey, JSON.stringify(fetchedData));
-      }
-    } else {
-      // Offline: load from cache
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        setDisplayData(JSON.parse(cached));
+    if (isOnline && fetchedData !== undefined) {
+      // Online: data fetched from Convex, update state and cache
+      setDisplayData(fetchedData);
+      localStorage.setItem(cacheKey, JSON.stringify(fetchedData));
+    } else if (!isOnline) {
+      // Offline: try IndexedDB backup first, then localStorage cache
+      const offlineData = type === 'expense' ? offlineExpenses : offlineIncome;
+      
+      if (offlineData && offlineData.length > 0) {
+        // Filter offline backup data by date range
+        const filtered = (offlineData as any[]).filter((item: any) => 
+          item.date >= startDate && item.date <= endDate
+        );
+        setDisplayData(filtered as any);
       } else {
-        setDisplayData(undefined); // No cache available
+        // Fallback to localStorage cache
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          setDisplayData(JSON.parse(cached));
+        } else {
+          setDisplayData(undefined); // No data available
+        }
       }
     }
-  }, [fetchedData, isOnline, cacheKey]);
+  }, [fetchedData, isOnline, cacheKey, offlineExpenses, offlineIncome, type, startDate, endDate]);
 
   const isLoading = areSettingsLoading || displayData === undefined;
 
@@ -118,5 +135,6 @@ export function useTimeFramedData(type: DataType, token: string | null) {
     goToPreviousMonth,
     goToNextMonth,
     refetch,
+    isUsingOfflineData,
   };
 }
