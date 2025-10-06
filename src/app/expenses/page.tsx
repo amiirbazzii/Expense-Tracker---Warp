@@ -10,9 +10,9 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { BottomNav } from "@/components/BottomNav";
 import AppHeader from "@/components/AppHeader";
 import { SmartSelectInput } from "@/components/SmartSelectInput";
-import { 
-  CreditCard, 
-  Receipt, 
+import {
+  CreditCard,
+  Receipt,
   Tag,
   User,
   Type
@@ -72,13 +72,13 @@ export default function ExpensesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [pendingDeletions, setPendingDeletions] = useState<string[]>([]);
-  
+
   const isOnline = useOnlineStatus();
-  const { 
-    queue: offlineExpenses, 
-    addToQueue, 
-    removeFromQueue, 
-    updateItemStatus 
+  const {
+    queue: offlineExpenses,
+    addToQueue,
+    removeFromQueue,
+    updateItemStatus
   } = useOfflineQueue<ExpenseCreationData>('offline-expenses');
 
   // Remove all authentication loading logic - let ProtectedRoute handle it
@@ -86,35 +86,36 @@ export default function ExpensesPage() {
   // Mutations
   const createExpenseMutation = useMutation(api.expenses.createExpense);
   const createCategoryMutation = useMutation(api.expenses.createCategory);
-    const createForValueMutation = useMutation(api.expenses.createForValue);
+  const createForValueMutation = useMutation(api.expenses.createForValue);
   const deleteExpenseMutation = useMutation(api.expenses.deleteExpense);
 
   // Queries
-  const cards = useQuery(api.cardsAndIncome.getMyCards, token ? { token } : "skip");
+  const cardsQuery = useQuery(api.cardsAndIncome.getMyCards, token ? { token } : "skip");
   const categoriesQuery = useQuery(api.expenses.getCategories, token ? { token } : "skip");
   const forValuesQuery = useQuery(api.expenses.getForValues, token ? { token } : "skip");
-  
+
   // Get offline backup data for categories and forValues
-  const { 
-    categories: offlineCategories, 
+  const {
+    categories: offlineCategories,
     forValues: offlineForValues,
     cards: offlineCards
   } = useOfflineFirstData();
-  
+
   // Use online data if available, otherwise use offline backup
+  const cards = cardsQuery !== undefined ? cardsQuery : offlineCards;
   const categories = categoriesQuery !== undefined ? categoriesQuery : offlineCategories;
   const forValues = forValuesQuery !== undefined ? forValuesQuery : offlineForValues;
 
-  const { 
-    currentDate, 
-    data: expenses, 
-    isLoading, 
-    monthName, 
-    year, 
-    goToPreviousMonth, 
-    goToNextMonth, 
+  const {
+    currentDate,
+    data: expenses,
+    isLoading,
+    monthName,
+    year,
+    goToPreviousMonth,
+    goToNextMonth,
     refetch,
-    isUsingOfflineData 
+    isUsingOfflineData
   } = useTimeFramedData('expense', token);
 
   // Sync offline expenses when online
@@ -138,7 +139,7 @@ export default function ExpensesPage() {
               removeFromQueue(item.id);
             } catch (error) {
               console.error(`Failed to sync expense ${item.id}:`, error);
-              
+
               // Check if it's an authentication error
               if (error && typeof error === 'object' && 'message' in error) {
                 const errorMessage = (error as any).message || '';
@@ -148,7 +149,7 @@ export default function ExpensesPage() {
                   return;
                 }
               }
-              
+
               updateItemStatus(item.id, 'failed');
             }
           });
@@ -198,12 +199,12 @@ export default function ExpensesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.amount || !formData.title || formData.category.length === 0) {
       toast.error("Please enter the amount, title, and category.");
       return;
     }
-    
+
     if (!formData.cardId) {
       toast.error("Please select the card used for this expense.");
       return;
@@ -241,7 +242,7 @@ export default function ExpensesPage() {
         addToQueue(expenseData);
         toast.success("You are offline. Expense saved locally and will be synced later.");
       }
-      
+
       // Reset form
       setFormData({
         amount: "",
@@ -253,7 +254,7 @@ export default function ExpensesPage() {
       });
     } catch (error: unknown) {
       console.error('Error creating expense:', error);
-      
+
       // Check if it's an authentication error
       if (error && typeof error === 'object' && 'message' in error) {
         const errorMessage = (error as any).message || '';
@@ -263,7 +264,7 @@ export default function ExpensesPage() {
           return;
         }
       }
-      
+
       toast.error("Could not add your expense. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -324,15 +325,17 @@ export default function ExpensesPage() {
     status: item.status,
   }));
 
-    const combinedExpenses = [...(expenses || []), ...mappedOfflineExpenses]
+  const combinedExpenses = [...(expenses || []), ...mappedOfflineExpenses]
     .filter(expense => !pendingDeletions.includes(expense._id))
     .sort((a, b) => b.date - a.date);
 
-  if (cards === undefined) {
+  // Only show loading if we're online and still waiting for data
+  // When offline, we should have offlineCards (even if empty array)
+  if (cards === undefined && isOnline) {
     return (
       <ProtectedRoute>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-lg">Loading...</div>
+          <div className="text-lg text-black">Loading...</div>
         </div>
       </ProtectedRoute>
     );
@@ -342,7 +345,7 @@ export default function ExpensesPage() {
     <ProtectedRoute>
       <div className="min-h-screen bg-white">
         <AppHeader />
-        
+
         <div className="max-w-lg mx-auto p-4 pt-[92px] pb-24">
           {/* Input Form Section - header + fields (no card wrapper) */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
@@ -381,7 +384,7 @@ export default function ExpensesPage() {
                   leftIcon={CreditCard}
                   rightAdornment={(
                     <svg className="size-5 text-gray-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                      <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   )}
                 >
@@ -473,11 +476,11 @@ export default function ExpensesPage() {
 
           {/* Expenses History Section - wrapped in a light container */}
           <div className="mt-8 rounded-xl border border-gray-200 bg-[#F9F9F9] p-4">
-            <DateFilterHeader 
-              monthName={monthName} 
-              year={year} 
-              onPreviousMonth={goToPreviousMonth} 
-              onNextMonth={goToNextMonth} 
+            <DateFilterHeader
+              monthName={monthName}
+              year={year}
+              onPreviousMonth={goToPreviousMonth}
+              onNextMonth={goToNextMonth}
               subtitle="Expense History"
               variant="card"
             />
@@ -487,9 +490,9 @@ export default function ExpensesPage() {
             ) : combinedExpenses.length > 0 ? (
               <div className="space-y-2 mt-4">
                 {combinedExpenses.map((expense) => (
-                  <ExpenseCard 
-                    key={expense._id} 
-                    expense={expense as any} 
+                  <ExpenseCard
+                    key={expense._id}
+                    expense={expense as any}
                     cardName={cardMap[expense.cardId!] || 'Unknown Card'}
                     onDelete={(expenseId: Id<"expenses">) => {
                       setPendingDeletions(prev => [...prev, expenseId]);

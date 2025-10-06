@@ -169,12 +169,31 @@ const withPWA = require('next-pwa')({
         ]
       },
     },
+    // Vercel analytics - Network only, fail silently when offline
+    {
+      urlPattern: ({ url }) => {
+        const pathname = new URL(url).pathname;
+        return pathname.includes('/_vercel/');
+      },
+      handler: 'NetworkOnly',
+      options: {
+        plugins: [
+          {
+            handlerDidError: async () => {
+              // Fail silently for analytics when offline
+              console.log('Vercel analytics unavailable offline');
+              return new Response('', { status: 200 });
+            }
+          }
+        ]
+      },
+    },
     // General resources with cache-first strategy for offline support
     {
       urlPattern: ({ url }) => {
         const pathname = new URL(url).pathname;
         // Cache other resources but exclude problematic routes
-        const noCacheRoutes = ['/api/', '/_next/webpack-hmr'];
+        const noCacheRoutes = ['/api/', '/_next/webpack-hmr', '/_vercel/'];
         return !noCacheRoutes.some(route => pathname.includes(route));
       },
       handler: 'CacheFirst',

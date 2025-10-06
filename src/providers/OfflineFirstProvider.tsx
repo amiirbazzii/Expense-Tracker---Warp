@@ -105,9 +105,23 @@ export function OfflineFirstProvider({ children, userId }: OfflineFirstProviderP
     if (userId && !isInitialized) {
       initialize(userId);
     } else if (!userId && !isInitialized) {
-      // If no userId provided, still mark as initialized but without local storage capabilities
-      console.log('OfflineFirstProvider: No userId provided, initializing without local storage');
+      // If no userId provided, still mark as initialized to prevent blocking
+      // This allows the app to function even when offline without user data
+      console.log('OfflineFirstProvider: No userId provided, initializing in limited mode');
+      
+      // Set initialized immediately to prevent blocking the UI
       setIsInitialized(true);
+      
+      // Try to get userId from localStorage as fallback for offline mode
+      const storedToken = localStorage.getItem('auth-token');
+      if (storedToken) {
+        // Try to extract userId from stored data or use a fallback
+        const storedUserId = localStorage.getItem('cached-user-id');
+        if (storedUserId) {
+          console.log('OfflineFirstProvider: Found cached userId, initializing with it');
+          initialize(storedUserId);
+        }
+      }
     }
   }, [userId, isInitialized, initialize]);
 

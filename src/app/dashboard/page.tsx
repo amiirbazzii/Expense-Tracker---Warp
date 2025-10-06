@@ -26,6 +26,7 @@ import { TotalBalanceCard } from "@/features/dashboard/components/TotalBalanceCa
 import { useDashboardData } from "@/features/dashboard/hooks/useDashboardData";
 import { useExpenseActions } from "@/features/dashboard/hooks/useExpenseActions";
 import { useSettings } from "@/contexts/SettingsContext";
+import { useOfflineFirstData } from "@/hooks/useOfflineFirstData";
 
 // Import types
 
@@ -34,7 +35,9 @@ export default function DashboardPage() {
     const { token } = useAuth();
   const { settings } = useSettings();
   const router = useRouter();
-  const cards = useQuery(api.cardsAndIncome.getCardBalances, token ? { token } : "skip");
+  const cardsQuery = useQuery(api.cardsAndIncome.getCardBalances, token ? { token } : "skip");
+  const { cards: offlineCards } = useOfflineFirstData();
+  const cards = cardsQuery !== undefined ? cardsQuery : offlineCards;
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [navigating, setNavigating] = useState(false);
 

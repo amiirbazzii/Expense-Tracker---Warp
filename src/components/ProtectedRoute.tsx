@@ -32,13 +32,34 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { canFunctionOffline, isInitialized, isOnline } = offlineState;
 
   useEffect(() => {
-    // Don't redirect while still loading authentication or offline capabilities
-    if (loading || !isInitialized || hasRedirected) {
+    // Don't redirect while still loading authentication
+    // When offline, don't wait for isInitialized - allow access with token
+    if (loading || hasRedirected) {
+      return;
+    }
+    
+    // When offline, wait for initialization only if we're online
+    if (!isOnline && !isInitialized) {
+      // Offline and not initialized yet - give it a moment but don't block forever
+      const timer = setTimeout(() => {
+        console.log('ProtectedRoute: Offline initialization timeout, proceeding anyway');
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+    
+    // When online, wait for initialization
+    if (isOnline && !isInitialized) {
       return;
     }
 
     // If we have a user, we're authenticated and good to go
     if (user) {
+      return;
+    }
+
+    // If offline and we have a token, allow access
+    if (!isOnline && token) {
+      console.log('ProtectedRoute: Allowing offline access with token');
       return;
     }
 
@@ -67,8 +88,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     }
   }, [user, loading, router, canFunctionOffline, isInitialized, isOnline, token, hasRedirected]);
 
-  // Single loading screen while initializing
-  if (loading || !isInitialized) {
+  // Show loading only when online and still loading auth
+  // When offline with a token, skip the loading screen
+  if (loading && (isOnline || !token)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -80,7 +102,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  // Allow access if authenticated or can function offline
+  // Allow access if authenticated or can function offline or have token
   if (user || (canFunctionOffline && !isOnline) || token) {
     return <>{children}</>;
   }

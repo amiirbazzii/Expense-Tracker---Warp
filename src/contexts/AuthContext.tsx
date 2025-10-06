@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 
 interface User {
   _id: string;
@@ -25,6 +26,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
   const [hasSetTimeout, setHasSetTimeout] = useState(false);
+
+  const isOnline = useOnlineStatus();
 
   const loginMutation = useMutation(api.auth.login);
   const registerMutation = useMutation(api.auth.register);
@@ -57,44 +60,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.warn('Token appears to be invalid, clearing auth state');
             setToken(null);
             localStorage.removeItem('auth-token');
+            localStorage.removeItem('cached-user-id');
+          } else if (user) {
+            // Cache the user ID for offline use
+            localStorage.setItem('cached-user-id', user._id);
           }
           setLoading(false);
           setHasSetTimeout(false);
-        } else if (!hasSetTimeout) {
-          // Check if we're offline
-          if (!navigator.onLine) {
+        } else {
+          // User query is undefined (still loading or failed)
+          // Check if we're offline IMMEDIATELY
+          if (!isOnline) {
             // If offline and we have a token, assume user is authenticated
-            console.log('AuthContext: Offline mode - keeping token and stopping loading');
+            console.log('AuthContext: Offline mode detected - keeping token and stopping loading');
             setLoading(false);
             setHasSetTimeout(false);
             return;
           }
-          
-          // Query still loading and we haven't set a timeout yet
-          setHasSetTimeout(true);
-          const timeoutId = setTimeout(() => {
-            console.warn('Auth query timeout after 5 seconds, checking if offline');
-            if (!navigator.onLine) {
-              // If offline, keep the token and stop loading
-              console.log('AuthContext: Timeout while offline - keeping authentication state');
-              setLoading(false);
-            } else {
-              // If online but query failed, token may be invalid
-              console.warn('Clearing invalid token after timeout');
-              setToken(null);
-              localStorage.removeItem('auth-token');
-              setLoading(false);
-            }
-            setHasSetTimeout(false);
-          }, 5000); // Reduced to 5 seconds for faster response
-          
-          return () => {
-            clearTimeout(timeoutId);
-          };
+
+          // We're online but query hasn't resolved yet
+          if (!hasSetTimeout) {
+            // Query still loading and we haven't set a timeout yet
+            setHasSetTimeout(true);
+            const timeoutId = setTimeout(() => {
+              console.warn('Auth query timeout after 3 seconds, checking if offline');
+              if (!isOnline) {
+                // If offline, keep the token and stop loading
+                console.log('AuthContext: Timeout while offline - keeping authentication state');
+                setLoading(false);
+              } else {
+                // If online but query failed, token may be invalid
+                console.warn('Clearing invalid token after timeout');
+                setToken(null);
+                localStorage.removeItem('auth-token');
+                setLoading(false);
+              }
+              setHasSetTimeout(false);
+            }, 3000); // Reduced to 3 seconds for faster response
+
+            return () => {
+              clearTimeout(timeoutId);
+            };
+          }
         }
       }
     }
-  }, [token, user, initialLoad, hasSetTimeout]);
+  }, [token, user, initialLoad, hasSetTimeout, isOnline]);
 
   const login = async (username: string, password: string) => {
     try {
@@ -126,6 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setToken(null);
     localStorage.removeItem("auth-token");
+    localStorage.removeItem("cached-user-id");
   };
 
   return (
