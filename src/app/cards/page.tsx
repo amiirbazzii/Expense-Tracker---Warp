@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { useSettings } from "@/contexts/SettingsContext";
 import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/Button";
+import { useOfflineFirstData } from "@/hooks/useOfflineFirstData";
 
 export default function CardsPage() {
   const { token } = useAuth();
@@ -29,7 +30,13 @@ export default function CardsPage() {
   const addCardMutation = useMutation(api.cardsAndIncome.addCard);
   const deleteCardMutation = useMutation(api.cardsAndIncome.deleteCard);
   const transferFundsMutation = useMutation(api.cardsAndIncome.transferFunds);
-  const cardBalances = useQuery(api.cardsAndIncome.getCardBalances, token ? { token } : "skip");
+  const cardBalancesQuery = useQuery(api.cardsAndIncome.getCardBalances, token ? { token } : "skip");
+  
+  // Get offline backup data
+  const { cards: offlineCards, isUsingOfflineData } = useOfflineFirstData();
+  
+  // Use online data if available, otherwise use offline backup
+  const cardBalances = cardBalancesQuery !== undefined ? cardBalancesQuery : offlineCards;
 
   const addCard = async () => {
     if (!cardName.trim()) return;
@@ -109,6 +116,25 @@ export default function CardsPage() {
         <AppHeader title="Manage Cards" />
         
         <div className="max-w-md mx-auto p-4 pt-[92px] pb-20">
+          {/* Offline Mode Indicator */}
+          {isUsingOfflineData && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg"
+            >
+              <div className="flex items-center space-x-2 text-sm text-orange-700 font-medium">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414" />
+                </svg>
+                <span>Viewing Offline Backup Data</span>
+              </div>
+              <div className="text-xs text-orange-600 mt-1">
+                Showing cards from your last backup. Changes require internet connection.
+              </div>
+            </motion.div>
+          )}
+          
           {/* Add Card Form */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -133,12 +159,13 @@ export default function CardsPage() {
               </div>
               <Button
                 type="submit"
-                disabled={!cardName.trim() || isSubmitting}
+                disabled={!cardName.trim() || isSubmitting || isUsingOfflineData}
                 loading={isSubmitting}
                 buttonType="icon"
                 icon={<Plus size={20} />}
                 className="min-h-[44px]"
                 aria-label="Add card"
+                title={isUsingOfflineData ? "Requires internet connection" : "Add card"}
               />
             </form>
           </motion.div>
@@ -189,11 +216,12 @@ export default function CardsPage() {
               />
               <Button
                 onClick={handleTransfer}
-                disabled={!fromCard || !toCard || !amount || isTransferring}
+                disabled={!fromCard || !toCard || !amount || isTransferring || isUsingOfflineData}
                 loading={isTransferring}
                 className="w-full min-h-[44px]"
+                title={isUsingOfflineData ? "Requires internet connection" : "Transfer funds"}
               >
-                Transfer
+                {isUsingOfflineData ? "Transfer (Offline)" : "Transfer"}
               </Button>
             </div>
           </motion.div>
@@ -251,9 +279,14 @@ export default function CardsPage() {
                       </div>
                       <motion.button
                         whileTap={{ scale: 0.95 }}
-                        onClick={() => deleteCard(card.cardId)}
-                        className="text-red-600 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition-colors"
-                        title="Delete Card"
+                        onClick={() => !isUsingOfflineData && deleteCard(card.cardId)}
+                        className={`p-2 rounded-full transition-colors ${
+                          isUsingOfflineData 
+                            ? 'text-gray-400 cursor-not-allowed' 
+                            : 'text-red-600 hover:text-red-700 hover:bg-red-50'
+                        }`}
+                        title={isUsingOfflineData ? "Requires internet connection" : "Delete Card"}
+                        disabled={isUsingOfflineData}
                       >
                         <Trash2 size={18} />
                       </motion.button>
