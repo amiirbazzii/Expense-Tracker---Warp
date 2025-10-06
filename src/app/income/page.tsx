@@ -15,6 +15,8 @@ import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useTimeFramedData } from "@/hooks/useTimeFramedData";
 import { useOfflineFirstData } from "@/hooks/useOfflineFirstData";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useOfflineQueue, OfflineItem } from "@/hooks/useOfflineQueue";
 import { DateFilterHeader } from "@/components/DateFilterHeader";
 import { Doc, Id } from "../../../convex/_generated/dataModel";
 import { IncomeCard } from "@/components/cards/IncomeCard";
@@ -52,8 +54,17 @@ export default function IncomePage() {
     cardId: "",
     notes: "",
   });
-    const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [pendingDeletions, setPendingDeletions] = useState<string[]>([]);
+  
+  const isOnline = useOnlineStatus();
+  const { 
+    queue: offlineIncome, 
+    addToQueue, 
+    removeFromQueue, 
+    updateItemStatus 
+  } = useOfflineQueue<any>('offline-income');
 
   // Mutations
     const createIncomeMutation = useMutation(api.cardsAndIncome.createIncome);
@@ -100,6 +111,60 @@ export default function IncomePage() {
     isUsingOfflineData 
   } = useTimeFramedData("income", token);
 
+  // Sync offline income when online
+  useEffect(() => {
+    if (isOnline && offlineIncome.length > 0 && !isSyncing) {
+      const syncOfflineIncome = async () => {
+        setIsSyncing(true);
+        const itemsToSync = offlineIncome.filter(item => item.status === 'pending');
+
+        if (itemsToSync.length === 0) {
+          setIsSyncing(false);
+          return;
+        }
+
+        toast.info(`Syncing ${itemsToSync.length} offline income record(s)...`);
+
+        try {
+          const syncPromises = itemsToSync.map(async (item) => {
+            try {
+              await createIncomeMutation({ token: token!, ...item.data });
+              removeFromQueue(item.id);
+            } catch (error) {
+              console.error(`Failed to sync income ${item.id}:`, error);
+              updateItemStatus(item.id, 'failed');
+            }
+          });
+
+          await Promise.all(syncPromises);
+
+          toast.success("Sync process completed.");
+          refetch();
+        } finally {
+          setIsSyncing(false);
+        }
+      };
+      syncOfflineIncome();
+    }
+  }, [isOnline, offlineIncome, isSyncing, token, createIncomeMutation, removeFromQueue, updateItemStatus, refetch]);
+
+  const handleRetrySync = async (itemId: string) => {
+    const itemToRetry = offlineIncome.find(item => item.id === itemId);
+    if (!itemToRetry) return;
+
+    toast.info(`Retrying to sync income: ${itemToRetry.data.source}`);
+    try {
+      await createIncomeMutation({ token: token!, ...itemToRetry.data });
+      removeFromQueue(itemToRetry.id);
+      toast.success("Income synced successfully!");
+      refetch();
+    } catch (error) {
+      console.error("Failed to sync income:", error);
+      updateItemStatus(itemToRetry.id, 'failed');
+      toast.error("Sync failed again. Please check your connection or the data.");
+    }
+  };
+
   // Auto-select first card if available
   useEffect(() => {
     if (cards && cards.length > 0 && !formData.cardId) {
@@ -128,19 +193,24 @@ export default function IncomePage() {
 
     setIsSubmitting(true);
 
-    try {
-      await createIncomeMutation({
-        token: token!,
-        amount,
-        source: formData.source,
-        category: formData.category[0],
-        date: new Date(formData.date).getTime(),
-        cardId: formData.cardId as any,
-        notes: formData.notes,
-      });
+    const incomeData = {
+      amount,
+      source: formData.source,
+      category: formData.category[0],
+      date: new Date(formData.date).getTime(),
+      cardId: formData.cardId as any,
+      notes: formData.notes,
+    };
 
-      toast.success("Your income has been added.");
-      refetch(); // Refetch income after adding a new one
+    try {
+      if (isOnline) {
+        await createIncomeMutation({ token: token!, ...incomeData });
+        toast.success("Your income has been added.");
+        refetch(); // Refetch income after adding a new one
+      } else {
+        addToQueue(incomeData);
+        toast.success("You are offline. Income saved locally and will be synced later.");
+      }
       
       // Reset form
       setFormData({
@@ -169,6 +239,20 @@ export default function IncomePage() {
     acc[card._id] = card.name;
     return acc;
   }, {} as Record<string, string>) || {};
+
+  // Map offline income to display format
+  const mappedOfflineIncome = offlineIncome.map(item => ({
+    ...item.data,
+    _id: item.id,
+    _creationTime: item.createdAt,
+    userId: '',
+    status: item.status,
+  }));
+
+  // Combine online and offline income
+  const combinedIncome = [...(incomes || []), ...mappedOfflineIncome]
+    .filter(income => !pendingDeletions.includes(income._id))
+    .sort((a, b) => b.date - a.date);
 
   return (
     <ProtectedRoute>
@@ -314,15 +398,17 @@ export default function IncomePage() {
               variant="card"
             />
 
-            {isLoading ? (
+            {isLoading && combinedIncome.length === 0 ? (
               <div className="text-center py-8 text-gray-500">Loading income...</div>
-            ) : incomes && incomes.length > 0 ? (
+            ) : combinedIncome.length > 0 ? (
               <div className="space-y-2 mt-4">
-                {(incomes as Doc<"income">[] | undefined)?.filter(income => !pendingDeletions.includes(income._id)).map((incomeRecord) => (
+                {combinedIncome.map((incomeRecord) => (
                   <IncomeCard
                     key={incomeRecord._id}
-                    income={incomeRecord}
+                    income={incomeRecord as any}
                     cardName={cardMap[incomeRecord.cardId] || 'Unknown Card'}
+                    status={(incomeRecord as any).status}
+                    onRetry={handleRetrySync}
                     onDelete={(incomeId: Id<"income">) => {
                       setPendingDeletions(prev => [...prev, incomeId]);
 
