@@ -103,7 +103,14 @@ export default function ExpensesPage() {
   } = useOfflineFirstData();
 
   // Use online data if available, otherwise use offline backup
-  const cards = cardsQuery !== undefined ? cardsQuery : offlineCards;
+  // Transform offline cards data to match getMyCards structure
+  const cards = cardsQuery !== undefined ? cardsQuery : (offlineCards as any[])?.map((card: any) => ({
+    _id: card.cardId,
+    name: card.cardName,
+    userId: '',
+    createdAt: 0,
+    _creationTime: 0
+  }));
   const categories = categoriesQuery !== undefined ? categoriesQuery : offlineCategories;
   const forValues = forValuesQuery !== undefined ? forValuesQuery : offlineForValues;
 
