@@ -5,7 +5,17 @@ Added a comprehensive backup and export system to the Settings page that allows 
 
 ## Features
 
-### 1. JSON Backup Export
+### 1. Save to IndexedDB (NEW!)
+- **Purpose**: Local backup stored in browser's IndexedDB
+- **Storage**: Persistent browser storage (survives page refresh)
+- **Benefits**:
+  - Instant backup without downloading files
+  - Can be restored later
+  - Shows last backup date and time
+  - Displays count of backed up items
+- **Use Case**: Quick local backup before making changes
+
+### 2. JSON Backup Export
 - **Purpose**: Complete backup of all user data
 - **Format**: JSON file with full data structure
 - **Includes**: 
@@ -14,18 +24,18 @@ Added a comprehensive backup and export system to the Settings page that allows 
   - Categories
   - Cards
   - For values
-  - Income categories
-  - Sync state
-  - Metadata
+- **Use Case**: Portable backup that can be saved anywhere
 
-### 2. Excel Export
+### 3. Excel Export
 - **Purpose**: Spreadsheet format for data analysis
 - **Format**: .xlsx file with multiple sheets
 - **Sheets**:
-  - **Expenses**: Date, Title, Amount, Categories, For, Card, Status
-  - **Income**: Date, Source, Amount, Category, Card, Notes, Status
+  - **Expenses**: Date, Title, Amount, Categories, For, Card
+  - **Income**: Date, Source, Amount, Category, Card, Notes
   - **Categories**: Name, Type
-  - **Cards**: Name
+  - **For Values**: Value
+  - **Cards**: ID, Name, Balance, Total Income, Total Expenses
+- **Use Case**: Data analysis, reporting, sharing with accountants
 
 ## Implementation
 
@@ -50,13 +60,21 @@ Added a comprehensive backup and export system to the Settings page that allows 
 ### For Users
 1. Navigate to Settings page
 2. Scroll to "Data Backup & Export" section
-3. Click "Export as JSON" for complete backup
-4. Click "Export as Excel" for spreadsheet format
-5. Files are automatically downloaded with timestamp
+3. Choose your backup method:
+   - **Save to IndexedDB**: Quick local backup (no download)
+   - **Export as JSON**: Download complete backup file
+   - **Export as Excel**: Download spreadsheet for analysis
+4. View last backup info (date, time, item counts)
 
 ### File Naming
 - JSON: `expense-tracker-backup-YYYY-MM-DD.json`
 - Excel: `expense-tracker-export-YYYY-MM-DD.xlsx`
+
+### IndexedDB Storage
+- Database: `ExpenseTrackerBackup`
+- Store: `backups`
+- Key: `latest_backup`
+- Persists across browser sessions
 
 ## Technical Details
 

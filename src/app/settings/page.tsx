@@ -10,15 +10,26 @@ import { BottomNav } from "@/components/BottomNav";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import AppHeader from "@/components/AppHeader";
 import { RecoveryCodeCard } from "@/components/RecoveryCodeCard";
-import { User, LogOut, Wifi, WifiOff, RefreshCw, Download, FileJson, FileSpreadsheet } from "lucide-react";
+import { User, LogOut, Wifi, WifiOff, RefreshCw, Download, FileJson, FileSpreadsheet, Database, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { useDataBackup } from "@/hooks/useDataBackup";
+import { useEffect, useState } from "react";
 
 export default function SettingsPage() {
   const { user, logout, token } = useAuth();
   const { isOnline, pendingExpenses, syncPendingExpenses } = useOffline();
   const { settings, updateSettings, isLoading: settingsLoading } = useSettings();
-  const { exportAsJSON, exportAsExcel, isExporting } = useDataBackup();
+  const { exportAsJSON, exportAsExcel, saveToIndexedDB, getLastBackupInfo, isExporting } = useDataBackup();
+  const [lastBackup, setLastBackup] = useState<{ date: Date; expenseCount: number; incomeCount: number } | null>(null);
+
+  // Load last backup info on mount
+  useEffect(() => {
+    const loadBackupInfo = async () => {
+      const info = await getLastBackupInfo();
+      setLastBackup(info);
+    };
+    loadBackupInfo();
+  }, []);
 
   // Safe recovery code component with error handling
   const SafeRecoveryCodeCard = () => {
@@ -188,7 +199,42 @@ export default function SettingsPage() {
             <div className="mb-6 space-y-4">
               <h3 className="text-lg font-semibold text-gray-900">Data Backup & Export</h3>
               
+              {/* Last Backup Info */}
+              {lastBackup && (
+                <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                  <div className="flex items-center space-x-2 text-sm text-gray-600">
+                    <Clock size={16} />
+                    <span>
+                      Last backup: {lastBackup.date.toLocaleDateString()} at {lastBackup.date.toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1 ml-6">
+                    {lastBackup.expenseCount} expenses, {lastBackup.incomeCount} income
+                  </div>
+                </div>
+              )}
+              
               <div className="space-y-3">
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={async () => {
+                    await saveToIndexedDB();
+                    const info = await getLastBackupInfo();
+                    setLastBackup(info);
+                  }}
+                  disabled={isExporting}
+                  className="w-full flex items-center justify-between p-4 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+                >
+                  <div className="flex items-center space-x-3">
+                    <Database className="text-purple-600" size={20} />
+                    <div className="text-left">
+                      <div className="font-medium text-gray-900">Save to IndexedDB</div>
+                      <div className="text-sm text-gray-600">Local backup in browser storage</div>
+                    </div>
+                  </div>
+                  <Download className="text-purple-600" size={20} />
+                </motion.button>
+
                 <motion.button
                   whileTap={{ scale: 0.98 }}
                   onClick={exportAsJSON}
@@ -199,7 +245,7 @@ export default function SettingsPage() {
                     <FileJson className="text-blue-600" size={20} />
                     <div className="text-left">
                       <div className="font-medium text-gray-900">Export as JSON</div>
-                      <div className="text-sm text-gray-600">Complete backup of all your data</div>
+                      <div className="text-sm text-gray-600">Download complete backup file</div>
                     </div>
                   </div>
                   <Download className="text-blue-600" size={20} />

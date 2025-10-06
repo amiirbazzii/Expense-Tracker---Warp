@@ -67,6 +67,72 @@ export function useDataBackup() {
     }
   };
 
+  const saveToIndexedDB = async () => {
+    setIsExporting(true);
+    try {
+      if (!allExpenses || !allIncome || !allCategories || !allForValues || !allCards) {
+        toast.error('Data is still loading, please wait...');
+        setIsExporting(false);
+        return;
+      }
+
+      const backupData = {
+        version: '1.0.0',
+        savedAt: new Date().toISOString(),
+        userId: user?._id,
+        data: {
+          expenses: allExpenses,
+          income: allIncome,
+          categories: allCategories,
+          forValues: allForValues,
+          cards: allCards
+        }
+      };
+
+      // Save to IndexedDB using localforage
+      const backupStorage = localforage.createInstance({
+        name: 'ExpenseTrackerBackup',
+        storeName: 'backups'
+      });
+
+      await backupStorage.setItem('latest_backup', backupData);
+      
+      console.log('Backup saved to IndexedDB');
+      console.log('Expenses:', allExpenses.length);
+      console.log('Income:', allIncome.length);
+      console.log('Categories:', allCategories.length);
+      
+      toast.success(`Backup saved successfully! (${allExpenses.length} expenses, ${allIncome.length} income)`);
+    } catch (error) {
+      console.error('Save to IndexedDB failed:', error);
+      toast.error('Failed to save backup to IndexedDB');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const getLastBackupInfo = async () => {
+    try {
+      const backupStorage = localforage.createInstance({
+        name: 'ExpenseTrackerBackup',
+        storeName: 'backups'
+      });
+
+      const backup = await backupStorage.getItem('latest_backup') as any;
+      if (backup) {
+        return {
+          date: new Date(backup.savedAt),
+          expenseCount: backup.data.expenses?.length || 0,
+          incomeCount: backup.data.income?.length || 0
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('Failed to get backup info:', error);
+      return null;
+    }
+  };
+
   const exportAsExcel = async () => {
     setIsExporting(true);
     try {
@@ -166,6 +232,8 @@ export function useDataBackup() {
   return {
     exportAsJSON,
     exportAsExcel,
+    saveToIndexedDB,
+    getLastBackupInfo,
     isExporting
   };
 }
