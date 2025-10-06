@@ -98,13 +98,17 @@ export default function ExpensesPage() {
   const {
     categories: offlineCategories,
     forValues: offlineForValues,
-    cards: offlineCards
+    cards: offlineCards,
+    isLoading: isOfflineDataLoading
   } = useOfflineFirstData();
 
   // Use online data if available, otherwise use offline backup
   const cards = cardsQuery !== undefined ? cardsQuery : offlineCards;
   const categories = categoriesQuery !== undefined ? categoriesQuery : offlineCategories;
   const forValues = forValuesQuery !== undefined ? forValuesQuery : offlineForValues;
+  
+  // Check if cards data is still loading
+  const isCardsLoading = cardsQuery === undefined && isOfflineDataLoading;
 
   const {
     currentDate,
@@ -184,11 +188,13 @@ export default function ExpensesPage() {
   };
 
   // Check if user needs to set up cards first
+  // Only redirect after data has finished loading to avoid false positives
   useEffect(() => {
-    if (cards !== undefined && cards.length === 0) {
+    if (!isCardsLoading && cards !== undefined && cards.length === 0) {
+      console.log('ExpensesPage: No cards found, redirecting to onboarding');
       router.push("/onboarding");
     }
-  }, [cards, router]);
+  }, [cards, router, isCardsLoading]);
 
   // Auto-select first card if available
   useEffect(() => {
