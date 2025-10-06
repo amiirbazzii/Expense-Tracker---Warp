@@ -106,7 +106,7 @@ export default function ExpensesPage() {
   const cards = cardsQuery !== undefined ? cardsQuery : offlineCards;
   const categories = categoriesQuery !== undefined ? categoriesQuery : offlineCategories;
   const forValues = forValuesQuery !== undefined ? forValuesQuery : offlineForValues;
-  
+
   // Check if cards data is still loading
   const isCardsLoading = cardsQuery === undefined && isOfflineDataLoading;
 

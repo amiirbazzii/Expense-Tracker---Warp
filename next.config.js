@@ -93,7 +93,7 @@ const withPWA = require('next-pwa')({
         ]
       },
     },
-    // App pages - Cache first for instant offline access
+    // App pages - Cache first for instant offline access with fallback
     {
       urlPattern: ({ request, url }) => {
         const pathname = new URL(url).pathname;
@@ -114,8 +114,18 @@ const withPWA = require('next-pwa')({
         },
         plugins: [
           {
-            handlerDidError: async () => {
-              return caches.match('/offline');
+            handlerDidError: async ({ request }) => {
+              // If page not in cache and offline, return offline page
+              console.log('App page not cached, returning offline fallback');
+              const offlinePage = await caches.match('/offline.html');
+              if (offlinePage) {
+                return offlinePage;
+              }
+              // Last resort: return a basic response
+              return new Response(
+                '<html><body><h1>Offline</h1><p>This page is not available offline. Please connect to the internet.</p></body></html>',
+                { headers: { 'Content-Type': 'text/html' } }
+              );
             }
           }
         ]
@@ -141,7 +151,11 @@ const withPWA = require('next-pwa')({
         plugins: [
           {
             handlerDidError: async () => {
-              return caches.match('/offline');
+              const offlinePage = await caches.match('/offline.html');
+              return offlinePage || new Response(
+                '<html><body><h1>Offline</h1><p>Please connect to the internet.</p></body></html>',
+                { headers: { 'Content-Type': 'text/html' } }
+              );
             }
           }
         ]
@@ -163,7 +177,11 @@ const withPWA = require('next-pwa')({
         plugins: [
           {
             handlerDidError: async () => {
-              return caches.match('/offline');
+              const offlinePage = await caches.match('/offline.html');
+              return offlinePage || new Response(
+                '<html><body><h1>Offline</h1><p>Please connect to the internet.</p></body></html>',
+                { headers: { 'Content-Type': 'text/html' } }
+              );
             }
           }
         ]
