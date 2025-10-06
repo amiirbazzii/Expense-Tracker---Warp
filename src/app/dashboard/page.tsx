@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { BottomNav } from "@/components/BottomNav";
 import AppHeader from "@/components/AppHeader";
-import { Calendar } from 'lucide-react';
+import { Calendar, WifiOff } from 'lucide-react';
 import { useEffect, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -49,7 +49,8 @@ export default function DashboardPage() {
     year, 
     goToPreviousMonth, 
     goToNextMonth, 
-    refetchExpenses 
+    refetchExpenses,
+    isUsingOfflineData
   } = useDashboardData(token, selectedCardId);
 
   const {
@@ -95,6 +96,23 @@ export default function DashboardPage() {
         )}
         
         <div className="max-w-md mx-auto p-4 pt-[92px] pb-20">
+          {/* Offline Mode Indicator */}
+          {isUsingOfflineData && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg"
+            >
+              <div className="flex items-center space-x-2 text-sm text-orange-700 font-medium">
+                <WifiOff size={16} />
+                <span>Viewing Offline Backup Data</span>
+              </div>
+              <div className="text-xs text-orange-600 mt-1">
+                Showing data from your last backup. Connect to internet to see latest updates.
+              </div>
+            </motion.div>
+          )}
+          
           {/* Card Balances */}
            <TotalBalanceCard className="mb-6 rounded-2xl" />
           <motion.div

@@ -209,7 +209,7 @@ export default function SettingsPage() {
               <h3 className="text-lg font-semibold text-gray-900">Data Backup & Export</h3>
               
               {/* Offline Mode Indicator */}
-              {isUsingOfflineData && (
+              {isUsingOfflineData && hasOfflineBackup && (
                 <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
                   <div className="flex items-center space-x-2 text-sm text-orange-700 font-medium">
                     <WifiOff size={16} />
@@ -220,6 +220,22 @@ export default function SettingsPage() {
                       Backup from: {offlineBackupDate.toLocaleDateString()} at {offlineBackupDate.toLocaleTimeString()}
                     </div>
                   )}
+                  <div className="text-xs text-orange-600 mt-2 ml-6">
+                    ⚠️ Note: Backup exports work offline. Dashboard requires online connection.
+                  </div>
+                </div>
+              )}
+              
+              {/* No Backup Warning */}
+              {!isOnline && !hasOfflineBackup && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-center space-x-2 text-sm text-red-700 font-medium">
+                    <WifiOff size={16} />
+                    <span>Offline - No Backup Available</span>
+                  </div>
+                  <div className="text-xs text-red-600 mt-1 ml-6">
+                    Please create a backup when online to enable offline exports.
+                  </div>
                 </div>
               )}
               
