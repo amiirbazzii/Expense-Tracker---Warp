@@ -14,6 +14,7 @@ import { DollarSign, ArrowLeft, TrendingUp, CreditCard, Calendar, PencilLine, Br
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useTimeFramedData } from "@/hooks/useTimeFramedData";
+import { useOfflineFirstData } from "@/hooks/useOfflineFirstData";
 import { DateFilterHeader } from "@/components/DateFilterHeader";
 import { Doc, Id } from "../../../convex/_generated/dataModel";
 import { IncomeCard } from "@/components/cards/IncomeCard";
@@ -59,8 +60,34 @@ export default function IncomePage() {
   const deleteIncomeMutation = useMutation(api.cardsAndIncome.deleteIncome);
 
   // Queries
-  const cards = useQuery(api.cardsAndIncome.getMyCards, token ? { token } : "skip");
-  const allIncomeCategories = useQuery(api.cardsAndIncome.getUniqueIncomeCategories, token ? { token } : "skip");
+  const cardsQuery = useQuery(api.cardsAndIncome.getMyCards, token ? { token } : "skip");
+  const allIncomeCategoriesQuery = useQuery(api.cardsAndIncome.getUniqueIncomeCategories, token ? { token } : "skip");
+  
+  // Get offline backup data
+  const { 
+    cards: offlineCards,
+    categories: offlineCategories
+  } = useOfflineFirstData();
+  
+  // Use online data if available, otherwise use offline backup
+  const cards = cardsQuery !== undefined ? cardsQuery : (offlineCards as any[])?.map((card: any) => ({
+    _id: card.cardId,
+    name: card.cardName,
+    userId: '',
+    createdAt: 0,
+    _creationTime: 0
+  }));
+  
+  // Extract income category names from offline categories
+  const offlineIncomeCategoryNames = offlineCategories 
+    ? (offlineCategories as any[])
+        .filter((cat: any) => cat.type === 'income')
+        .map((cat: any) => cat.name)
+    : [];
+  
+  const allIncomeCategories = allIncomeCategoriesQuery !== undefined 
+    ? allIncomeCategoriesQuery 
+    : offlineIncomeCategoryNames;
 
   const { 
     data: incomes, 
@@ -69,7 +96,8 @@ export default function IncomePage() {
     year, 
     goToPreviousMonth, 
     goToNextMonth, 
-    refetch 
+    refetch,
+    isUsingOfflineData 
   } = useTimeFramedData("income", token);
 
   // Auto-select first card if available
@@ -255,6 +283,25 @@ export default function IncomePage() {
               </Button>
             </form>
           </motion.div>
+
+          {/* Offline Mode Indicator */}
+          {isUsingOfflineData && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-6 p-3 bg-orange-50 border border-orange-200 rounded-lg"
+            >
+              <div className="flex items-center space-x-2 text-sm text-orange-700 font-medium">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414" />
+                </svg>
+                <span>Viewing Offline Backup Data</span>
+              </div>
+              <div className="text-xs text-orange-600 mt-1">
+                Showing income from your last backup. New income will sync when online.
+              </div>
+            </motion.div>
+          )}
 
           {/* Income History Section - wrapped */}
           <div className="mt-8 rounded-xl border border-gray-200 bg-[#F9F9F9] p-4">
