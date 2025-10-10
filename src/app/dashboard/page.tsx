@@ -6,18 +6,18 @@ import { useAuth } from "@/contexts/AuthContext";
 import { BottomNav } from "@/components/BottomNav";
 import AppHeader from "@/components/AppHeader";
 import { Calendar, WifiOff } from 'lucide-react';
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 
 // Import components
 import { DateFilterHeader } from "@/components/DateFilterHeader";
 import { FullScreenLoader } from "@/components/FullScreenLoader";
-import { SummaryCards } from "../../features/dashboard/components/SummaryCards";
 import { CardFilter } from "../../features/dashboard/components/CardFilter";
 
 import { CategoryBreakdownChart, DailySpendingChart } from "../../features/dashboard/components/Charts";
 import { CategoryList } from "../../features/dashboard/components/CategoryList";
+import { ModeTabs } from "@/features/dashboard/components/ModeTabs";
 
 import { TotalBalanceCard } from "@/features/dashboard/components/TotalBalanceCard/TotalBalanceCard";
 
@@ -53,7 +53,8 @@ export default function DashboardPage() {
     goToPreviousMonth, 
     goToNextMonth, 
     refetchExpenses,
-    isUsingOfflineData
+    isUsingOfflineData,
+    income,
   } = useDashboardData(token, selectedCardId);
 
   const {
@@ -70,6 +71,9 @@ export default function DashboardPage() {
       router.push(`/expenses/edit/${expenseId}`);
     }
   };
+
+  // Tab mode: 'expenses' | 'income'
+  const [mode, setMode] = useState<'expenses' | 'income'>('expenses');
 
   // When data loading completes after a navigation, hide the overlay
   useEffect(() => {
@@ -89,6 +93,29 @@ export default function DashboardPage() {
     setNavigating(true);
     goToPreviousMonth();
   };
+
+  // Derived per-mode category totals and daily totals
+  const { categoryTotalsForMode, dailyTotalsForMode } = useMemo(() => {
+    if (mode === 'income') {
+      const list = (income || []).filter((item) => item && item.category !== 'Card Transfer');
+      const categoryTotals = list.reduce<Record<string, number>>((acc, item) => {
+        const cat = item.category;
+        acc[cat] = (acc[cat] || 0) + (item.amount || 0);
+        return acc;
+      }, {});
+      const dailyTotals = list.reduce<Record<string, number>>((acc, item) => {
+        const d = new Date(item.date);
+        const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        acc[key] = (acc[key] || 0) + (item.amount || 0);
+        return acc;
+      }, {});
+      return { categoryTotalsForMode: categoryTotals, dailyTotalsForMode: dailyTotals };
+    }
+    // expenses mode
+    const cat = monthlyData?.categoryTotals ?? {};
+    const daily = monthlyData?.dailyTotals ?? {};
+    return { categoryTotalsForMode: cat, dailyTotalsForMode: daily };
+  }, [mode, income, monthlyData]);
 
   return (
     <>
@@ -119,12 +146,17 @@ export default function DashboardPage() {
           {/* Card Balances */}
            <TotalBalanceCard className="mb-6 rounded-2xl" />
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="bg-white rounded-lg shadow-sm mb-6 overflow-hidden"
           >
             {/* Header Section */}
-            <div className="px-2 pt-2 pb-1">
+            <div className="px-2 pt-2 pb-4">
+              <ModeTabs
+                mode={mode}
+                totalExpenses={monthlyData?.totalExpenses || 0}
+                totalIncome={monthlyData?.totalIncome || 0}
+                onChange={setMode}
+              />
               <DateFilterHeader 
                 monthName={monthName} 
                 year={year} 
@@ -135,8 +167,6 @@ export default function DashboardPage() {
                 isLoading={isLoading || navigating}
               />
             </div>
-
-            {/* Card Filter */}
             {cards && (
               <CardFilter
                 cards={cards}
@@ -146,44 +176,22 @@ export default function DashboardPage() {
             )}
           </motion.div>
           
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-lg shadow-sm p-2 mb-6"
-          >
-            {/* Summary Cards */}
-            {monthlyData ? (
-              <SummaryCards
-                totalIncome={monthlyData.totalIncome}
-                totalExpenses={monthlyData.totalExpenses}
-                isLoading={isLoading}
-              />
-            ) : expenses === undefined ? (
-              <div className="text-center py-8">
-                <div className="text-gray-500">Loading summary...</div>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <Calendar className="mx-auto text-gray-400 mb-4" size={48} />
-                <p className="text-gray-500">You have no expenses for this month.</p>
-              </div>
-            )}
-          </motion.div>
+          {/* Summary section removed: totals are displayed in ModeTabs */}
 
           
           {/* Analytics Content */}
-          {monthlyData && Object.keys(monthlyData.categoryTotals).length > 0 ? (
+          {Object.keys(categoryTotalsForMode).length > 0 ? (
             <>
               {/* Category Breakdown Chart */}
-              <CategoryBreakdownChart categoryTotals={monthlyData.categoryTotals} />
+              <CategoryBreakdownChart categoryTotals={categoryTotalsForMode} />
 
               {/* Daily Spending Chart */}
-              {Object.keys(monthlyData.dailyTotals).length > 0 && (
-                <DailySpendingChart dailyTotals={monthlyData.dailyTotals} />
+              {Object.keys(dailyTotalsForMode).length > 0 && (
+                <DailySpendingChart dailyTotals={dailyTotalsForMode} mode={mode} />
               )}
 
               {/* Category List */}
-              <CategoryList categoryTotals={monthlyData.categoryTotals} expenses={expenses || []} />
+              <CategoryList categoryTotals={categoryTotalsForMode} expenses={expenses || []} income={income || []} mode={mode} />
             </>
           ) : null}
         </div>

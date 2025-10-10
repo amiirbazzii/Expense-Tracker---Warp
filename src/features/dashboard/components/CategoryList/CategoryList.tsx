@@ -6,13 +6,16 @@ import { formatCurrency, formatDate } from "@/lib/formatters";
 import { useMemo, useState } from "react";
 import { BottomSheet } from "@/components/BottomSheet";
 import type { Expense } from "../../types/expense";
+import type { Income } from "../../types/income";
 
 interface CategoryListProps {
   categoryTotals: Record<string, number>;
-  expenses: Expense[];
+  expenses?: Expense[];
+  income?: Income[];
+  mode?: 'expenses' | 'income';
 }
 
-export function CategoryList({ categoryTotals, expenses }: CategoryListProps) {
+export function CategoryList({ categoryTotals, expenses = [], income = [], mode = 'expenses' }: CategoryListProps) {
   const { settings } = useSettings();
   const [openCategory, setOpenCategory] = useState<string | null>(null);
 
@@ -21,11 +24,14 @@ export function CategoryList({ categoryTotals, expenses }: CategoryListProps) {
   }
 
   const filteredByCategory = useMemo(() => {
-    if (!openCategory) return [] as Expense[];
+    if (!openCategory) return [] as (Expense | Income)[];
+    if (mode === 'income') {
+      return (income || []).filter((i) => i.category === openCategory);
+    }
     return (expenses || []).filter((e) =>
-      Array.isArray(e.category) ? e.category.includes(openCategory) : e.category === openCategory
+      Array.isArray(e.category) ? e.category.includes(openCategory) : (e as any).category === openCategory
     );
-  }, [expenses, openCategory]);
+  }, [expenses, income, openCategory, mode]);
 
   return (
     <motion.div
@@ -63,18 +69,20 @@ export function CategoryList({ categoryTotals, expenses }: CategoryListProps) {
           <div className="space-y-3">
             {filteredByCategory
               .slice()
-              .sort((a, b) => b.date - a.date)
-              .map((exp) => (
-                <div key={String(exp._id)} className="flex justify-between items-start py-2">
+              .sort((a, b) => (b.date as number) - (a.date as number))
+              .map((item) => (
+                <div key={String((item as any)._id)} className="flex justify-between items-start py-2">
                   <div className="min-w-0 pr-3">
-                    <p className="text-sm font-medium text-gray-900 truncate">{exp.title}</p>
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {mode === 'income' ? (item as Income).category : (item as Expense).title}
+                    </p>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      {settings ? formatDate(exp.date, settings.calendar, 'MMM d, yyyy') : new Date(exp.date).toLocaleDateString()}
+                      {settings ? formatDate(item.date as number, settings.calendar, 'MMM d, yyyy') : new Date(item.date as number).toLocaleDateString()}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-semibold text-red-500">
-                      -{settings ? formatCurrency(exp.amount, settings.currency) : exp.amount.toFixed(2)}
+                    <p className={`text-sm font-semibold ${mode === 'income' ? 'text-green-600' : 'text-red-500'}`}>
+                      {mode === 'income' ? '' : '-'}{settings ? formatCurrency(item.amount as number, settings.currency) : (item.amount as number).toFixed(2)}
                     </p>
                   </div>
                 </div>

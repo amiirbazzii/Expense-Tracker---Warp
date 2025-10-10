@@ -1,2 +1,2 @@
-export * from './useExpenseData';
+export * from './useDashboardData';
 export * from './useExpenseActions';

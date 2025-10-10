@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
 import { useAuth } from '@/contexts/AuthContext';
 import localforage from 'localforage';
 import { useOfflineFirstData } from './useOfflineFirstData';
@@ -212,6 +211,9 @@ export function useDataBackup() {
         Value: fv.value
       }));
       
+      // Dynamically import xlsx on the client to avoid SSR bundling
+      const XLSX = await import('xlsx');
+
       // Create workbook
       const wb = XLSX.utils.book_new();
       

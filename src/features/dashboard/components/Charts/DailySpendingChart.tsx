@@ -13,9 +13,12 @@ const Bar = dynamic(() => import('react-chartjs-2').then(m => m.Bar), { ssr: fal
 
 interface DailySpendingChartProps {
   dailyTotals: Record<string, number>;
+  mode?: 'expenses' | 'income';
+  title?: string;
+  color?: string; // bar color override
 }
 
-export function DailySpendingChart({ dailyTotals }: DailySpendingChartProps) {
+export function DailySpendingChart({ dailyTotals, mode = 'expenses', title, color }: DailySpendingChartProps) {
   const [isMounted, setIsMounted] = useState(false);
   const { settings } = useSettings();
 
@@ -40,14 +43,18 @@ export function DailySpendingChart({ dailyTotals }: DailySpendingChartProps) {
     );
   }
 
+  const resolvedTitle = title ?? (mode === 'income' ? 'Daily Income' : 'Daily Spending');
+  const barColor = color ?? (mode === 'income' ? '#22C55E' : '#3B82F6');
+  const borderColor = mode === 'income' ? '#16A34A' : '#1D4ED8';
+
   const chartData = {
     labels: Object.keys(dailyTotals).map(date => settings ? formatDate(new Date(date), settings.calendar, 'MMM d') : new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
     datasets: [
       {
-        label: "Daily Expenses",
+        label: mode === 'income' ? 'Daily Income' : 'Daily Expenses',
         data: Object.values(dailyTotals),
-        backgroundColor: "#3B82F6",
-        borderColor: "#1D4ED8",
+        backgroundColor: barColor,
+        borderColor: borderColor,
         borderWidth: 1,
       },
     ],
@@ -104,7 +111,7 @@ export function DailySpendingChart({ dailyTotals }: DailySpendingChartProps) {
     >
       <div className="flex items-center space-x-2 mb-4">
         <TrendingUp className="text-gray-600" size={20} />
-        <h2 className="text-lg font-semibold text-gray-900">Daily Spending</h2>
+        <h2 className="text-lg font-semibold text-gray-900">{resolvedTitle}</h2>
       </div>
       
       <div className="h-64">

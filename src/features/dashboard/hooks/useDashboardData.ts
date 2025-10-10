@@ -162,6 +162,7 @@ export function useDashboardData(token: string | null, selectedCardId: string | 
     goToNextMonth,
     refetchExpenses,
     expenses,
+    income,
     monthlyData,
     isLoading,
     isUsingOfflineData,
