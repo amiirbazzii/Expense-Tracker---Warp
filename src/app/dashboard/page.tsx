@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { BottomNav } from "@/components/BottomNav";
 import AppHeader from "@/components/AppHeader";
-import { Calendar, WifiOff } from 'lucide-react';
+import { WifiOff, ChevronDown } from 'lucide-react';
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -14,12 +14,14 @@ import { api } from "../../../convex/_generated/api";
 import { DateFilterHeader } from "@/components/DateFilterHeader";
 import { FullScreenLoader } from "@/components/FullScreenLoader";
 import { CardFilter } from "../../features/dashboard/components/CardFilter";
+import { Chip } from "@/components/Chip";
 
 import { CategoryBreakdownChart, DailySpendingChart } from "../../features/dashboard/components/Charts";
 import { CategoryList } from "../../features/dashboard/components/CategoryList";
 import { ModeTabs } from "@/features/dashboard/components/ModeTabs";
 
 import { TotalBalanceCard } from "@/features/dashboard/components/TotalBalanceCard/TotalBalanceCard";
+import DashboardFilterSheet, { DashboardFilters } from "@/features/dashboard/components/DashboardFilterSheet";
 
 
 // Import hooks
@@ -42,20 +44,7 @@ export default function DashboardPage() {
   const [navigating, setNavigating] = useState(false);
 
 
-  // Use custom hooks for data and actions
-  const { 
-    currentDate, 
-    expenses, 
-    monthlyData, 
-    isLoading, 
-    monthName, 
-    year, 
-    goToPreviousMonth, 
-    goToNextMonth, 
-    refetchExpenses,
-    isUsingOfflineData,
-    income,
-  } = useDashboardData(token, selectedCardId);
+  // Data is provided by a single hook instance below (with optional date override)
 
   const {
     selectedExpense,
@@ -75,59 +64,143 @@ export default function DashboardPage() {
   // Tab mode: 'expenses' | 'income'
   const [mode, setMode] = useState<'expenses' | 'income'>('expenses');
 
+  // Filters state
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filters, setFilters] = useState<DashboardFilters>({
+    datePreset: 'thisMonth',
+    categories: [],
+    forValue: undefined,
+  });
+
+  // Suggestions from offline/online combined source
+  const { categories: categoriesAll, forValues: forValuesAll } = useOfflineFirstData();
+  const expenseCategoryNames: string[] = useMemo(() => (categoriesAll || []).map((c: any) => c.name).filter(Boolean), [categoriesAll]);
+  const forValueNames: string[] = useMemo(() => (forValuesAll || []).map((f: any) => f.value).filter(Boolean), [forValuesAll]);
+
+  // Compute date range override based on preset
+  const dateRangeOverride = useMemo(() => {
+    if (filters.datePreset === 'custom' && filters.start && filters.end) {
+      return { start: filters.start, end: filters.end };
+    }
+    if (filters.datePreset === 'last7Days') {
+      const end = new Date(); end.setHours(23,59,59,999);
+      const start = new Date(); start.setDate(start.getDate() - 6); start.setHours(0,0,0,0);
+      return { start: start.getTime(), end: end.getTime() };
+    }
+    if (filters.datePreset === 'lastMonth') {
+      const now = new Date();
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+      const end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+      return { start: start.getTime(), end: end.getTime() };
+    }
+    // thisMonth -> let hook compute based on currentDate
+    return undefined;
+  }, [filters]);
+
+  // Re-run data hook when date override changes
+  const {
+    expenses: effExpenses,
+    income: effIncome,
+    monthlyData: effMonthlyData,
+    isLoading: effIsLoading,
+    isUsingOfflineData: effIsUsingOfflineData,
+    monthName: effMonthName,
+    year: effYear,
+    goToNextMonth,
+    goToPreviousMonth,
+    refetchExpenses,
+  } = useDashboardData(token, selectedCardId, dateRangeOverride);
+
+  // Derive income categories from the loaded income data (exclude transfers)
+  const incomeCategoryNames: string[] = useMemo(() => {
+    const names = new Set<string>();
+    (effIncome || []).forEach((inc: any) => {
+      const cat = Array.isArray(inc.category) ? inc.category[0] : inc.category;
+      if (cat && cat !== 'Card Transfer') names.add(cat);
+    });
+    return Array.from(names);
+  }, [effIncome]);
+
   // When data loading completes after a navigation, hide the overlay
   useEffect(() => {
-    if (navigating && !isLoading) {
+    if (navigating && !effIsLoading) {
       setNavigating(false);
     }
-  }, [isLoading, navigating]);
+  }, [effIsLoading, navigating]);
 
   const handleNextMonth = () => {
-    if (isLoading) return; // guard
+    if (effIsLoading) return; // guard
     setNavigating(true);
     goToNextMonth();
   };
 
   const handlePreviousMonth = () => {
-    if (isLoading) return; // guard
+    if (effIsLoading) return; // guard
     setNavigating(true);
     goToPreviousMonth();
   };
 
   // Derived per-mode category totals and daily totals
-  const { categoryTotalsForMode, dailyTotalsForMode } = useMemo(() => {
+  const { categoryTotalsForMode, dailyTotalsForMode, totalForMode } = useMemo(() => {
     if (mode === 'income') {
-      const list = (income || []).filter((item) => item && item.category !== 'Card Transfer');
-      const categoryTotals = list.reduce<Record<string, number>>((acc, item) => {
+      let list = (effIncome || []).filter((item: any) => item && item.category !== 'Card Transfer');
+      // category filter applies to income as well
+      if (filters.categories.length > 0) {
+        list = list.filter((it: any) => filters.categories.includes(Array.isArray(it.category) ? it.category[0] : it.category));
+      }
+      const categoryTotals = list.reduce<Record<string, number>>((acc: Record<string, number>, item: any) => {
         const cat = item.category;
         acc[cat] = (acc[cat] || 0) + (item.amount || 0);
         return acc;
       }, {});
-      const dailyTotals = list.reduce<Record<string, number>>((acc, item) => {
+      const dailyTotals = list.reduce<Record<string, number>>((acc: Record<string, number>, item: any) => {
         const d = new Date(item.date);
         const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         acc[key] = (acc[key] || 0) + (item.amount || 0);
         return acc;
       }, {});
-      return { categoryTotalsForMode: categoryTotals, dailyTotalsForMode: dailyTotals };
+      const total = list.reduce((s: number, i: any) => s + (i.amount || 0), 0);
+      return { categoryTotalsForMode: categoryTotals, dailyTotalsForMode: dailyTotals, totalForMode: total };
     }
     // expenses mode
-    const cat = monthlyData?.categoryTotals ?? {};
-    const daily = monthlyData?.dailyTotals ?? {};
-    return { categoryTotalsForMode: cat, dailyTotalsForMode: daily };
-  }, [mode, income, monthlyData]);
+    let list = (effExpenses || []).filter((expense: any) => {
+      const categories = Array.isArray(expense.category) ? expense.category : [expense.category];
+      const notTransfer = !categories.includes('Card Transfer');
+      const catOk = filters.categories.length > 0 ? categories.some((c: string) => filters.categories.includes(c)) : true;
+      const forOk = filters.forValue ? (Array.isArray(expense.for) ? expense.for.includes(filters.forValue) : expense.for === filters.forValue) : true;
+      return notTransfer && catOk && forOk;
+    });
+
+    const categoryTotals = list.reduce<Record<string, number>>((acc, expense) => {
+      const categories = Array.isArray(expense.category) ? expense.category : [expense.category];
+      categories.forEach((c: string) => {
+        acc[c] = (acc[c] || 0) + (expense.amount || 0);
+      });
+      return acc;
+    }, {});
+
+    const dailyTotals = list.reduce<Record<string, number>>((acc: Record<string, number>, expense: any) => {
+      const d = new Date(expense.date);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      acc[key] = (acc[key] || 0) + (expense.amount || 0);
+      return acc;
+    }, {});
+
+    const total = list.reduce((s: number, e: any) => s + (e.amount || 0), 0);
+    return { categoryTotalsForMode: categoryTotals, dailyTotalsForMode: dailyTotals, totalForMode: total };
+  }, [mode, effExpenses, effIncome, filters]);
 
   return (
     <>
       <div className="min-h-screen bg-gray-50">
         <AppHeader />
-        {(navigating || isLoading) && (
+        {(navigating || effIsLoading) && (
           <FullScreenLoader message="Loading month..." />
         )}
         
         <div className="max-w-md mx-auto p-4 pt-[92px] pb-20">
           {/* Offline Mode Indicator */}
-          {isUsingOfflineData && (
+          {effIsUsingOfflineData && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -153,18 +226,18 @@ export default function DashboardPage() {
             <div className="px-2 pt-2 pb-4">
               <ModeTabs
                 mode={mode}
-                totalExpenses={monthlyData?.totalExpenses || 0}
-                totalIncome={monthlyData?.totalIncome || 0}
+                totalExpenses={mode === 'expenses' ? totalForMode : effMonthlyData?.totalExpenses || 0}
+                totalIncome={mode === 'income' ? totalForMode : effMonthlyData?.totalIncome || 0}
                 onChange={setMode}
               />
               <DateFilterHeader 
-                monthName={monthName} 
-                year={year} 
+                monthName={effMonthName} 
+                year={effYear} 
                 onNextMonth={handleNextMonth} 
                 onPreviousMonth={handlePreviousMonth} 
                 subtitle="Monthly Summary"
                 isMainTitle={true}
-                isLoading={isLoading || navigating}
+                isLoading={effIsLoading || navigating}
               />
             </div>
             {cards && (
@@ -172,6 +245,7 @@ export default function DashboardPage() {
                 cards={cards}
                 selectedCardId={selectedCardId}
                 onSelectCard={setSelectedCardId}
+                leadingSlot={<Chip onClick={() => setFiltersOpen(true)} leftIcon={<ChevronDown size={16} />}>Filter</Chip>}
               />
             )}
           </motion.div>
@@ -191,12 +265,24 @@ export default function DashboardPage() {
               )}
 
               {/* Category List */}
-              <CategoryList categoryTotals={categoryTotalsForMode} expenses={expenses || []} income={income || []} mode={mode} />
+              <CategoryList categoryTotals={categoryTotalsForMode} expenses={effExpenses || []} income={effIncome || []} mode={mode} />
             </>
           ) : null}
         </div>
 
         <BottomNav />
+
+        {/* Bottom sheet */}
+        <DashboardFilterSheet
+          open={filtersOpen}
+          onClose={() => setFiltersOpen(false)}
+          title={mode === 'expenses' ? 'Filter expenses' : 'Filter income'}
+          categoriesSuggestions={mode === 'income' ? incomeCategoryNames : expenseCategoryNames}
+          forSuggestions={mode === 'expenses' ? forValueNames : []}
+          showFor={mode === 'expenses'}
+          initial={filters}
+          onApply={(f) => setFilters(f)}
+        />
 
       </div>
     </>

@@ -7,7 +7,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { useOfflineFirstData } from "@/hooks/useOfflineFirstData";
 import moment from 'jalali-moment';
 
-export function useDashboardData(token: string | null, selectedCardId: string | null) {
+export function useDashboardData(token: string | null, selectedCardId: string | null, dateRangeOverride?: { start: number; end: number }) {
   const { settings } = useSettings();
   const isJalali = settings?.calendar === "jalali";
 
@@ -18,8 +18,8 @@ export function useDashboardData(token: string | null, selectedCardId: string | 
     moment.locale(isJalali ? 'fa' : 'en');
   }, [isJalali]);
 
-  const startDate = currentDate.clone().startOf(isJalali ? 'jMonth' : 'month').valueOf();
-  const endDate = currentDate.clone().endOf(isJalali ? 'jMonth' : 'month').valueOf();
+  const startDate = (dateRangeOverride?.start) ?? currentDate.clone().startOf(isJalali ? 'jMonth' : 'month').valueOf();
+  const endDate = (dateRangeOverride?.end) ?? currentDate.clone().endOf(isJalali ? 'jMonth' : 'month').valueOf();
 
   // Try to fetch from Convex with date range
   const expensesResult = useQuery(

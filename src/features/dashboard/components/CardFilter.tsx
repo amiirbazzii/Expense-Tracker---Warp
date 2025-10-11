@@ -13,9 +13,10 @@ interface CardFilterProps {
   cards: Card[];
   selectedCardId: string | null;
   onSelectCard: (cardId: string | null) => void;
+  leadingSlot?: React.ReactNode;
 }
 
-export const CardFilter = ({ cards, selectedCardId, onSelectCard }: CardFilterProps) => {
+export const CardFilter = ({ cards, selectedCardId, onSelectCard, leadingSlot }: CardFilterProps) => {
   return (
     <div style={{ paddingBottom: '12px' }}>
       <div 
@@ -37,6 +38,14 @@ export const CardFilter = ({ cards, selectedCardId, onSelectCard }: CardFilterPr
             minWidth: '100%'
           }}
         >
+          {leadingSlot && (
+            <div className="flex items-center gap-2 flex-shrink-0 pr-2">
+              <div className="flex-shrink-0 whitespace-nowrap">
+                {leadingSlot}
+              </div>
+              <div className="w-px h-5 bg-gray-300" aria-hidden="true" />
+            </div>
+          )}
           <motion.div
             whileTap={{ scale: 0.95 }}
             onClick={() => onSelectCard(null)}
