@@ -194,14 +194,8 @@ export default function ExpensesPage() {
     }
   };
 
-  // Check if user needs to set up cards first
-  // Only redirect after data has finished loading to avoid false positives
-  useEffect(() => {
-    if (!isCardsLoading && cards !== undefined && cards.length === 0) {
-      console.log('ExpensesPage: No cards found, redirecting to onboarding');
-      router.push("/onboarding");
-    }
-  }, [cards, router, isCardsLoading]);
+  // Removed auto-redirect to onboarding when no cards.
+  // Onboarding is now only navigated to after successful registration.
 
   // Auto-select first card if available
   useEffect(() => {

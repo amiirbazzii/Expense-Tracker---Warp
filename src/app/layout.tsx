@@ -8,7 +8,6 @@ import { OfflineFirstWrapper } from "@/providers/OfflineFirstWrapper";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { OfflineProvider } from "@/contexts/OfflineContext";
-import { NetworkStatusIndicator } from "@/components/NetworkStatusIndicator";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import { LazyAnalytics, LazySpeedInsights, LazyToaster, LazyEnhancedNetworkStatusIndicator } from "@/components/LazyComponents";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -122,8 +121,8 @@ export default function RootLayout({
             </AuthProvider>
           </ConvexProvider>
         </ErrorBoundary>
-        <LazyAnalytics />
-        <LazySpeedInsights />
+          <LazyAnalytics />
+          <LazySpeedInsights />
       </body>
     </html>
   );
