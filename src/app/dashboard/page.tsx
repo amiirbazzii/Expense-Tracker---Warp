@@ -223,13 +223,7 @@ export default function DashboardPage() {
             className="bg-white rounded-lg shadow-sm mb-6 overflow-hidden"
           >
             {/* Header Section */}
-            <div className="px-2 pt-2 pb-4">
-              <ModeTabs
-                mode={mode}
-                totalExpenses={mode === 'expenses' ? totalForMode : effMonthlyData?.totalExpenses || 0}
-                totalIncome={mode === 'income' ? totalForMode : effMonthlyData?.totalIncome || 0}
-                onChange={setMode}
-              />
+            <div className="px-4 pt-4">
               <DateFilterHeader 
                 monthName={effMonthName} 
                 year={effYear} 
@@ -248,12 +242,14 @@ export default function DashboardPage() {
                 leadingSlot={<Chip onClick={() => setFiltersOpen(true)} leftIcon={<ChevronDown size={16} />}>Filter</Chip>}
               />
             )}
-          </motion.div>
-          
-          {/* Summary section removed: totals are displayed in ModeTabs */}
+             <ModeTabs
+                mode={mode}
+                totalExpenses={mode === 'expenses' ? totalForMode : effMonthlyData?.totalExpenses || 0}
+                totalIncome={mode === 'income' ? totalForMode : effMonthlyData?.totalIncome || 0}
+                onChange={setMode}
+              />
 
-          
-          {/* Analytics Content */}
+              {/* Analytics Content */}
           {Object.keys(categoryTotalsForMode).length > 0 ? (
             <>
               {/* Category Breakdown Chart */}
@@ -268,6 +264,7 @@ export default function DashboardPage() {
               <CategoryList categoryTotals={categoryTotalsForMode} expenses={effExpenses || []} income={effIncome || []} mode={mode} />
             </>
           ) : null}
+          </motion.div>
         </div>
 
         <BottomNav />

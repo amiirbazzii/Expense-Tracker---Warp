@@ -158,7 +158,7 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1 }}
-      className="bg-white rounded-lg shadow-sm p-6 mb-6"
+      className="p-6 border-b border-gray-200"
     >
       {/* Capsule Chart */}
       <div className="w-full flex flex-col items-center">

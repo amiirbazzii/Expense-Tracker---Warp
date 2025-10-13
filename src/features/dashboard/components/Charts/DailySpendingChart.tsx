@@ -72,7 +72,7 @@ export function DailySpendingChart({ dailyTotals, mode = 'expenses', title, _col
   }
 
   if (!isMounted) {
-    return <div className="bg-white rounded-lg shadow-sm py-6 mb-6 h-40 animate-pulse" />;
+    return <div className="py-6 border-b border-gray-200 h-40 animate-pulse" />;
   }
 
   const chartData = {
@@ -252,7 +252,7 @@ export function DailySpendingChart({ dailyTotals, mode = 'expenses', title, _col
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 }}
-      className="bg-white rounded-lg shadow-sm py-6 mb-6"
+      className="py-6 border-b border-gray-200"
     >
       <div className="relative h-40">
         <Line ref={chartRef} data={chartData} options={options} plugins={[customPlugin, tooltipPlugin]} />

@@ -18,7 +18,7 @@ interface CardFilterProps {
 
 export const CardFilter = ({ cards, selectedCardId, onSelectCard, leadingSlot }: CardFilterProps) => {
   return (
-    <div style={{ paddingBottom: '12px' }}>
+    <div className="py-4 border-t border-gray-200">
       <div 
         style={{
           overflowX: 'auto',

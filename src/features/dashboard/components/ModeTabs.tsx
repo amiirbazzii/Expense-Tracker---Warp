@@ -21,8 +21,8 @@ export function ModeTabs({ mode, totalExpenses = 0, totalIncome = 0, onChange, c
   const fmt = (val: number) => (settings ? formatCurrency(val, settings.currency) : val.toLocaleString());
 
   return (
-    <div className={`mb-6 ${className}`}>
-      <div className="relative grid grid-cols-2 border-b border-gray-200 select-none" role="tablist" aria-label="Data mode">
+    <div className={className}>
+      <div className="relative grid grid-cols-2 border-b border-t border-gray-200 select-none" role="tablist" aria-label="Data mode">
         {/* Expenses Tab */}
         <button
           type="button"
