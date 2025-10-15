@@ -128,14 +128,28 @@ export default function DashboardPage() {
     }
   }, [effIsLoading, navigating]);
 
+  // Ensure date filter does not override manual month navigation
+  const resetDateFilterIfNeeded = () => {
+    if (filters.datePreset !== 'thisMonth') {
+      setFilters((prev) => ({
+        ...prev,
+        datePreset: 'thisMonth',
+        start: undefined,
+        end: undefined,
+      }));
+    }
+  };
+
   const handleNextMonth = () => {
     if (effIsLoading) return; // guard
+    resetDateFilterIfNeeded();
     setNavigating(true);
     goToNextMonth();
   };
 
   const handlePreviousMonth = () => {
     if (effIsLoading) return; // guard
+    resetDateFilterIfNeeded();
     setNavigating(true);
     goToPreviousMonth();
   };
