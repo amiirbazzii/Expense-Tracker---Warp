@@ -219,12 +219,6 @@ export function DailySpendingChart({ dailyTotals, mode = 'expenses', title, _col
         tooltipX = x - tooltipWidth / 2 + 8; // Small offset from point
       }
 
-      // Adjust vertical position if tooltip would go outside chart boundaries
-      if (tooltipY < chartTop) {
-        // If tooltip would go above chart, position below the data point as fallback
-        tooltipY = y + 8;
-      }
-
       tooltipEl.style.left = tooltipX + 'px';
       tooltipEl.style.top = tooltipY + 'px';
       tooltipEl.style.transform = 'translateX(-50%)';
