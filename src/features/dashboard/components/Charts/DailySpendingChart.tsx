@@ -137,14 +137,6 @@ export function DailySpendingChart({ dailyTotals, mode = 'expenses', title, _col
       ctx.arc(x, y, 4, 0, Math.PI * 2);
       ctx.fill();
       
-      // Bottom date (draw inside canvas with padding)
-      const label = chart.data.labels[dataIndex];
-      ctx.fillStyle = '#6B7280';
-      ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillText(label, x, chartArea.bottom + 6);
-      
       ctx.restore();
     },
   };
@@ -187,14 +179,54 @@ export function DailySpendingChart({ dailyTotals, mode = 'expenses', title, _col
       const x = elem.x;
       const y = elem.y;
       const value = elem.$context?.parsed?.y ?? chart.data.datasets[0].data[dataIndex];
-      
+
       const inner = tooltipEl.querySelector('.tooltip-inner');
       const formatted = settings ? formatCurrency(value, settings.currency) : `$${value.toFixed(0)}`;
-      inner.textContent = formatted;
-      
+      const dateLabel = chart.data.labels[dataIndex];
+
+      // Create tooltip content with date above value
+      inner.innerHTML = `
+        <div style="font-size: 10px; color: #D1D5DB; margin-bottom: 2px;">${dateLabel}</div>
+        <div style="font-size: 12px; font-weight: 500;">${formatted}</div>
+      `;
+
+      // Get tooltip dimensions
       tooltipEl.style.opacity = '1';
-      tooltipEl.style.left = x + 'px';
-      tooltipEl.style.top = (y - 32) + 'px';
+      tooltipEl.style.left = '0px';
+      tooltipEl.style.top = '0px';
+      tooltipEl.style.transform = 'none';
+      const tooltipRect = tooltipEl.getBoundingClientRect();
+      const tooltipWidth = tooltipRect.width;
+      const tooltipHeight = tooltipRect.height;
+
+      // Get chart container boundaries
+      const chartRect = chart.canvas.getBoundingClientRect();
+      const chartLeft = chartRect.left;
+      const chartRight = chartRect.right;
+      const chartTop = chartRect.top;
+      const chartBottom = chartRect.bottom;
+
+      // Calculate optimal tooltip position
+      let tooltipX = x;
+      let tooltipY = y - tooltipHeight - 8; // Position above the data point
+
+      // Adjust horizontal position if tooltip would go outside chart boundaries
+      if (tooltipX - tooltipWidth / 2 < chartLeft) {
+        // Position tooltip to the right of the point for left edge
+        tooltipX = x + tooltipWidth / 2 - 8; // Small offset from point
+      } else if (tooltipX + tooltipWidth / 2 > chartRight) {
+        // Position tooltip to the left of the point for right edge
+        tooltipX = x - tooltipWidth / 2 + 8; // Small offset from point
+      }
+
+      // Adjust vertical position if tooltip would go outside chart boundaries
+      if (tooltipY < chartTop) {
+        // If tooltip would go above chart, position below the data point as fallback
+        tooltipY = y + 8;
+      }
+
+      tooltipEl.style.left = tooltipX + 'px';
+      tooltipEl.style.top = tooltipY + 'px';
       tooltipEl.style.transform = 'translateX(-50%)';
     },
   };
