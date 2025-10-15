@@ -10,7 +10,7 @@ import { BottomNav } from "@/components/BottomNav";
 import AppHeader from "@/components/AppHeader";
 import { SmartSelectInput } from "@/components/SmartSelectInput";
 import { toast } from "sonner";
-import { DollarSign, ArrowLeft, TrendingUp, CreditCard, Calendar, PencilLine, Briefcase, Tag } from "lucide-react";
+import { DollarSign, ArrowLeft, TrendingUp, CreditCard, Calendar, PencilLine, Type, Tag } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useTimeFramedData } from "@/hooks/useTimeFramedData";
@@ -267,8 +267,8 @@ export default function IncomePage() {
           {/* Input Form Section - header + fields (no card wrapper) */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <div className="mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Add New Income</h2>
-              <p className="mt-1 text-[13px] leading-5 text-gray-500">Fill in the details below to track your income</p>
+              <h2 className="text-2xl font-medium text-gray-900">Add New Income</h2>
+              <p className="mt-1 font-sm font-light leading-5 text-gray-900">Fill in the details below to track your income</p>
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -278,20 +278,20 @@ export default function IncomePage() {
                 <CurrencyInput
                   value={formData.amount}
                   onChangeValue={(val) => setFormData({ ...formData, amount: val })}
-                  placeholder="0.00"
+                  placeholder="Enter amount"
                   required
                 />
               </div>
 
               {/* Source */}
               <div>
-                <InputContainer leftIcon={Briefcase}>
+                <InputContainer leftIcon={Type}>
                   <input
                     type="text"
                     value={formData.source}
                     onChange={(e) => setFormData({ ...formData, source: e.target.value })}
                     className={`w-full bg-transparent outline-none placeholder:text-gray-500 ${formData.source ? 'font-medium text-gray-900' : 'font-normal text-gray-900'}`}
-                    placeholder="Source (e.g., Salary, Freelance)"
+                    placeholder="Add a title"
                     required
                   />
                 </InputContainer>
@@ -333,7 +333,7 @@ export default function IncomePage() {
                 fetchSuggestions={fetchCategorySuggestions}
                 onCreateNew={async () => {}}
                 formatNewItem={capitalizeWords}
-                placeholder="Select or add a category"
+                placeholder="Choose category"
               />
 
               {/* Date */}

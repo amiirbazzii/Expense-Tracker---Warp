@@ -357,8 +357,8 @@ export default function ExpensesPage() {
           {/* Input Form Section - header + fields (no card wrapper) */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <div className="mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Add New Expense</h2>
-              <p className="mt-1 text-[13px] leading-5 text-gray-500">Fill in the details below to track your expense</p>
+              <h2 className="text-2xl font-medium text-gray-900">Add New Expense</h2>
+              <p className="mt-1 font-sm font-light leading-5 text-gray-900">Fill in the details below to track your expense</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
