@@ -192,7 +192,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-white">
         <AppHeader />
         {(navigating || effIsLoading) && (
           <FullScreenLoader message="Loading month..." />
@@ -220,7 +220,7 @@ export default function DashboardPage() {
            <TotalBalanceCard className="mb-6 rounded-2xl" />
           <motion.div
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-lg shadow-sm mb-6 overflow-hidden"
+            className="rounded-xl border border-gray-200 bg-[#F9F9F9] mb-6 overflow-hidden"
           >
             {/* Header Section */}
             <div className="px-4 pt-4">

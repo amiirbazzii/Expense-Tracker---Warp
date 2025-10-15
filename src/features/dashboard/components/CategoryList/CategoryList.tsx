@@ -38,9 +38,8 @@ export function CategoryList({ categoryTotals, expenses = [], income = [], mode 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3 }}
-      className="bg-white rounded-lg shadow-sm p-6"
+      className="p-4"
     >
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Categories</h2>
       <div className="space-y-3">
         {Object.entries(categoryTotals)
           .filter(([category]) => category !== 'Card Transfer')
@@ -50,10 +49,12 @@ export function CategoryList({ categoryTotals, expenses = [], income = [], mode 
               key={category}
               type="button"
               onClick={() => setOpenCategory(category)}
-              className="w-full flex justify-between items-center py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 rounded-md hover:bg-gray-50"
+              className="w-full flex items-center justify-between p-4 bg-white rounded-lg shadow-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 active:scale-[0.99] transition"
             >
-              <span className="text-gray-700 text-left">{category}</span>
-              <span className="font-semibold text-gray-900">
+              <span className="inline-flex items-center px-3 py-1 rounded-md bg-gray-100 text-gray-800 text-sm font-medium">
+                {category}
+              </span>
+              <span className="text-base font-semibold text-gray-900">
                 {settings ? formatCurrency(amount, settings.currency) : `$${amount.toFixed(2)}`}
               </span>
             </button>
