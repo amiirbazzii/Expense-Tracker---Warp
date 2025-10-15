@@ -7,13 +7,13 @@ import { useSettings, Currency, Calendar } from "@/contexts/SettingsContext";
 
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { BottomNav } from "@/components/BottomNav";
-import { OfflineBanner } from "@/components/OfflineBanner";
 import AppHeader from "@/components/AppHeader";
 import { RecoveryCodeCard } from "@/components/RecoveryCodeCard";
-import { User, LogOut, Wifi, WifiOff, RefreshCw, Download, FileJson, FileSpreadsheet, Database, Clock } from "lucide-react";
+import { User, LogOut, Wifi, WifiOff, RefreshCw, Download, FileJson, FileSpreadsheet, Database, Clock, DollarSign, Calendar as CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useDataBackup } from "@/hooks/useDataBackup";
 import { useEffect, useState } from "react";
+import InputContainer from "@/components/InputContainer";
 
 export default function SettingsPage() {
   const { user, logout, token } = useAuth();
@@ -87,16 +87,15 @@ export default function SettingsPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50">
-        <OfflineBanner />
+      <div className="min-h-screen bg-white">
         <AppHeader />
         
-        <div className="max-w-md mx-auto p-4 pt-[92px] pb-20">
+        <div className="max-w-lg mx-auto p-4 pt-[92px] pb-24">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-lg shadow-sm p-6 mb-6"
-          >            
+            className="rounded-xl border border-gray-200 bg-[#F9F9F9] p-4 mb-6"
+          >
             {/* User Profile */}
             <div className="flex items-center space-x-4 mb-6">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
@@ -154,44 +153,58 @@ export default function SettingsPage() {
                 <div className="space-y-4">
                   {/* Currency */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Currency *
-                    </label>
-                    <select
-                      value={settings?.currency || "USD"}
-                      onChange={async (e) => {
-                        await updateSettings({ currency: e.target.value as Currency });
-                        toast.success("Currency updated");
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Currency *</label>
+                    <InputContainer
+                      leftIcon={DollarSign}
+                      rightAdornment={(
+                        <svg className="size-5 text-gray-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                          <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
                     >
-                      {(["USD", "EUR", "GBP", "IRR"] as Currency[]).map((cur) => (
-                        <option key={cur} value={cur}>
-                          {cur}
-                        </option>
-                      ))}
-                    </select>
+                      <select
+                        value={settings?.currency || "USD"}
+                        onChange={async (e) => {
+                          await updateSettings({ currency: e.target.value as Currency });
+                          toast.success("Currency updated");
+                        }}
+                        className="w-full bg-transparent outline-none text-black placeholder:text-gray-500 py-1 px-0 appearance-none"
+                      >
+                        {( ["USD", "EUR", "GBP", "IRR"] as Currency[]).map((cur) => (
+                          <option key={cur} value={cur}>
+                            {cur}
+                          </option>
+                        ))}
+                      </select>
+                    </InputContainer>
                   </div>
 
                   {/* Calendar System */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Calendar System *
-                    </label>
-                    <select
-                      value={settings?.calendar || "gregorian"}
-                      onChange={async (e) => {
-                        await updateSettings({ calendar: e.target.value as Calendar });
-                        toast.success("Calendar updated");
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Calendar System *</label>
+                    <InputContainer
+                      leftIcon={CalendarIcon}
+                      rightAdornment={(
+                        <svg className="size-5 text-gray-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                          <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
                     >
-                      {(["gregorian", "jalali"] as Calendar[]).map((cal) => (
-                        <option key={cal} value={cal}>
-                          {cal}
-                        </option>
-                      ))}
-                    </select>
+                      <select
+                        value={settings?.calendar || "gregorian"}
+                        onChange={async (e) => {
+                          await updateSettings({ calendar: e.target.value as Calendar });
+                          toast.success("Calendar updated");
+                        }}
+                        className="w-full bg-transparent outline-none text-black placeholder:text-gray-500 py-1 px-0 appearance-none"
+                      >
+                        {( ["gregorian", "jalali"] as Calendar[]).map((cal) => (
+                          <option key={cal} value={cal}>
+                            {cal}
+                          </option>
+                        ))}
+                      </select>
+                    </InputContainer>
                   </div>
 
 
