@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -14,7 +14,9 @@ import { useRouter } from "next/navigation";
 import { useSettings } from "@/contexts/SettingsContext";
 import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/Button";
+import { InputContainer } from "@/components/InputContainer";
 import { useOfflineFirstData } from "@/hooks/useOfflineFirstData";
+import { CardActionMenu } from "./CardActionMenu";
 
 export default function CardsPage() {
   const { token } = useAuth();
@@ -26,6 +28,8 @@ export default function CardsPage() {
   const [amount, setAmount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTransferring, setIsTransferring] = useState(false);
+  const [openMenuCardId, setOpenMenuCardId] = useState<string | null>(null);
+  const openMenuRef = useRef<HTMLDivElement | null>(null);
 
   const addCardMutation = useMutation(api.cardsAndIncome.addCard);
   const deleteCardMutation = useMutation(api.cardsAndIncome.deleteCard);
@@ -110,9 +114,22 @@ export default function CardsPage() {
     }
   };
 
+  // Close menu on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (openMenuRef.current && !openMenuRef.current.contains(event.target as Node)) {
+        setOpenMenuCardId(null);
+      }
+    }
+    if (openMenuCardId) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [openMenuCardId]);
+
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-white">
         <AppHeader title="Manage Cards" />
         
         <div className="max-w-md mx-auto p-4 pt-[92px] pb-20">
@@ -139,24 +156,27 @@ export default function CardsPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-lg shadow-sm p-6 mb-6"
+            className="rounded-xl border border-gray-200 bg-[#F9F9F9] p-4 mb-4"
           >
-            <div className="mb-4">
+            <div className="mb-2">
               <h2 className="text-lg font-semibold text-gray-900">Add New Card</h2>
               <p className="text-sm text-gray-600">Enter a name for your new card</p>
             </div>
             <form onSubmit={handleSubmit} className="flex items-center space-x-2">
-              <div className="relative flex-grow">
-                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+              <InputContainer
+                leftIcon={CreditCard}
+                className="flex-grow"
+                contentClassName="h-full"
+              >
                 <input
                   type="text"
                   value={cardName}
                   onChange={(e) => setCardName(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="e.g., Personal, Work"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
+                  placeholder="Card name ..."
+                  className="w-full bg-transparent outline-none border-0 text-gray-900 placeholder:text-[#707070]"
                 />
-              </div>
+              </InputContainer>
               <Button
                 type="submit"
                 disabled={!cardName.trim() || isSubmitting || isUsingOfflineData}
@@ -175,7 +195,7 @@ export default function CardsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
-            className="bg-white rounded-lg shadow-sm p-6 mb-6"
+            className="rounded-xl border border-gray-200 bg-[#F9F9F9] p-4 mb-4"
           >
             <div className="mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Transfer Funds</h2>
@@ -231,7 +251,7 @@ export default function CardsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-lg shadow-sm p-6"
+            className="rounded-xl border border-gray-200 bg-[#F9F9F9] p-4 mb-4"
           >
             <div className="mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Your Cards ({cardBalances?.length || 0})</h2>
@@ -249,49 +269,51 @@ export default function CardsPage() {
             ) : (
               <div className="space-y-3">
                 {cardBalances?.map((card) => (
-                  <motion.div
+                  <div
                     key={card.cardId}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    className="relative"
+                    ref={openMenuCardId === (card.cardId as any) ? openMenuRef : null}
                   >
-                    <div className="flex flex-1 items-center space-x-3">
-                      <div className="p-2 bg-blue-100 rounded-lg">
-                        <CreditCard className="text-blue-600" size={16} />
-                      </div>
-                      <div className="flex flex-col flex-1">
-                        <div className="flex items-center justify-between">
-                          <div className="font-medium text-gray-900 flex-1">{card.cardName}</div>
-                          <div className={`text-base flex-none font-bold ${card.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {settings ? formatCurrency(card.balance, settings.currency) : `$${card.balance.toFixed(2)}`}
-                          </div>
-                        </div>
-                        <div className="text-xs text-gray-500 flex items-center space-x-3">
-                          <span className="flex items-center">
-                            <TrendingUp className="w-3 h-3 mr-1 text-green-600" />
-                            {settings ? formatCurrency(card.totalIncome, settings.currency) : `$${card.totalIncome.toFixed(2)}`}
-                          </span>
-                          <span className="flex items-center">
-                            <TrendingDown className="w-3 h-3 mr-1 text-red-600" />
-                            {settings ? formatCurrency(card.totalExpenses, settings.currency) : `$${card.totalExpenses.toFixed(2)}`}
-                          </span>
+                    <motion.div
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="rounded-xl bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                      onClick={() => setOpenMenuCardId(prev => (prev === (card.cardId as any) ? null : (card.cardId as any)))}
+                      aria-label={`Card ${card.cardName}`}
+                    >
+                      <div className="flex items-center justify-between px-4 py-3">
+                        <div className="font-semibold text-gray-900">{card.cardName}</div>
+                        <div className={`text-base font-bold ${card.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {settings ? formatCurrency(card.balance, settings.currency) : `$${card.balance.toFixed(2)}`}
                         </div>
                       </div>
-                      <motion.button
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => !isUsingOfflineData && deleteCard(card.cardId)}
-                        className={`p-2 rounded-full transition-colors ${
-                          isUsingOfflineData 
-                            ? 'text-gray-400 cursor-not-allowed' 
-                            : 'text-red-600 hover:text-red-700 hover:bg-red-50'
-                        }`}
-                        title={isUsingOfflineData ? "Requires internet connection" : "Delete Card"}
-                        disabled={isUsingOfflineData}
-                      >
-                        <Trash2 size={18} />
-                      </motion.button>
-                    </div>
-                  </motion.div>
+                      <div className="h-px bg-gray-200" />
+                      <div className="flex items-center justify-start gap-6 px-4 py-3 text-sm text-gray-500">
+                        <span className="flex items-center">
+                          <TrendingUp className="w-4 h-4 mr-2 text-green-600" />
+                          {settings ? formatCurrency(card.totalIncome, settings.currency) : `$${card.totalIncome.toFixed(2)}`}
+                        </span>
+                        <span className="flex items-center">
+                          <TrendingDown className="w-4 h-4 mr-2 text-red-600" />
+                          {settings ? formatCurrency(card.totalExpenses, settings.currency) : `$${card.totalExpenses.toFixed(2)}`}
+                        </span>
+                      </div>
+                    </motion.div>
+                    <AnimatePresence>
+                      {openMenuCardId === (card.cardId as any) && (
+                        <CardActionMenu
+                          onDelete={() => {
+                            if (isUsingOfflineData) {
+                              toast.error("Requires internet connection");
+                              return;
+                            }
+                            deleteCard(card.cardId);
+                            setOpenMenuCardId(null);
+                          }}
+                        />
+                      )}
+                    </AnimatePresence>
+                  </div>
                 ))}
               </div>
             )}
