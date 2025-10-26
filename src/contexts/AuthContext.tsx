@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { offlineTokenManager } from "@/lib/auth/OfflineTokenManager";
 
 interface User {
   _id: string;
@@ -17,6 +18,8 @@ interface AuthContextType {
   register: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
+  isOfflineMode: boolean;
+  offlineGracePeriodWarning: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,6 +29,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
   const [hasSetTimeout, setHasSetTimeout] = useState(false);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
+  const [offlineGracePeriodWarning, setOfflineGracePeriodWarning] = useState<string | null>(null);
+  const [offlineUser, setOfflineUser] = useState<User | null>(null);
 
   const isOnline = useOnlineStatus();
 
@@ -35,83 +41,143 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const user = useQuery(api.auth.getCurrentUser, token ? { token } : "skip");
 
+  // Initialize: Check for offline token first, then online validation
   useEffect(() => {
-    // Load token from localStorage on mount
-    const savedToken = localStorage.getItem("auth-token");
-    if (savedToken) {
-      setToken(savedToken);
-    }
-    setInitialLoad(false);
-  }, []);
-
-  // Update loading state when user query resolves or when we have no token
-  useEffect(() => {
-    if (!initialLoad) {
-      if (!token) {
-        // No token, not loading
-        setLoading(false);
-        setHasSetTimeout(false);
-      } else {
-        // Have token - check if user query has resolved
-        if (user !== undefined) {
-          // Query resolved (either with user data or null)
-          if (user === null) {
-            // User query returned null - token is invalid
-            console.warn('Token appears to be invalid, clearing auth state');
-            setToken(null);
-            localStorage.removeItem('auth-token');
-            localStorage.removeItem('cached-user-id');
-          } else if (user) {
-            // Cache the user ID for offline use
-            localStorage.setItem('cached-user-id', user._id);
+    const initializeAuth = async () => {
+      try {
+        // Step 1: Check for offline token immediately
+        const validation = await offlineTokenManager.validateToken();
+        
+        if (validation.isValid && validation.token) {
+          // We have a valid offline token - login instantly
+          const decryptedToken = await offlineTokenManager.getDecryptedAuthToken();
+          if (decryptedToken) {
+            setToken(decryptedToken);
+            
+            // Set offline user info immediately
+            setOfflineUser({
+              _id: validation.token.userId,
+              username: validation.token.username
+            });
+            
+            // Check if in grace period
+            if (validation.isInGracePeriod) {
+              setOfflineGracePeriodWarning(
+                `You're in offline mode. Please reconnect soon to verify your account.`
+              );
+            }
+            
+            console.log('Offline login successful - instant access granted');
           }
-          setLoading(false);
-          setHasSetTimeout(false);
         } else {
-          // User query is undefined (still loading or failed)
-          // Check if we're offline IMMEDIATELY
-          if (!isOnline) {
-            // If offline and we have a token, assume user is authenticated
-            console.log('AuthContext: Offline mode detected - keeping token and stopping loading');
-            setLoading(false);
-            setHasSetTimeout(false);
-            return;
-          }
-
-          // We're online but query hasn't resolved yet
-          if (!hasSetTimeout) {
-            // Query still loading and we haven't set a timeout yet
-            setHasSetTimeout(true);
-            const timeoutId = setTimeout(() => {
-              console.warn('Auth query timeout after 3 seconds, checking if offline');
-              if (!isOnline) {
-                // If offline, keep the token and stop loading
-                console.log('AuthContext: Timeout while offline - keeping authentication state');
-                setLoading(false);
-              } else {
-                // If online but query failed, token may be invalid
-                console.warn('Clearing invalid token after timeout');
-                setToken(null);
-                localStorage.removeItem('auth-token');
-                setLoading(false);
-              }
-              setHasSetTimeout(false);
-            }, 3000); // Reduced to 3 seconds for faster response
-
-            return () => {
-              clearTimeout(timeoutId);
-            };
+          // No valid offline token - check localStorage for backward compatibility
+          const savedToken = localStorage.getItem("auth-token");
+          if (savedToken) {
+            setToken(savedToken);
           }
         }
+      } catch (error) {
+        console.error('Failed to initialize offline auth:', error);
+        // Fallback to localStorage
+        const savedToken = localStorage.getItem("auth-token");
+        if (savedToken) {
+          setToken(savedToken);
+        }
+      } finally {
+        setInitialLoad(false);
       }
+    };
+
+    initializeAuth();
+  }, []);
+
+  // Background validation with 2-second timeout
+  useEffect(() => {
+    if (!initialLoad && token) {
+      const validateInBackground = async () => {
+        // If offline, skip online validation
+        if (!isOnline) {
+          console.log('Offline mode - skipping online validation');
+          setIsOfflineMode(true);
+          setLoading(false);
+          return;
+        }
+
+        // Online validation with 2-second timeout
+        const validationPromise = new Promise<boolean>((resolve) => {
+          if (user !== undefined) {
+            resolve(true);
+          } else {
+            // Wait for user query to resolve
+            const checkInterval = setInterval(() => {
+              if (user !== undefined) {
+                clearInterval(checkInterval);
+                resolve(true);
+              }
+            }, 100);
+          }
+        });
+
+        const timeoutPromise = new Promise<boolean>((resolve) => {
+          setTimeout(() => resolve(false), 2000);
+        });
+
+        try {
+          const validatedInTime = await Promise.race([validationPromise, timeoutPromise]);
+
+          if (validatedInTime && user !== undefined) {
+            if (user === null) {
+              // Token is invalid
+              console.warn('Token validation failed - invalid token');
+              // Don't clear token immediately if offline
+              if (!isOnline) {
+                setIsOfflineMode(true);
+              } else {
+                setToken(null);
+                localStorage.removeItem('auth-token');
+                await offlineTokenManager.clearToken();
+              }
+            } else if (user) {
+              // Successful validation - refresh offline token
+              console.log('Token validated successfully');
+              setIsOfflineMode(false);
+              setOfflineGracePeriodWarning(null);
+              await offlineTokenManager.updateLastValidated();
+              await offlineTokenManager.refreshToken();
+              localStorage.setItem('cached-user-id', user._id);
+            }
+          } else {
+            // Timeout - continue in offline mode
+            console.log('Validation timeout - continuing in offline mode');
+            setIsOfflineMode(true);
+          }
+        } catch (error) {
+          console.error('Background validation error:', error);
+          setIsOfflineMode(true);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      validateInBackground();
+    } else if (!initialLoad && !token) {
+      setLoading(false);
     }
-  }, [token, user, initialLoad, hasSetTimeout, isOnline]);
+  }, [token, user, initialLoad, isOnline]);
 
   const login = async (username: string, password: string) => {
     try {
       const result = await loginMutation({ username, password });
       setToken(result.token);
       localStorage.setItem("auth-token", result.token);
+      
+      // Save offline token for future offline access
+      // We'll get the user ID from the query after login
+      const tempUserId = result.userId || 'temp_user';
+      await offlineTokenManager.saveToken(tempUserId, username, result.token);
+      
+      setIsOfflineMode(false);
+      setOfflineGracePeriodWarning(null);
     } catch (error) {
       throw error;
     }
@@ -122,6 +188,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const result = await registerMutation({ username, password });
       setToken(result.token);
       localStorage.setItem("auth-token", result.token);
+      
+      // Save offline token
+      const tempUserId = result.userId || 'temp_user';
+      await offlineTokenManager.saveToken(tempUserId, username, result.token);
+      
+      setIsOfflineMode(false);
+      setOfflineGracePeriodWarning(null);
     } catch (error) {
       throw error;
     }
@@ -138,17 +211,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
     localStorage.removeItem("auth-token");
     localStorage.removeItem("cached-user-id");
+    await offlineTokenManager.clearToken();
+    setIsOfflineMode(false);
+    setOfflineGracePeriodWarning(null);
+    setOfflineUser(null);
   };
+
+  // Use offline user if in offline mode and no online user available
+  const effectiveUser = user || (isOfflineMode ? offlineUser : null);
 
   return (
     <AuthContext.Provider
       value={{
-        user: user || null,
+        user: effectiveUser,
         token,
         login,
         register,
         logout,
         loading,
+        isOfflineMode,
+        offlineGracePeriodWarning,
       }}
     >
       {children}

@@ -46,17 +46,10 @@ export default function LoginPage() {
       return;
     }
 
-    // Check if offline
+    // Check if offline - show appropriate message
     if (!navigator.onLine) {
-      const cachedToken = localStorage.getItem("auth-token");
-      if (cachedToken) {
-        toast.success("Using cached credentials (offline mode)");
-        router.push("/expenses");
-        return;
-      } else {
-        toast.error("No internet connection. Please connect to login for the first time.");
-        return;
-      }
+      toast.error("You're offline. Please connect to the internet to log in.");
+      return;
     }
 
     setIsLoading(true);
