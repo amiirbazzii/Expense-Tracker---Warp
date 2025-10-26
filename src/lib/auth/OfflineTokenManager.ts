@@ -2,6 +2,15 @@ import localforage from 'localforage';
 import CryptoJS from 'crypto-js';
 
 /**
+ * User settings structure for offline storage
+ */
+export interface OfflineUserSettings {
+  currency: 'USD' | 'EUR' | 'GBP' | 'IRR';
+  calendar: 'gregorian' | 'jalali';
+  language: 'en' | 'fa';
+}
+
+/**
  * Offline token structure stored in IndexedDB
  */
 export interface OfflineToken {
@@ -13,6 +22,7 @@ export interface OfflineToken {
   expiresAt: number;
   lastValidated: number;
   deviceId: string;
+  settings?: OfflineUserSettings; // User settings for offline use
 }
 
 /**
@@ -79,7 +89,8 @@ export class OfflineTokenManager {
     userId: string,
     username: string,
     authToken: string,
-    avatar?: string
+    avatar?: string,
+    settings?: OfflineUserSettings
   ): Promise<void> {
     try {
       const now = Date.now();
@@ -93,7 +104,8 @@ export class OfflineTokenManager {
         issuedAt: now,
         expiresAt,
         lastValidated: now,
-        deviceId: this.generateDeviceId()
+        deviceId: this.generateDeviceId(),
+        settings
       };
 
       await this.storage.setItem(this.STORAGE_KEY, offlineToken);
@@ -227,6 +239,32 @@ export class OfflineTokenManager {
       username: token.username,
       avatar: token.avatar
     };
+  }
+
+  /**
+   * Get user settings from offline token
+   */
+  async getOfflineSettings(): Promise<OfflineUserSettings | null> {
+    const token = await this.getToken();
+    if (!token) return null;
+
+    return token.settings || null;
+  }
+
+  /**
+   * Update user settings in offline token
+   */
+  async updateOfflineSettings(settings: OfflineUserSettings): Promise<void> {
+    try {
+      const token = await this.getToken();
+      if (token) {
+        token.settings = settings;
+        await this.storage.setItem(this.STORAGE_KEY, token);
+        console.log('Offline settings updated successfully');
+      }
+    } catch (error) {
+      console.error('Failed to update offline settings:', error);
+    }
   }
 }
 

@@ -21,8 +21,13 @@ describe('OfflineTokenManager', () => {
       const username = 'testuser';
       const authToken = 'test-auth-token-123';
       const avatar = 'https://example.com/avatar.jpg';
+      const settings = {
+        currency: 'USD' as const,
+        calendar: 'gregorian' as const,
+        language: 'en' as const
+      };
 
-      await tokenManager.saveToken(userId, username, authToken, avatar);
+      await tokenManager.saveToken(userId, username, authToken, avatar, settings);
 
       const token = await tokenManager.getToken();
       expect(token).not.toBeNull();
@@ -31,6 +36,7 @@ describe('OfflineTokenManager', () => {
       expect(token?.avatar).toBe(avatar);
       expect(token?.encryptedToken).toBeDefined();
       expect(token?.encryptedToken).not.toBe(authToken); // Should be encrypted
+      expect(token?.settings).toEqual(settings);
     });
 
     it('should decrypt the auth token correctly', async () => {
@@ -318,6 +324,70 @@ describe('OfflineTokenManager', () => {
       
       // Should complete before timeout
       expect(result).toBe(true);
+    });
+  });
+
+  describe('Offline Settings', () => {
+    it('should save and retrieve offline settings', async () => {
+      const userId = 'user123';
+      const username = 'testuser';
+      const authToken = 'test-auth-token-123';
+      const settings = {
+        currency: 'EUR' as const,
+        calendar: 'jalali' as const,
+        language: 'fa' as const
+      };
+
+      await tokenManager.saveToken(userId, username, authToken, undefined, settings);
+
+      const retrievedSettings = await tokenManager.getOfflineSettings();
+      expect(retrievedSettings).toEqual(settings);
+    });
+
+    it('should update offline settings', async () => {
+      const userId = 'user123';
+      const username = 'testuser';
+      const authToken = 'test-auth-token-123';
+      const initialSettings = {
+        currency: 'USD' as const,
+        calendar: 'gregorian' as const,
+        language: 'en' as const
+      };
+
+      await tokenManager.saveToken(userId, username, authToken, undefined, initialSettings);
+
+      const updatedSettings = {
+        currency: 'IRR' as const,
+        calendar: 'jalali' as const,
+        language: 'fa' as const
+      };
+
+      await tokenManager.updateOfflineSettings(updatedSettings);
+
+      const retrievedSettings = await tokenManager.getOfflineSettings();
+      expect(retrievedSettings).toEqual(updatedSettings);
+    });
+
+    it('should return null when no settings exist', async () => {
+      const settings = await tokenManager.getOfflineSettings();
+      expect(settings).toBeNull();
+    });
+
+    it('should preserve settings when refreshing token', async () => {
+      const userId = 'user123';
+      const username = 'testuser';
+      const authToken = 'test-auth-token-123';
+      const settings = {
+        currency: 'GBP' as const,
+        calendar: 'gregorian' as const,
+        language: 'en' as const
+      };
+
+      await tokenManager.saveToken(userId, username, authToken, undefined, settings);
+      await tokenManager.refreshToken();
+
+      const retrievedSettings = await tokenManager.getOfflineSettings();
+      expect(retrievedSettings).toEqual(settings);
     });
   });
 });

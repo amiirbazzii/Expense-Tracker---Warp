@@ -2,9 +2,11 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useSettings } from "@/contexts/SettingsContext";
 
 export function OfflineLoginBanner() {
   const { isOfflineMode, offlineGracePeriodWarning } = useAuth();
+  const { isUsingOfflineSettings } = useSettings();
   const isOnline = useOnlineStatus();
 
   // Don't show banner if online
@@ -40,6 +42,7 @@ export function OfflineLoginBanner() {
               {!offlineGracePeriodWarning && (
                 <p className="text-xs text-yellow-700 mt-0.5">
                   Your data is stored locally. Connect to sync with the cloud.
+                  {isUsingOfflineSettings && " Using cached settings."}
                 </p>
               )}
             </div>
