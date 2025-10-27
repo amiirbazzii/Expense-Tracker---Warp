@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -37,6 +37,27 @@ export function useTimeFramedData(type: DataType, token: string | null) {
   const endDate = currentDate.clone().endOf(isJalali ? 'jMonth' : 'month').valueOf();
   const cacheKey = `time-framed-data-${type}-${startDate}-${endDate}`;
 
+  // Delay showing loading by 500ms on month change. If data arrives within the delay,
+  // we swap directly to the new data without showing a loading state.
+  const delayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (delayTimer.current) {
+      clearTimeout(delayTimer.current);
+      delayTimer.current = null;
+    }
+    delayTimer.current = setTimeout(() => {
+      setDisplayData(undefined);
+      delayTimer.current = null;
+    }, 100);
+
+    return () => {
+      if (delayTimer.current) {
+        clearTimeout(delayTimer.current);
+        delayTimer.current = null;
+      }
+    };
+  }, [startDate, endDate]);
+
   const result = useQuery(
     query,
     token && isOnline
@@ -52,6 +73,11 @@ export function useTimeFramedData(type: DataType, token: string | null) {
   const fetchedData = result as Doc<"expenses">[] | Doc<"income">[] | undefined;
 
   useEffect(() => {
+    // If a delay is pending, cancel it since we have data to render now
+    if (delayTimer.current) {
+      clearTimeout(delayTimer.current);
+      delayTimer.current = null;
+    }
     if (isOnline && fetchedData !== undefined) {
       // Online: data fetched from Convex, update state and cache
       setDisplayData(fetchedData);

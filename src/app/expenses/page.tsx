@@ -492,8 +492,8 @@ export default function ExpensesPage() {
               variant="card"
             />
 
-            {isLoading && combinedExpenses.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">Loading expenses...</div>
+            {isLoading ? (
+              <div className="text-center py-8 text-gray-500">Loading...</div>
             ) : combinedExpenses.length > 0 ? (
               <div className="space-y-2 mt-4">
                 {combinedExpenses.map((expense) => (
