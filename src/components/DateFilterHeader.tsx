@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useSettings } from "@/contexts/SettingsContext";
 import { Button } from "@/components/Button";
@@ -17,18 +16,17 @@ interface DateFilterHeaderProps {
   isLoading?: boolean;
 }
 
-export function DateFilterHeader({
-  monthName,
-  year,
-  onPreviousMonth,
-  onNextMonth,
-  subtitle,
+export function DateFilterHeader({ 
+  monthName, 
+  year, 
+  onPreviousMonth, 
+  onNextMonth, 
+  subtitle, 
   variant = 'default',
   isMainTitle = false,
-  isLoading = false
+  isLoading = false 
 }: DateFilterHeaderProps) {
   const { settings } = useSettings();
-  const [loadingDirection, setLoadingDirection] = useState<'prev' | 'next' | null>(null);
 
   const containerClasses = variant === 'card'
     ? "flex items-center justify-between mb-4"
@@ -37,34 +35,12 @@ export function DateFilterHeader({
   const titleClasses = isMainTitle
     ? "text-xl font-bold text-gray-900"
     : "text-lg font-semibold text-gray-800";
-
+  
   const MainTitleComponent = isMainTitle ? 'h1' : 'h2';
 
-  const formattedDate = settings
-    ? `${monthName} ${year}`
+  const formattedDate = settings 
+    ? `${monthName} ${year}` 
     : `${monthName} ${year}`;
-
-  const handlePreviousClick = () => {
-    if (isLoading) return; // Prevent multiple clicks
-    setLoadingDirection('prev');
-    onPreviousMonth();
-  };
-
-  const handleNextClick = () => {
-    if (isLoading) return; // Prevent multiple clicks
-    setLoadingDirection('next');
-    onNextMonth();
-  };
-
-  // Reset loading direction when loading completes
-  useEffect(() => {
-    if (!isLoading && loadingDirection) {
-      setLoadingDirection(null);
-    }
-  }, [isLoading, loadingDirection]);
-
-  const isPrevLoading = loadingDirection === 'prev' && (isLoading || loadingDirection !== null);
-  const isNextLoading = loadingDirection === 'next' && (isLoading || loadingDirection !== null);
 
   return (
     <div className={containerClasses}>
@@ -72,14 +48,14 @@ export function DateFilterHeader({
         buttonType="icon"
         size="medium"
         aria-label="Previous month"
-        onClick={handlePreviousClick}
-        loading={isPrevLoading}
-        disabled={isLoading || loadingDirection !== null}
-        aria-busy={isPrevLoading}
+        onClick={onPreviousMonth}
+        loading={isLoading}
+        disabled={isLoading}
+        aria-busy={isLoading}
         icon={<ChevronLeft size={20} />}
       />
 
-      <div className="text-center px-2 min-w-[180px]">
+      <div className="text-center px-2">
         <MainTitleComponent className={titleClasses}>
           {formattedDate}
         </MainTitleComponent>
@@ -90,10 +66,10 @@ export function DateFilterHeader({
         buttonType="icon"
         size="medium"
         aria-label="Next month"
-        onClick={handleNextClick}
-        loading={isNextLoading}
-        disabled={isLoading || loadingDirection !== null}
-        aria-busy={isNextLoading}
+        onClick={onNextMonth}
+        loading={isLoading}
+        disabled={isLoading}
+        aria-busy={isLoading}
         icon={<ChevronRight size={20} />}
       />
     </div>
