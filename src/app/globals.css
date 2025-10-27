@@ -77,7 +77,6 @@ body {
     font-family: var(--font-iran-sans), Tahoma, Arial, sans-serif !important;
     /* Keep LTR direction and left alignment */
     direction: ltr !important;
-    text-align: left !important;
   }
 
   /* Keep numbers and English words LTR within Persian text */
