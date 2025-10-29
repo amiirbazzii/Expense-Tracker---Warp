@@ -99,6 +99,18 @@ export function resolveDateRange(
     };
   }
 
+  // All time
+  if (normalized === 'all time' || normalized === 'ever' || normalized === 'total') {
+    // Use a very old start date (10 years ago) to capture all data
+    const start = now.clone().subtract(10, 'years').startOf(useJalali ? 'jYear' : 'year');
+    const end = now.clone().endOf('day');
+    return {
+      start: start.valueOf(),
+      end: end.valueOf(),
+      description: 'all time'
+    };
+  }
+
   // Last year
   if (normalized === 'last year') {
     const start = now.clone().subtract(1, 'year').startOf(useJalali ? 'jYear' : 'year');
@@ -172,7 +184,10 @@ export function extractTimeframe(message: string): string | null {
     /this year/,
     /ytd|year to date/,
     /last week/,
-    /this week/
+    /this week/,
+    /all time/,
+    /ever/,
+    /total/
   ];
 
   for (const pattern of patterns) {

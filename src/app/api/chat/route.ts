@@ -30,6 +30,36 @@ interface ChatError {
 }
 
 /**
+ * Clean protocol tokens from model responses
+ * Some models (especially free ones) may include control tokens in their output
+ */
+function cleanProtocolTokens(content: string): string {
+  if (!content) return content;
+  
+  // Remove common protocol tokens - order matters!
+  let cleaned = content
+    // First, remove everything before and including <|message|>
+    .replace(/^[\s\S]*?<\|message\|>/, '')
+    // Remove <|call|> and everything after it
+    .replace(/<\|call\|>[\s\S]*$/, '')
+    // Remove any remaining protocol tokens
+    .replace(/<\|start\|>/g, '')
+    .replace(/<\|end\|>/g, '')
+    .replace(/<\|assistant\|>/g, '')
+    .replace(/<\|user\|>/g, '')
+    .replace(/<\|system\|>/g, '')
+    .replace(/<\|channel\|>/g, '')
+    .replace(/<\|commentary[^|]*\|>/g, '')
+    .replace(/<\|constrain\|>[^<]*/g, '')
+    // Remove any remaining angle bracket tokens
+    .replace(/<\|[^|]+\|>/g, '')
+    // Clean up extra whitespace
+    .trim();
+  
+  return cleaned;
+}
+
+/**
  * Validate incoming chat request
  */
 function validateRequest(body: any): { valid: boolean; error?: string } {
@@ -221,14 +251,40 @@ async function processChatMessage(
     ];
 
     const finalResponse = await client.createChatCompletion(finalMessages);
+    const rawContent = finalResponse.choices[0].message.content;
+    
+    // Clean up any protocol tokens that might be in the response
+    const cleanedContent = cleanProtocolTokens(rawContent);
+    
+    // If cleaning resulted in empty content, provide a fallback
+    if (!cleanedContent || cleanedContent.trim().length === 0) {
+      console.warn('Cleaned content is empty, using fallback response');
+      // Generate a simple response from the function result
+      if (functionResult.categories && functionResult.categories.length > 0) {
+        const category = functionResult.categories[0];
+        return {
+          message: `You spent $${category.total.toFixed(2)} on ${category.category} ${functionResult.dateRange}.`,
+          requiresClarification: false
+        };
+      } else if (functionResult.total !== undefined) {
+        return {
+          message: `Your total spending was $${functionResult.total.toFixed(2)} ${functionResult.dateRange}.`,
+          requiresClarification: false
+        };
+      }
+    }
+    
     return {
-      message: finalResponse.choices[0].message.content,
+      message: cleanedContent,
       requiresClarification: false
     };
   }
 
   // Direct response (likely a clarification question or general response)
-  const content = assistantMessage.content;
+  const rawContent = assistantMessage.content;
+  
+  // Clean up any protocol tokens that might be in the response
+  const content = cleanProtocolTokens(rawContent);
   
   // Determine if this is a clarification question
   // Only mark as clarification if:

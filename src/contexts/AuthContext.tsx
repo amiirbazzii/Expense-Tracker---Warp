@@ -208,6 +208,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error("Logout error:", error);
       }
     }
+    
+    // Clear chat history for the current user
+    if (effectiveUser?._id) {
+      try {
+        const storageKey = `chat_history_${effectiveUser._id}`;
+        localStorage.removeItem(storageKey);
+      } catch (error) {
+        console.error("Failed to clear chat history on logout:", error);
+      }
+    }
+    
     setToken(null);
     localStorage.removeItem("auth-token");
     localStorage.removeItem("cached-user-id");
