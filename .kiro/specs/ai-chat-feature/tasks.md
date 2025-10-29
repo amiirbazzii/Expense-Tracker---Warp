@@ -39,7 +39,7 @@
   - Show/hide logic based on message history length
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-- [ ] 6. Add chat navigation and routing
+- [x] 6. Add chat navigation and routing
   - Add "Chat" item to BottomNav component
   - Create `/chat` route in Next.js app directory
   - Implement ProtectedRoute wrapper for authentication

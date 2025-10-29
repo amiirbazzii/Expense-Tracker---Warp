@@ -7,8 +7,9 @@ import { MessageList } from '@/components/chat/MessageList';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { SuggestedPrompts } from '@/components/chat/SuggestedPrompts';
 import { AppHeader } from '@/components/AppHeader';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 
-export default function ChatPage() {
+function ChatPageContent() {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -117,5 +118,13 @@ export default function ChatPage() {
         disabled={isLoading}
       />
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <ProtectedRoute>
+      <ChatPageContent />
+    </ProtectedRoute>
   );
 }
