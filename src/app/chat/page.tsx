@@ -9,10 +9,12 @@ import { SuggestedPrompts } from '@/components/chat/SuggestedPrompts';
 import { AppHeader } from '@/components/AppHeader';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { useRouter } from 'next/navigation';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 function ChatPageContent() {
   const { user } = useAuth();
   const router = useRouter();
+  const isOnline = useOnlineStatus();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -62,7 +64,7 @@ function ChatPageContent() {
 
   const handleSubmit = async (retryMessage?: string) => {
     const messageToSend = retryMessage || inputValue.trim();
-    if (!messageToSend || isLoading || !user) return;
+    if (!messageToSend || isLoading || !user || !isOnline) return;
 
     const userMessage: Message = {
       id: `msg-${Date.now()}-${Math.random()}`,
@@ -256,6 +258,29 @@ function ChatPageContent() {
         <MessageList messages={messages} isLoading={isLoading} />
       )}
       
+      {!isOnline && (
+        <div className="px-4 py-3 bg-orange-50 border-t border-orange-200">
+          <div className="flex items-center gap-2">
+            <svg 
+              className="w-5 h-5 text-orange-600 flex-shrink-0" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414" 
+              />
+            </svg>
+            <p className="text-sm text-orange-700">
+              You're offline. Chat history is available, but you can't send new messages until you're back online.
+            </p>
+          </div>
+        </div>
+      )}
+      
       {error && (
         <div className={`px-4 py-3 border-t ${
           error.code === 'NO_DATA' 
@@ -291,7 +316,7 @@ function ChatPageContent() {
         value={inputValue}
         onChange={setInputValue}
         onSubmit={handleSubmit}
-        disabled={isLoading}
+        disabled={isLoading || !isOnline}
       />
     </div>
   );

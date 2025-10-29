@@ -84,14 +84,14 @@
   - Include date ranges in assistant responses
   - _Requirements: 3.5, 6.4_
 
-- [ ] 12. Implement input validation and constraints
+- [x] 12. Implement input validation and constraints
   - Add client-side validation for empty messages
   - Enforce 500 character limit on input
   - Disable input during API calls
   - Add Enter to send, Shift+Enter for new line
   - _Requirements: 3.1_
 
-- [ ] 13. Add offline mode handling
+- [x] 13. Add offline mode handling
   - Detect offline status using useOnlineStatus hook
   - Display offline message when network unavailable
   - Disable message submission when offline
