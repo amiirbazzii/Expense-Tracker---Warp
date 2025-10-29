@@ -24,7 +24,7 @@ export const MessageList: React.FC<MessageListProps> = ({ messages, isLoading })
   return (
     <div
       ref={containerRef}
-      className="flex-1 overflow-y-auto px-4 py-4 space-y-2"
+      className="flex-1 overflow-y-auto px-3 py-6 space-y-1 scrollbar-hide"
       role="log"
       aria-live="polite"
       aria-label="Chat messages"
@@ -38,7 +38,7 @@ export const MessageList: React.FC<MessageListProps> = ({ messages, isLoading })
       ))}
       
       {isLoading && (
-        <div className="flex justify-start mb-4">
+        <div className="flex justify-start mb-4 px-1 animate-fade-in">
           <TypingIndicator />
         </div>
       )}
