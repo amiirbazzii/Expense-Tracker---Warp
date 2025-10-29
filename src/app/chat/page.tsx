@@ -8,14 +8,17 @@ import { ChatInput } from '@/components/chat/ChatInput';
 import { SuggestedPrompts } from '@/components/chat/SuggestedPrompts';
 import { AppHeader } from '@/components/AppHeader';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { useRouter } from 'next/navigation';
 
 function ChatPageContent() {
   const { user } = useAuth();
+  const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [lastUserMessage, setLastUserMessage] = useState<string>('');
 
   // Load chat history on mount
   useEffect(() => {
@@ -54,34 +57,109 @@ function ChatPageContent() {
     setInputValue(prompt);
   };
 
-  const handleSubmit = async () => {
-    if (!inputValue.trim() || isLoading) return;
+  const handleSubmit = async (retryMessage?: string) => {
+    const messageToSend = retryMessage || inputValue.trim();
+    if (!messageToSend || isLoading || !user) return;
 
     const userMessage: Message = {
       id: `msg-${Date.now()}-${Math.random()}`,
       role: 'user',
-      content: inputValue.trim(),
+      content: messageToSend,
       timestamp: Date.now()
     };
 
     // Optimistically add user message
     setMessages(prev => [...prev, userMessage]);
-    setInputValue('');
+    setLastUserMessage(messageToSend);
+    
+    if (!retryMessage) {
+      setInputValue('');
+    }
+    
     setIsLoading(true);
     setError(null);
 
-    // TODO: Call API endpoint in next task
-    // For now, just simulate a response
-    setTimeout(() => {
+    try {
+      // Get auth token from localStorage
+      const token = localStorage.getItem('auth-token');
+      if (!token) {
+        throw new Error('AUTH_ERROR');
+      }
+
+      // Prepare conversation history for API (convert to OpenRouter format)
+      const conversationHistory = messages.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
+
+      // Call the chat API
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          message: messageToSend,
+          conversationHistory
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        
+        // Handle authentication errors
+        if (response.status === 401 || errorData.code === 'AUTH_ERROR') {
+          setError('Your session has expired. Please log in again.');
+          setTimeout(() => {
+            router.push('/login');
+          }, 2000);
+          return;
+        }
+        
+        throw new Error(errorData.error || 'Failed to get response');
+      }
+
+      const data = await response.json();
+
+      // Create assistant message
       const assistantMessage: Message = {
         id: `msg-${Date.now()}-${Math.random()}`,
         role: 'assistant',
-        content: 'This is a placeholder response. The API integration will be implemented in the next task.',
-        timestamp: Date.now()
+        content: data.message,
+        timestamp: data.timestamp,
+        metadata: {
+          requiresClarification: data.requiresClarification
+        }
       };
+
+      // Append assistant response to message history
       setMessages(prev => [...prev, assistantMessage]);
+
+    } catch (err: any) {
+      console.error('Failed to send message:', err);
+      
+      // Don't show error for auth errors (already handled)
+      if (err.message !== 'AUTH_ERROR') {
+        setError(err.message || "I'm having trouble right now. Please try again.");
+      }
+      
+      // Remove the optimistically added user message on error
+      setMessages(prev => prev.filter(msg => msg.id !== userMessage.id));
+      
+      // Restore the input value so user can retry (only if not a retry)
+      if (!retryMessage) {
+        setInputValue(messageToSend);
+      }
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
+  };
+
+  const handleRetry = () => {
+    if (lastUserMessage) {
+      handleSubmit(lastUserMessage);
+    }
   };
 
   if (isLoadingHistory) {
@@ -106,8 +184,19 @@ function ChatPageContent() {
       )}
       
       {error && (
-        <div className="px-4 py-2 bg-red-50 border-t border-red-200">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="px-4 py-3 bg-red-50 border-t border-red-200">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-red-600">{error}</p>
+            {!error.includes('session has expired') && lastUserMessage && (
+              <button
+                onClick={handleRetry}
+                disabled={isLoading}
+                className="ml-4 px-3 py-1 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Try again
+              </button>
+            )}
+          </div>
         </div>
       )}
       

@@ -6,7 +6,7 @@ import { Send } from 'lucide-react';
 interface ChatInputProps {
   value: string;
   onChange: (value: string) => void;
-  onSubmit: () => void;
+  onSubmit: (retryMessage?: string) => void;
   disabled: boolean;
 }
 
