@@ -19,6 +19,8 @@ function ChatPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [lastUserMessage, setLastUserMessage] = useState<string>('');
+  const [awaitingClarification, setAwaitingClarification] = useState(false);
+  const [originalQuery, setOriginalQuery] = useState<string>('');
 
   // Load chat history on mount
   useEffect(() => {
@@ -92,6 +94,17 @@ function ChatPageContent() {
         content: msg.content
       }));
 
+      // If responding to clarification, include the original query context
+      let messageContext = messageToSend;
+      if (awaitingClarification && originalQuery) {
+        // The conversation history already contains the clarification question
+        // Just send the user's response normally
+        messageContext = messageToSend;
+      } else if (!awaitingClarification) {
+        // This is a new query, store it in case clarification is needed
+        setOriginalQuery(messageToSend);
+      }
+
       // Call the chat API
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -100,8 +113,9 @@ function ChatPageContent() {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          message: messageToSend,
-          conversationHistory
+          message: messageContext,
+          conversationHistory,
+          isRespondingToClarification: awaitingClarification
         })
       });
 
@@ -135,6 +149,16 @@ function ChatPageContent() {
 
       // Append assistant response to message history
       setMessages(prev => [...prev, assistantMessage]);
+
+      // Handle clarification flow
+      if (data.requiresClarification && !awaitingClarification) {
+        // Assistant is asking for clarification
+        setAwaitingClarification(true);
+      } else if (awaitingClarification) {
+        // User responded to clarification, reset state
+        setAwaitingClarification(false);
+        setOriginalQuery('');
+      }
 
     } catch (err: any) {
       console.error('Failed to send message:', err);

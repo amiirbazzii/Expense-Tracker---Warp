@@ -54,7 +54,7 @@
   - Persist updated history to localStorage
   - _Requirements: 3.1, 3.2, 3.3, 3.6, 4.1, 4.2_
 
-- [ ] 8. Implement clarification question flow
+- [x] 8. Implement clarification question flow
   - Detect when API response includes requiresClarification flag
   - Display clarification question as assistant message
   - Handle user's clarification response

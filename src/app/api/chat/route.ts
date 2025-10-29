@@ -15,6 +15,7 @@ export enum ChatErrorCode {
 interface ChatRequest {
   message: string;
   conversationHistory?: Message[];
+  isRespondingToClarification?: boolean;
 }
 
 interface ChatResponse {
@@ -139,6 +140,25 @@ async function executeFunction(
 }
 
 /**
+ * Check if conversation history contains a clarification question
+ */
+function hasClarificationInHistory(conversationHistory: Message[]): boolean {
+  // Look for assistant messages with requiresClarification metadata
+  for (let i = conversationHistory.length - 1; i >= 0; i--) {
+    const msg = conversationHistory[i];
+    if (msg.role === 'assistant') {
+      // Check if this is a clarification question (contains '?' and is recent)
+      if (msg.content.includes('?')) {
+        return true;
+      }
+      // Stop at first assistant message to only check recent context
+      break;
+    }
+  }
+  return false;
+}
+
+/**
  * Process chat message with function calling
  */
 async function processChatMessage(
@@ -146,7 +166,8 @@ async function processChatMessage(
   conversationHistory: Message[],
   token: string,
   client: OpenRouterClient,
-  aggregator: DataAggregator
+  aggregator: DataAggregator,
+  isRespondingToClarification: boolean = false
 ): Promise<{ message: string; requiresClarification: boolean }> {
   // Build message history
   const messages: Message[] = [
@@ -157,6 +178,9 @@ async function processChatMessage(
 
   // Get function definitions
   const tools = OpenRouterClient.getFunctionDefinitions();
+
+  // Check if we already asked for clarification in this conversation thread
+  const alreadyAskedClarification = hasClarificationInHistory(conversationHistory);
 
   // Initial call to OpenRouter
   const initialResponse = await client.createChatCompletion(messages, tools, 'auto');
@@ -203,9 +227,18 @@ async function processChatMessage(
     };
   }
 
-  // Direct response (likely a clarification question)
+  // Direct response (likely a clarification question or general response)
   const content = assistantMessage.content;
-  const isClarification = content.includes('?') && conversationHistory.length < 2;
+  
+  // Determine if this is a clarification question
+  // Only mark as clarification if:
+  // 1. It contains a question mark
+  // 2. We haven't already asked for clarification in this thread
+  // 3. The conversation is relatively short (not responding to clarification)
+  const isClarification = 
+    content.includes('?') && 
+    !alreadyAskedClarification && 
+    !isRespondingToClarification;
 
   return {
     message: content,
@@ -249,12 +282,14 @@ export async function POST(request: NextRequest) {
 
     // Process the message
     const conversationHistory = body.conversationHistory || [];
+    const isRespondingToClarification = body.isRespondingToClarification || false;
     const result = await processChatMessage(
       body.message,
       conversationHistory,
       token,
       client,
-      aggregator
+      aggregator,
+      isRespondingToClarification
     );
 
     // Return response
