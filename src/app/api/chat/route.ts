@@ -97,6 +97,7 @@ async function executeFunction(
   args: any,
   token: string,
   aggregator: DataAggregator,
+  currency: string,
   useJalali: boolean = false
 ): Promise<any> {
   try {
@@ -114,6 +115,7 @@ async function executeFunction(
         return {
           categories: result,
           dateRange: dateRange.description,
+          currency: currency,
           hasData: result.length > 0
         };
       }
@@ -128,6 +130,7 @@ async function executeFunction(
           total: result.total,
           count: result.count,
           dateRange: dateRange.description,
+          currency: currency,
           hasData: result.count > 0
         };
       }
@@ -143,6 +146,7 @@ async function executeFunction(
         return {
           categories: result,
           dateRange: dateRange.description,
+          currency: currency,
           hasData: result.length > 0
         };
       }
@@ -157,6 +161,7 @@ async function executeFunction(
         return {
           comparison: result,
           dateRange: dateRange.description,
+          currency: currency,
           hasData: result.categories.length > 0
         };
       }
@@ -281,7 +286,7 @@ async function processChatMessage(
     console.log(`Executing function: ${functionName}`, functionArgs);
 
     // Execute the function with user's data
-    const functionResult = await executeFunction(functionName, functionArgs, token, aggregator, useJalali);
+    const functionResult = await executeFunction(functionName, functionArgs, token, aggregator, currency, useJalali);
 
     // Check if we have data
     if (!functionResult.hasData) {
