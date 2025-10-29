@@ -77,7 +77,7 @@
   - Clear history on user logout
   - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 11. Add currency and date formatting
+- [x] 11. Add currency and date formatting
   - Format numeric amounts with currency symbol from settings
   - Format timestamps (relative for recent, absolute for older)
   - Support Jalali calendar dates when enabled in settings

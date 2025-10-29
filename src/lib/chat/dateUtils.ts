@@ -157,6 +157,28 @@ export function resolveDateRange(
     };
   }
 
+  // Today
+  if (normalized === 'today') {
+    const start = now.clone().startOf('day');
+    const end = now.clone().endOf('day');
+    return {
+      start: start.valueOf(),
+      end: end.valueOf(),
+      description: 'today'
+    };
+  }
+
+  // Yesterday
+  if (normalized === 'yesterday') {
+    const start = now.clone().subtract(1, 'day').startOf('day');
+    const end = now.clone().subtract(1, 'day').endOf('day');
+    return {
+      start: start.valueOf(),
+      end: end.valueOf(),
+      description: 'yesterday'
+    };
+  }
+
   // Default to this month if no match
   const start = now.clone().startOf(useJalali ? 'jMonth' : 'month');
   const end = now.clone().endOf(useJalali ? 'jMonth' : 'month');
@@ -185,6 +207,8 @@ export function extractTimeframe(message: string): string | null {
     /ytd|year to date/,
     /last week/,
     /this week/,
+    /today/,
+    /yesterday/,
     /all time/,
     /ever/,
     /total/

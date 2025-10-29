@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { Message } from '@/lib/chat/chatStorage';
+import { useSettings } from '@/contexts/SettingsContext';
+import { formatChatTimestamp, formatCurrencyInMessage } from '@/lib/chat/formatters';
 
 interface MessageBubbleProps {
   message: Message;
@@ -9,31 +11,20 @@ interface MessageBubbleProps {
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isUser }) => {
-  const formatTimestamp = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+  const { settings } = useSettings();
+  
+  // Get user preferences with defaults
+  const currency = settings?.currency || 'USD';
+  const calendar = settings?.calendar || 'gregorian';
+  const language = settings?.language || 'en';
 
-    // If less than 24 hours, show relative time
-    if (diffInHours < 24) {
-      const hours = Math.floor(diffInHours);
-      const minutes = Math.floor((diffInHours - hours) * 60);
-      
-      if (hours === 0) {
-        return minutes === 0 ? 'Just now' : `${minutes}m ago`;
-      }
-      return `${hours}h ago`;
-    }
+  // Format timestamp based on user's calendar preference
+  const formattedTimestamp = formatChatTimestamp(message.timestamp, calendar, language);
 
-    // Otherwise show absolute time
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
+  // Format currency amounts in assistant messages
+  const formattedContent = !isUser 
+    ? formatCurrencyInMessage(message.content, currency)
+    : message.content;
 
   const isClarification = !isUser && message.metadata?.requiresClarification;
 
@@ -57,10 +48,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isUser })
               <span>Clarification needed</span>
             </div>
           )}
-          <p className="text-base whitespace-pre-wrap break-words">{message.content}</p>
+          <p className="text-base whitespace-pre-wrap break-words">{formattedContent}</p>
         </div>
         <span className="text-xs text-gray-500 mt-1 px-1">
-          {formatTimestamp(message.timestamp)}
+          {formattedTimestamp}
         </span>
       </div>
     </div>

@@ -96,11 +96,12 @@ async function executeFunction(
   functionName: string,
   args: any,
   token: string,
-  aggregator: DataAggregator
+  aggregator: DataAggregator,
+  useJalali: boolean = false
 ): Promise<any> {
   try {
-    // Resolve timeframe to date range
-    const dateRange = resolveDateRange(args.timeframe || 'this month', false);
+    // Resolve timeframe to date range using user's calendar preference
+    const dateRange = resolveDateRange(args.timeframe || 'this month', useJalali);
 
     switch (functionName) {
       case 'get_category_spending': {
@@ -189,6 +190,59 @@ function hasClarificationInHistory(conversationHistory: Message[]): boolean {
 }
 
 /**
+ * Get user's currency preference from settings
+ */
+async function getUserCurrency(token: string, aggregator: DataAggregator): Promise<string> {
+  try {
+    const currency = await aggregator.getUserCurrency(token);
+    return currency || 'USD';
+  } catch (error) {
+    console.error('Failed to fetch user currency:', error);
+    return 'USD'; // Default fallback
+  }
+}
+
+/**
+ * Get user's calendar preference from settings
+ */
+async function getUserCalendar(token: string, aggregator: DataAggregator): Promise<'gregorian' | 'jalali'> {
+  try {
+    const calendar = await aggregator.getUserCalendar(token);
+    return calendar || 'gregorian';
+  } catch (error) {
+    console.error('Failed to fetch user calendar:', error);
+    return 'gregorian'; // Default fallback
+  }
+}
+
+/**
+ * Get enhanced system prompt with user's currency preference
+ */
+function getEnhancedSystemPrompt(currency: string): string {
+  const currencySymbols: Record<string, string> = {
+    USD: '$',
+    EUR: '€',
+    GBP: '£',
+    IRR: 'T'
+  };
+  
+  const symbol = currencySymbols[currency] || currency;
+  
+  return `You are a financial assistant helping users understand their spending data.
+Use the provided functions to query accurate data. Never estimate or guess numbers.
+Provide concise answers (2-3 sentences) that include:
+- Specific currency amounts (use ${symbol} or ${currency} for all amounts)
+- Date ranges queried
+- Clear comparisons when relevant
+
+When displaying amounts, always include the currency symbol or code.
+For example: "${symbol}123.45" or "123.45 ${currency}".
+
+If a question is ambiguous (missing timeframe or unclear categories), ask ONE clarifying question before calling functions.
+Keep your responses friendly and conversational.`;
+}
+
+/**
  * Process chat message with function calling
  */
 async function processChatMessage(
@@ -197,11 +251,13 @@ async function processChatMessage(
   token: string,
   client: OpenRouterClient,
   aggregator: DataAggregator,
+  currency: string,
+  useJalali: boolean,
   isRespondingToClarification: boolean = false
 ): Promise<{ message: string; requiresClarification: boolean }> {
-  // Build message history
+  // Build message history with enhanced system prompt
   const messages: Message[] = [
-    { role: 'system', content: OpenRouterClient.getSystemPrompt() },
+    { role: 'system', content: getEnhancedSystemPrompt(currency) },
     ...conversationHistory,
     { role: 'user', content: userMessage }
   ];
@@ -225,7 +281,7 @@ async function processChatMessage(
     console.log(`Executing function: ${functionName}`, functionArgs);
 
     // Execute the function with user's data
-    const functionResult = await executeFunction(functionName, functionArgs, token, aggregator);
+    const functionResult = await executeFunction(functionName, functionArgs, token, aggregator, useJalali);
 
     // Check if we have data
     if (!functionResult.hasData) {
@@ -336,6 +392,11 @@ export async function POST(request: NextRequest) {
     const client = createOpenRouterClient();
     const aggregator = new DataAggregator(convexUrl);
 
+    // Get user's currency and calendar preferences
+    const currency = await getUserCurrency(token, aggregator);
+    const calendar = await getUserCalendar(token, aggregator);
+    const useJalali = calendar === 'jalali';
+
     // Process the message
     const conversationHistory = body.conversationHistory || [];
     const isRespondingToClarification = body.isRespondingToClarification || false;
@@ -345,6 +406,8 @@ export async function POST(request: NextRequest) {
       token,
       client,
       aggregator,
+      currency,
+      useJalali,
       isRespondingToClarification
     );
 

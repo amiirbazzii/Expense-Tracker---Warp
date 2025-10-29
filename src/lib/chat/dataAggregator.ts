@@ -206,4 +206,36 @@ export class DataAggregator {
       return [];
     }
   }
+
+  /**
+   * Get user's currency preference from settings
+   */
+  async getUserCurrency(token: string): Promise<string> {
+    try {
+      const settings = await this.client.query(api.userSettings.get, {
+        token
+      });
+
+      return settings?.currency || 'USD';
+    } catch (error) {
+      console.error('Error fetching user currency:', error);
+      return 'USD';
+    }
+  }
+
+  /**
+   * Get user's calendar preference from settings
+   */
+  async getUserCalendar(token: string): Promise<'gregorian' | 'jalali'> {
+    try {
+      const settings = await this.client.query(api.userSettings.get, {
+        token
+      });
+
+      return settings?.calendar || 'gregorian';
+    } catch (error) {
+      console.error('Error fetching user calendar:', error);
+      return 'gregorian';
+    }
+  }
 }
