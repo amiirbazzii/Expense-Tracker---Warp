@@ -1,0 +1,300 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createOpenRouterClient, OpenRouterClient, Message } from '@/lib/chat/openRouterClient';
+import { DataAggregator } from '@/lib/chat/dataAggregator';
+import { resolveDateRange } from '@/lib/chat/dateUtils';
+
+// Error codes for client-side handling
+export enum ChatErrorCode {
+  API_ERROR = 'API_ERROR',
+  NO_DATA = 'NO_DATA',
+  AUTH_ERROR = 'AUTH_ERROR',
+  VALIDATION_ERROR = 'VALIDATION_ERROR',
+  RATE_LIMIT = 'RATE_LIMIT'
+}
+
+interface ChatRequest {
+  message: string;
+  conversationHistory?: Message[];
+}
+
+interface ChatResponse {
+  message: string;
+  timestamp: number;
+  requiresClarification?: boolean;
+}
+
+interface ChatError {
+  error: string;
+  code: ChatErrorCode;
+}
+
+/**
+ * Validate incoming chat request
+ */
+function validateRequest(body: any): { valid: boolean; error?: string } {
+  if (!body.message || typeof body.message !== 'string') {
+    return { valid: false, error: 'Message is required and must be a string' };
+  }
+
+  if (body.message.trim().length === 0) {
+    return { valid: false, error: 'Message cannot be empty' };
+  }
+
+  if (body.message.length > 500) {
+    return { valid: false, error: 'Message too long (max 500 characters)' };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Extract auth token from request headers
+ */
+function getAuthToken(request: NextRequest): string | null {
+  const authHeader = request.headers.get('authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.substring(7);
+  }
+  return null;
+}
+
+/**
+ * Execute a function call from OpenRouter
+ */
+async function executeFunction(
+  functionName: string,
+  args: any,
+  token: string,
+  aggregator: DataAggregator
+): Promise<any> {
+  try {
+    // Resolve timeframe to date range
+    const dateRange = resolveDateRange(args.timeframe || 'this month', false);
+
+    switch (functionName) {
+      case 'get_category_spending': {
+        const result = await aggregator.getCategorySpending(
+          token,
+          args.categories,
+          dateRange.start,
+          dateRange.end
+        );
+        return {
+          categories: result,
+          dateRange: dateRange.description,
+          hasData: result.length > 0
+        };
+      }
+
+      case 'get_total_spending': {
+        const result = await aggregator.getTotalSpending(
+          token,
+          dateRange.start,
+          dateRange.end
+        );
+        return {
+          total: result.total,
+          count: result.count,
+          dateRange: dateRange.description,
+          hasData: result.count > 0
+        };
+      }
+
+      case 'get_top_categories': {
+        const limit = args.limit || 3;
+        const result = await aggregator.getTopCategories(
+          token,
+          dateRange.start,
+          dateRange.end,
+          limit
+        );
+        return {
+          categories: result,
+          dateRange: dateRange.description,
+          hasData: result.length > 0
+        };
+      }
+
+      case 'compare_categories': {
+        const result = await aggregator.compareCategories(
+          token,
+          args.categories,
+          dateRange.start,
+          dateRange.end
+        );
+        return {
+          comparison: result,
+          dateRange: dateRange.description,
+          hasData: result.categories.length > 0
+        };
+      }
+
+      default:
+        throw new Error(`Unknown function: ${functionName}`);
+    }
+  } catch (error) {
+    console.error(`Error executing function ${functionName}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Process chat message with function calling
+ */
+async function processChatMessage(
+  userMessage: string,
+  conversationHistory: Message[],
+  token: string,
+  client: OpenRouterClient,
+  aggregator: DataAggregator
+): Promise<{ message: string; requiresClarification: boolean }> {
+  // Build message history
+  const messages: Message[] = [
+    { role: 'system', content: OpenRouterClient.getSystemPrompt() },
+    ...conversationHistory,
+    { role: 'user', content: userMessage }
+  ];
+
+  // Get function definitions
+  const tools = OpenRouterClient.getFunctionDefinitions();
+
+  // Initial call to OpenRouter
+  const initialResponse = await client.createChatCompletion(messages, tools, 'auto');
+  const assistantMessage = initialResponse.choices[0].message;
+
+  // Check if function call was requested
+  if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
+    const toolCall = assistantMessage.tool_calls[0];
+    const functionName = toolCall.function.name;
+    const functionArgs = JSON.parse(toolCall.function.arguments);
+
+    console.log(`Executing function: ${functionName}`, functionArgs);
+
+    // Execute the function with user's data
+    const functionResult = await executeFunction(functionName, functionArgs, token, aggregator);
+
+    // Check if we have data
+    if (!functionResult.hasData) {
+      return {
+        message: "I couldn't find transactions for that request. Try another timeframe or category.",
+        requiresClarification: false
+      };
+    }
+
+    // Send function result back to OpenRouter for natural language response
+    const finalMessages: any[] = [
+      ...messages,
+      {
+        role: 'assistant',
+        content: assistantMessage.content || '',
+        tool_calls: assistantMessage.tool_calls
+      },
+      {
+        role: 'tool',
+        content: JSON.stringify(functionResult),
+        tool_call_id: toolCall.id
+      }
+    ];
+
+    const finalResponse = await client.createChatCompletion(finalMessages);
+    return {
+      message: finalResponse.choices[0].message.content,
+      requiresClarification: false
+    };
+  }
+
+  // Direct response (likely a clarification question)
+  const content = assistantMessage.content;
+  const isClarification = content.includes('?') && conversationHistory.length < 2;
+
+  return {
+    message: content,
+    requiresClarification: isClarification
+  };
+}
+
+/**
+ * POST /api/chat
+ * Handle chat messages with function calling
+ */
+export async function POST(request: NextRequest) {
+  try {
+    // Extract and validate auth token
+    const token = getAuthToken(request);
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Authentication required', code: ChatErrorCode.AUTH_ERROR } as ChatError,
+        { status: 401 }
+      );
+    }
+
+    // Parse and validate request body
+    const body: ChatRequest = await request.json();
+    const validation = validateRequest(body);
+    if (!validation.valid) {
+      return NextResponse.json(
+        { error: validation.error, code: ChatErrorCode.VALIDATION_ERROR } as ChatError,
+        { status: 400 }
+      );
+    }
+
+    // Initialize OpenRouter client and data aggregator
+    const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+    if (!convexUrl) {
+      throw new Error('NEXT_PUBLIC_CONVEX_URL is not configured');
+    }
+
+    const client = createOpenRouterClient();
+    const aggregator = new DataAggregator(convexUrl);
+
+    // Process the message
+    const conversationHistory = body.conversationHistory || [];
+    const result = await processChatMessage(
+      body.message,
+      conversationHistory,
+      token,
+      client,
+      aggregator
+    );
+
+    // Return response
+    const response: ChatResponse = {
+      message: result.message,
+      timestamp: Date.now(),
+      requiresClarification: result.requiresClarification
+    };
+
+    return NextResponse.json(response);
+
+  } catch (error: any) {
+    console.error('Chat API error:', error);
+
+    // Handle specific error types
+    if (error.message?.includes('Authentication required')) {
+      return NextResponse.json(
+        { error: 'Your session has expired. Please log in again.', code: ChatErrorCode.AUTH_ERROR } as ChatError,
+        { status: 401 }
+      );
+    }
+
+    if (error.message?.includes('rate limit') || error.message?.includes('429')) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please wait a moment and try again.', code: ChatErrorCode.RATE_LIMIT } as ChatError,
+        { status: 429 }
+      );
+    }
+
+    if (error.message?.includes('OpenRouter')) {
+      return NextResponse.json(
+        { error: "I'm having trouble right now. Please try again.", code: ChatErrorCode.API_ERROR } as ChatError,
+        { status: 503 }
+      );
+    }
+
+    // Generic error
+    return NextResponse.json(
+      { error: "I'm having trouble right now. Please try again.", code: ChatErrorCode.API_ERROR } as ChatError,
+      { status: 500 }
+    );
+  }
+}
