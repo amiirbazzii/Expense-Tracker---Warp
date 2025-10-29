@@ -16,11 +16,12 @@ function ChatPageContent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; code: string; retryable: boolean } | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [lastUserMessage, setLastUserMessage] = useState<string>('');
   const [awaitingClarification, setAwaitingClarification] = useState(false);
   const [originalQuery, setOriginalQuery] = useState<string>('');
+  const [retryDisabled, setRetryDisabled] = useState(false);
 
   // Load chat history on mount
   useEffect(() => {
@@ -124,14 +125,59 @@ function ChatPageContent() {
         
         // Handle authentication errors
         if (response.status === 401 || errorData.code === 'AUTH_ERROR') {
-          setError('Your session has expired. Please log in again.');
+          setError({
+            message: errorData.error || 'Your session has expired. Please log in again.',
+            code: 'AUTH_ERROR',
+            retryable: false
+          });
           setTimeout(() => {
             router.push('/login');
           }, 2000);
           return;
         }
         
-        throw new Error(errorData.error || 'Failed to get response');
+        // Handle rate limit errors
+        if (response.status === 429 || errorData.code === 'RATE_LIMIT') {
+          setError({
+            message: errorData.error || 'Too many requests. Please wait a moment and try again.',
+            code: 'RATE_LIMIT',
+            retryable: true
+          });
+          // Disable retry button for 5 seconds
+          setRetryDisabled(true);
+          setTimeout(() => {
+            setRetryDisabled(false);
+          }, 5000);
+          return;
+        }
+        
+        // Handle no data errors
+        if (errorData.code === 'NO_DATA') {
+          setError({
+            message: errorData.error || "I couldn't find transactions for that request. Try another timeframe or category.",
+            code: 'NO_DATA',
+            retryable: false
+          });
+          return;
+        }
+        
+        // Handle validation errors
+        if (errorData.code === 'VALIDATION_ERROR') {
+          setError({
+            message: errorData.error || 'Invalid message format.',
+            code: 'VALIDATION_ERROR',
+            retryable: false
+          });
+          return;
+        }
+        
+        // Generic API error
+        setError({
+          message: errorData.error || "I'm having trouble right now. Please try again.",
+          code: errorData.code || 'API_ERROR',
+          retryable: true
+        });
+        return;
       }
 
       const data = await response.json();
@@ -163,10 +209,12 @@ function ChatPageContent() {
     } catch (err: any) {
       console.error('Failed to send message:', err);
       
-      // Don't show error for auth errors (already handled)
-      if (err.message !== 'AUTH_ERROR') {
-        setError(err.message || "I'm having trouble right now. Please try again.");
-      }
+      // Handle network errors or other unexpected errors
+      setError({
+        message: "I'm having trouble right now. Please try again.",
+        code: 'API_ERROR',
+        retryable: true
+      });
       
       // Remove the optimistically added user message on error
       setMessages(prev => prev.filter(msg => msg.id !== userMessage.id));
@@ -181,7 +229,8 @@ function ChatPageContent() {
   };
 
   const handleRetry = () => {
-    if (lastUserMessage) {
+    if (lastUserMessage && !retryDisabled) {
+      setError(null);
       handleSubmit(lastUserMessage);
     }
   };
@@ -208,16 +257,30 @@ function ChatPageContent() {
       )}
       
       {error && (
-        <div className="px-4 py-3 bg-red-50 border-t border-red-200">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-red-600">{error}</p>
-            {!error.includes('session has expired') && lastUserMessage && (
+        <div className={`px-4 py-3 border-t ${
+          error.code === 'NO_DATA' 
+            ? 'bg-yellow-50 border-yellow-200' 
+            : 'bg-red-50 border-red-200'
+        }`}>
+          <div className="flex items-center justify-between gap-3">
+            <p className={`text-sm flex-1 ${
+              error.code === 'NO_DATA' 
+                ? 'text-yellow-700' 
+                : 'text-red-600'
+            }`}>
+              {error.message}
+            </p>
+            {error.retryable && lastUserMessage && (
               <button
                 onClick={handleRetry}
-                disabled={isLoading}
-                className="ml-4 px-3 py-1 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isLoading || retryDisabled}
+                className={`px-3 py-1 text-sm rounded-lg whitespace-nowrap transition-colors ${
+                  error.code === 'NO_DATA'
+                    ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                    : 'bg-red-600 text-white hover:bg-red-700'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
-                Try again
+                {retryDisabled ? 'Wait...' : 'Try again'}
               </button>
             )}
           </div>
