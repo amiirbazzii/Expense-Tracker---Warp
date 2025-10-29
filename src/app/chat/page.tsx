@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Message, loadChatHistory, saveChatHistory } from '@/lib/chat/chatStorage';
 import { MessageList } from '@/components/chat/MessageList';
 import { ChatInput } from '@/components/chat/ChatInput';
+import { SuggestedPrompts } from '@/components/chat/SuggestedPrompts';
 import { AppHeader } from '@/components/AppHeader';
 
 export default function ChatPage() {
@@ -47,6 +48,10 @@ export default function ChatPage() {
 
     saveHistory();
   }, [messages, user?._id]);
+
+  const handleSelectPrompt = (prompt: string) => {
+    setInputValue(prompt);
+  };
 
   const handleSubmit = async () => {
     if (!inputValue.trim() || isLoading) return;
@@ -93,7 +98,11 @@ export default function ChatPage() {
     <div className="flex flex-col h-screen bg-[#f8f8f8] pt-[64px]">
       <AppHeader title="Chat" />
       
-      <MessageList messages={messages} isLoading={isLoading} />
+      {messages.length === 0 ? (
+        <SuggestedPrompts onSelectPrompt={handleSelectPrompt} />
+      ) : (
+        <MessageList messages={messages} isLoading={isLoading} />
+      )}
       
       {error && (
         <div className="px-4 py-2 bg-red-50 border-t border-red-200">

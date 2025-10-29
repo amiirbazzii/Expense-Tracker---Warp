@@ -25,7 +25,7 @@
   - Implement message history trimming (max 100 messages)
   - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 4. Build core chat UI components
+- [x] 4. Build core chat UI components
   - Create ChatPage component with state management for messages, loading, and errors
   - Implement MessageList component with auto-scroll to bottom
   - Build MessageBubble component with user/assistant styling and timestamps
@@ -33,7 +33,7 @@
   - Add TypingIndicator component for loading state
   - _Requirements: 1.3, 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 5. Implement empty state and suggested prompts
+- [x] 5. Implement empty state and suggested prompts
   - Create SuggestedPrompts component with three predefined prompts
   - Add click handlers to populate input field with selected prompt
   - Show/hide logic based on message history length
