@@ -5,14 +5,14 @@
   - Add indexes for efficient querying: by_user and by_user_timestamp
   - _Requirements: 6.1, 6.2_
 
-- [ ] 2. Implement Convex chat API functions
-- [ ] 2.1 Create getMessages query function
+- [x] 2. Implement Convex chat API functions
+- [x] 2.1 Create getMessages query function
   - Implement user authentication via token
   - Query messages by userId and order by timestamp ascending
   - Return all messages for the authenticated user
   - _Requirements: 6.3, 6.4_
 
-- [ ] 2.2 Create sendMessage mutation function
+- [x] 2.2 Create sendMessage mutation function
   - Authenticate user and validate input
   - Save user message to messages table with timestamp
   - Retrieve all user transactions (expenses, income, cards) from database
@@ -23,7 +23,7 @@
   - Handle errors and return appropriate error messages
   - _Requirements: 3.6, 6.1, 6.2, 7.1, 7.2, 7.3, 7.4, 7.5, 8.1, 8.2, 8.3, 8.4, 9.1, 9.4, 9.5, 11.2, 11.3, 11.4, 11.5_
 
-- [ ] 2.3 Create retryLastMessage mutation function
+- [x] 2.3 Create retryLastMessage mutation function
   - Authenticate user
   - Query last user message from database
   - Re-execute AI request with same message content
