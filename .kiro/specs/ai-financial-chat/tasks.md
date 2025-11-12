@@ -102,20 +102,20 @@
   - Add /chat route with proper active state styling
   - _Requirements: 1.1, 1.2_
 
-- [ ] 6. Integrate with existing systems
-- [ ] 6.1 Connect to authentication system
+- [x] 6. Integrate with existing systems
+- [x] 6.1 Connect to authentication system
   - Use existing AuthContext to get user token
   - Pass token to all Convex queries and mutations
   - Handle unauthenticated state with redirect
   - _Requirements: 9.4, 11.3, 11.4_
 
-- [ ] 6.2 Integrate date and currency formatting
+- [x] 6.2 Integrate date and currency formatting
   - Import useSettings hook to get user preferences
   - Format timestamps according to calendar type (Jalali/Gregorian)
   - Ensure currency values in AI responses match user settings
   - _Requirements: 12.4, 12.5_
 
-- [ ] 6.3 Apply existing design system
+- [x] 6.3 Apply existing design system
   - Use Tailwind CSS classes matching existing color palette
   - Apply consistent spacing, typography, and border radius
   - Ensure responsive design matches existing pages

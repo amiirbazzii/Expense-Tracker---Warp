@@ -118,6 +118,11 @@ export const sendMessage = action({
       const income: any[] = await ctx.runQuery(api.cardsAndIncome.getIncome, { token: args.token });
       const cards: any = await ctx.runQuery(api.cardsAndIncome.getCardBalances, { token: args.token });
 
+      // Get user settings for currency and calendar preferences
+      const userSettings: any = await ctx.runQuery(api.userSettings.get, { token: args.token });
+      const currency: string = userSettings?.currency || "USD";
+      const calendar: string = userSettings?.calendar || "gregorian";
+
       // Get recent messages for context
       const messages: any[] = await ctx.runQuery(api.chat.getMessages, { token: args.token });
       const recentMessages: any[] = messages.slice(-10);
@@ -146,11 +151,25 @@ export const sendMessage = action({
         })) || [],
       };
 
+      // Currency symbol mapping
+      const currencySymbols: Record<string, string> = {
+        USD: "$",
+        EUR: "€",
+        GBP: "£",
+        IRR: "T",
+      };
+      const currencySymbol: string = currencySymbols[currency] || "$";
+      const currencyFormat: string = currency === "IRR" ? "amount T" : `${currencySymbol}amount`;
+
       const systemPrompt: string = `You are a financial assistant. Today is ${formattedDate}.
+
+User's preferences:
+- Currency: ${currency} (format amounts as: ${currencyFormat})
+- Calendar: ${calendar}
 
 User's transactions: ${JSON.stringify(transactionData)}
 
-Calculate exact amounts from the data provided. Keep responses concise (2-3 sentences maximum). Include specific numbers and currency symbols when relevant.`;
+Calculate exact amounts from the data provided. Keep responses concise (2-3 sentences maximum). Include specific numbers and currency symbols when relevant. Always format currency amounts according to the user's currency preference.`;
 
       // Prepare messages for OpenRouter API
       const apiMessages: any[] = [
@@ -256,6 +275,11 @@ export const retryLastMessage = action({
       const income: any[] = await ctx.runQuery(api.cardsAndIncome.getIncome, { token: args.token });
       const cards: any = await ctx.runQuery(api.cardsAndIncome.getCardBalances, { token: args.token });
 
+      // Get user settings for currency and calendar preferences
+      const userSettings: any = await ctx.runQuery(api.userSettings.get, { token: args.token });
+      const currency: string = userSettings?.currency || "USD";
+      const calendar: string = userSettings?.calendar || "gregorian";
+
       // Get recent messages for context
       const recentMessages: any[] = messages.slice(-10);
 
@@ -283,11 +307,25 @@ export const retryLastMessage = action({
         })) || [],
       };
 
+      // Currency symbol mapping
+      const currencySymbols: Record<string, string> = {
+        USD: "$",
+        EUR: "€",
+        GBP: "£",
+        IRR: "T",
+      };
+      const currencySymbol: string = currencySymbols[currency] || "$";
+      const currencyFormat: string = currency === "IRR" ? "amount T" : `${currencySymbol}amount`;
+
       const systemPrompt: string = `You are a financial assistant. Today is ${formattedDate}.
+
+User's preferences:
+- Currency: ${currency} (format amounts as: ${currencyFormat})
+- Calendar: ${calendar}
 
 User's transactions: ${JSON.stringify(transactionData)}
 
-Calculate exact amounts from the data provided. Keep responses concise (2-3 sentences maximum). Include specific numbers and currency symbols when relevant.`;
+Calculate exact amounts from the data provided. Keep responses concise (2-3 sentences maximum). Include specific numbers and currency symbols when relevant. Always format currency amounts according to the user's currency preference.`;
 
       // Prepare messages for OpenRouter API
       const apiMessages: any[] = [

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { useQuery, useAction } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -167,7 +168,7 @@ export default function ChatPage() {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-gray-500">Loading...</div>
+        <div className="text-base text-gray-500">Loading...</div>
       </div>
     );
   }
@@ -228,15 +229,20 @@ export default function ChatPage() {
 
         {/* Error Message */}
         {error && !isLoadingResponse && (
-          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4 p-4 bg-red-50 border border-red-200 rounded-2xl"
+          >
             <p className="text-sm text-red-800 mb-3">{error}</p>
-            <button
+            <motion.button
+              whileTap={{ scale: 0.95 }}
               onClick={handleRetry}
-              className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 active:scale-95 transition-all"
+              className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-xl hover:bg-red-700 transition-colors"
             >
               Try Again
-            </button>
-          </div>
+            </motion.button>
+          </motion.div>
         )}
 
         {/* Scroll anchor */}
