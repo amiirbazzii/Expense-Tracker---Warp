@@ -9,6 +9,9 @@ export interface DateRange {
 /**
  * Resolves natural language date phrases into timestamp ranges
  * Supports both Gregorian and Jalali calendars
+ * 
+ * IMPORTANT: Always returns timestamps for local midnight (00:00:00.000 to 23:59:59.999)
+ * to ensure full day/month coverage regardless of timezone
  */
 export function resolveDateRange(
   timeframe: string,
@@ -20,8 +23,16 @@ export function resolveDateRange(
 
   // Last month
   if (normalized === 'last month') {
-    const start = now.clone().subtract(1, 'month').startOf(useJalali ? 'jMonth' : 'month');
-    const end = now.clone().subtract(1, 'month').endOf(useJalali ? 'jMonth' : 'month');
+    const start = now.clone().subtract(1, 'month').startOf(useJalali ? 'jMonth' : 'month').startOf('day');
+    const end = now.clone().subtract(1, 'month').endOf(useJalali ? 'jMonth' : 'month').endOf('day');
+    
+    console.log('[dateUtils] Last month range:', {
+      start: start.format('YYYY-MM-DD HH:mm:ss'),
+      end: end.format('YYYY-MM-DD HH:mm:ss'),
+      startTimestamp: start.valueOf(),
+      endTimestamp: end.valueOf()
+    });
+    
     return {
       start: start.valueOf(),
       end: end.valueOf(),
@@ -31,8 +42,16 @@ export function resolveDateRange(
 
   // This month
   if (normalized === 'this month') {
-    const start = now.clone().startOf(useJalali ? 'jMonth' : 'month');
-    const end = now.clone().endOf(useJalali ? 'jMonth' : 'month');
+    const start = now.clone().startOf(useJalali ? 'jMonth' : 'month').startOf('day');
+    const end = now.clone().endOf(useJalali ? 'jMonth' : 'month').endOf('day');
+    
+    console.log('[dateUtils] This month range:', {
+      start: start.format('YYYY-MM-DD HH:mm:ss'),
+      end: end.format('YYYY-MM-DD HH:mm:ss'),
+      startTimestamp: start.valueOf(),
+      endTimestamp: end.valueOf()
+    });
+    
     return {
       start: start.valueOf(),
       end: end.valueOf(),
@@ -44,8 +63,8 @@ export function resolveDateRange(
   const lastMonthsMatch = normalized.match(/last (\d+) months?/);
   if (lastMonthsMatch) {
     const months = parseInt(lastMonthsMatch[1]);
-    const start = now.clone().subtract(months, 'months').startOf(useJalali ? 'jMonth' : 'month');
-    const end = now.clone().endOf(useJalali ? 'jMonth' : 'month');
+    const start = now.clone().subtract(months, 'months').startOf(useJalali ? 'jMonth' : 'month').startOf('day');
+    const end = now.clone().endOf(useJalali ? 'jMonth' : 'month').endOf('day');
     return {
       start: start.valueOf(),
       end: end.valueOf(),
@@ -55,8 +74,8 @@ export function resolveDateRange(
 
   // Last quarter
   if (normalized === 'last quarter') {
-    const start = now.clone().subtract(3, 'months').startOf(useJalali ? 'jMonth' : 'month');
-    const end = now.clone().subtract(1, 'month').endOf(useJalali ? 'jMonth' : 'month');
+    const start = now.clone().subtract(3, 'months').startOf(useJalali ? 'jMonth' : 'month').startOf('day');
+    const end = now.clone().subtract(1, 'month').endOf(useJalali ? 'jMonth' : 'month').endOf('day');
     return {
       start: start.valueOf(),
       end: end.valueOf(),
@@ -68,8 +87,8 @@ export function resolveDateRange(
   if (normalized === 'this quarter') {
     const currentMonth = useJalali ? now.jMonth() : now.month();
     const quarterStartMonth = Math.floor(currentMonth / 3) * 3;
-    const start = now.clone().month(quarterStartMonth).startOf(useJalali ? 'jMonth' : 'month');
-    const end = now.clone().endOf(useJalali ? 'jMonth' : 'month');
+    const start = now.clone().month(quarterStartMonth).startOf(useJalali ? 'jMonth' : 'month').startOf('day');
+    const end = now.clone().endOf(useJalali ? 'jMonth' : 'month').endOf('day');
     return {
       start: start.valueOf(),
       end: end.valueOf(),
@@ -79,7 +98,7 @@ export function resolveDateRange(
 
   // Year to date (YTD)
   if (normalized === 'ytd' || normalized === 'year to date') {
-    const start = now.clone().startOf(useJalali ? 'jYear' : 'year');
+    const start = now.clone().startOf(useJalali ? 'jYear' : 'year').startOf('day');
     const end = now.clone().endOf('day');
     return {
       start: start.valueOf(),
@@ -90,8 +109,8 @@ export function resolveDateRange(
 
   // This year
   if (normalized === 'this year') {
-    const start = now.clone().startOf(useJalali ? 'jYear' : 'year');
-    const end = now.clone().endOf(useJalali ? 'jYear' : 'year');
+    const start = now.clone().startOf(useJalali ? 'jYear' : 'year').startOf('day');
+    const end = now.clone().endOf(useJalali ? 'jYear' : 'year').endOf('day');
     return {
       start: start.valueOf(),
       end: end.valueOf(),
@@ -113,8 +132,8 @@ export function resolveDateRange(
 
   // Last year
   if (normalized === 'last year') {
-    const start = now.clone().subtract(1, 'year').startOf(useJalali ? 'jYear' : 'year');
-    const end = now.clone().subtract(1, 'year').endOf(useJalali ? 'jYear' : 'year');
+    const start = now.clone().subtract(1, 'year').startOf(useJalali ? 'jYear' : 'year').startOf('day');
+    const end = now.clone().subtract(1, 'year').endOf(useJalali ? 'jYear' : 'year').endOf('day');
     return {
       start: start.valueOf(),
       end: end.valueOf(),
@@ -180,8 +199,16 @@ export function resolveDateRange(
   }
 
   // Default to this month if no match
-  const start = now.clone().startOf(useJalali ? 'jMonth' : 'month');
-  const end = now.clone().endOf(useJalali ? 'jMonth' : 'month');
+  const start = now.clone().startOf(useJalali ? 'jMonth' : 'month').startOf('day');
+  const end = now.clone().endOf(useJalali ? 'jMonth' : 'month').endOf('day');
+  
+  console.log('[dateUtils] Default (this month) range:', {
+    start: start.format('YYYY-MM-DD HH:mm:ss'),
+    end: end.format('YYYY-MM-DD HH:mm:ss'),
+    startTimestamp: start.valueOf(),
+    endTimestamp: end.valueOf()
+  });
+  
   return {
     start: start.valueOf(),
     end: end.valueOf(),

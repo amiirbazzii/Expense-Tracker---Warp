@@ -51,8 +51,11 @@ export class DataAggregator {
         endDate
       });
 
-      // Aggregate by category
-      const categoryMap = new Map<string, { amount: number; count: number }>();
+      console.log(`[DataAggregator] Fetched ${expenses.length} expenses for date range`);
+      console.log(`[DataAggregator] Looking for categories:`, categories);
+
+      // Aggregate by category (using normalized lowercase keys to avoid case sensitivity issues)
+      const categoryMap = new Map<string, { amount: number; count: number; displayName: string }>();
 
       for (const expense of expenses) {
         // Check if expense has any of the requested categories
@@ -62,21 +65,52 @@ export class DataAggregator {
           )
         );
 
+        if (matchingCategories.length > 0) {
+          console.log(`[DataAggregator] Expense matched:`, {
+            title: expense.title,
+            amount: expense.amount,
+            date: new Date(expense.date).toISOString(),
+            categories: expense.category,
+            matchingCategories,
+            willAddToEachCategory: matchingCategories.length > 1 ? 'YES - SPLITTING AMOUNT' : 'NO'
+          });
+        }
+
+        // IMPORTANT: If an expense has multiple matching categories,
+        // we need to decide: split the amount or add full amount to each?
+        // Current behavior: Add full amount to each matching category
+        // This means if expense is 1000 with ["test", "food"] and user asks for both,
+        // it will show test: 1000, food: 1000 (total 2000 - which might be confusing)
+        
+        // Alternative: Split the amount proportionally
+        // const amountPerCategory = matchingCategories.length > 0 ? expense.amount / matchingCategories.length : 0;
+        
         for (const category of matchingCategories) {
-          const existing = categoryMap.get(category) || { amount: 0, count: 0 };
-          categoryMap.set(category, {
+          // Use lowercase as key to avoid case sensitivity issues
+          const normalizedKey = category.toLowerCase();
+          const existing = categoryMap.get(normalizedKey) || { amount: 0, count: 0, displayName: category };
+          
+          // Add the FULL expense amount to this category
+          // Note: If expense has multiple matching categories, amount is added to each
+          categoryMap.set(normalizedKey, {
             amount: existing.amount + expense.amount,
-            count: existing.count + 1
+            count: existing.count + 1,
+            displayName: existing.displayName // Keep the first display name we saw
           });
         }
       }
 
-      // Convert to array
-      return Array.from(categoryMap.entries()).map(([category, data]) => ({
-        category,
+      const result = Array.from(categoryMap.entries()).map(([_, data]) => ({
+        category: data.displayName,
         amount: data.amount,
         count: data.count
       }));
+
+      console.log(`[DataAggregator] Final result:`, result);
+      console.log(`[DataAggregator] Total across all categories:`, result.reduce((sum, r) => sum + r.amount, 0));
+
+      // Convert to array
+      return result;
     } catch (error) {
       console.error('Error fetching category spending:', error);
       throw error;
@@ -98,7 +132,43 @@ export class DataAggregator {
         endDate
       });
 
+      console.log(`[DataAggregator] getTotalSpending: Fetched ${expenses.length} expenses`);
+      console.log(`[DataAggregator] Date range filter (timestamps):`, {
+        startDate: startDate,
+        endDate: endDate,
+        startDateUTC: new Date(startDate).toISOString(),
+        endDateUTC: new Date(endDate).toISOString()
+      });
+      
+      // Log first and last few expenses for debugging
+      if (expenses.length > 0) {
+        const sortedExpenses = [...expenses].sort((a, b) => a.date - b.date);
+        console.log(`[DataAggregator] First 3 expenses (by date):`, sortedExpenses.slice(0, 3).map(e => ({
+          title: e.title,
+          amount: e.amount,
+          date: new Date(e.date).toISOString(),
+          dateTimestamp: e.date,
+          isInRange: e.date >= startDate && e.date <= endDate
+        })));
+        
+        if (expenses.length > 3) {
+          console.log(`[DataAggregator] Last 3 expenses (by date):`, sortedExpenses.slice(-3).map(e => ({
+            title: e.title,
+            amount: e.amount,
+            date: new Date(e.date).toISOString(),
+            dateTimestamp: e.date,
+            isInRange: e.date >= startDate && e.date <= endDate
+          })));
+        }
+      }
+
       const total = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+
+      console.log(`[DataAggregator] Total calculated:`, {
+        total,
+        count: expenses.length,
+        average: expenses.length > 0 ? total / expenses.length : 0
+      });
 
       return {
         total,
@@ -127,23 +197,26 @@ export class DataAggregator {
         endDate
       });
 
-      // Aggregate all categories
-      const categoryMap = new Map<string, { amount: number; count: number }>();
+      // Aggregate all categories (using normalized lowercase keys)
+      const categoryMap = new Map<string, { amount: number; count: number; displayName: string }>();
 
       for (const expense of expenses) {
         for (const category of expense.category) {
-          const existing = categoryMap.get(category) || { amount: 0, count: 0 };
-          categoryMap.set(category, {
+          // Use lowercase as key to avoid case sensitivity issues
+          const normalizedKey = category.toLowerCase();
+          const existing = categoryMap.get(normalizedKey) || { amount: 0, count: 0, displayName: category };
+          categoryMap.set(normalizedKey, {
             amount: existing.amount + expense.amount,
-            count: existing.count + 1
+            count: existing.count + 1,
+            displayName: existing.displayName // Keep the first display name we saw
           });
         }
       }
 
       // Convert to array and sort by amount
       const sorted = Array.from(categoryMap.entries())
-        .map(([category, data]) => ({
-          category,
+        .map(([_, data]) => ({
+          category: data.displayName,
           amount: data.amount,
           count: data.count
         }))

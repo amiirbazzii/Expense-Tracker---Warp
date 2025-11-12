@@ -103,6 +103,14 @@ async function executeFunction(
   try {
     // Resolve timeframe to date range using user's calendar preference
     const dateRange = resolveDateRange(args.timeframe || 'this month', useJalali);
+    
+    console.log(`[executeFunction] Function: ${functionName}`);
+    console.log(`[executeFunction] Args:`, args);
+    console.log(`[executeFunction] Date range:`, {
+      start: new Date(dateRange.start).toISOString(),
+      end: new Date(dateRange.end).toISOString(),
+      description: dateRange.description
+    });
 
     switch (functionName) {
       case 'get_category_spending': {
@@ -112,6 +120,7 @@ async function executeFunction(
           dateRange.start,
           dateRange.end
         );
+        console.log(`[executeFunction] Result:`, result);
         return {
           categories: result,
           dateRange: dateRange.description,
@@ -126,6 +135,11 @@ async function executeFunction(
           dateRange.start,
           dateRange.end
         );
+        console.log(`[executeFunction] Total spending result:`, {
+          total: result.total,
+          count: result.count,
+          dateRange: dateRange.description
+        });
         return {
           total: result.total,
           count: result.count,
