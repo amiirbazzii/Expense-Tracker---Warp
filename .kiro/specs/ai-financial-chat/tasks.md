@@ -30,8 +30,8 @@
   - Save new assistant response
   - _Requirements: 9.2, 9.3_
 
-- [ ] 3. Create chat page UI components
-- [ ] 3.1 Create main chat page component
+- [x] 3. Create chat page UI components
+- [x] 3.1 Create main chat page component
   - Set up Next.js page at /src/app/chat/page.tsx
   - Implement protected route with authentication check
   - Add AppHeader and BottomNav components
@@ -40,7 +40,7 @@
   - Implement auto-scroll logic with ref-based scroll management
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 4.7_
 
-- [ ] 3.2 Create MessageBubble component
+- [x] 3.2 Create MessageBubble component
   - Accept role, content, timestamp, and isLatest props
   - Implement conditional styling for user vs assistant messages
   - User messages: right-aligned, blue background (#3B82F6), white text
@@ -49,7 +49,7 @@
   - Format timestamp as relative time (<1 hour) or absolute time (≥1 hour)
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
 
-- [ ] 3.3 Create ChatInput component
+- [x] 3.3 Create ChatInput component
   - Implement multi-line textarea with max 4 visible lines
   - Add 500 character limit with validation
   - Show character counter when >400 characters
@@ -60,7 +60,7 @@
   - Auto-focus textarea on component mount
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 5.2_
 
-- [ ] 3.4 Create EmptyState component
+- [x] 3.4 Create EmptyState component
   - Display welcome message and subtitle
   - Show three suggested prompts: "How much did I spend this month?", "What's my biggest expense category?", "Show me my income vs expenses"
   - Implement click handler to populate input field with prompt text
@@ -68,7 +68,7 @@
   - Conditionally render only when no messages exist
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 3.5 Create LoadingIndicator component
+- [x] 3.5 Create LoadingIndicator component
   - Display "Thinking..." message styled as assistant message
   - Add subtle pulse animation
   - Show only while waiting for AI response
