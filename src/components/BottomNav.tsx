@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { CirclePlus, ChartPie, Settings, CircleArrowUp } from "lucide-react";
+import { CirclePlus, ChartPie, Settings, CircleArrowUp, MessageSquare } from "lucide-react";
 
 const navItems = [
   {
@@ -20,6 +20,11 @@ const navItems = [
     href: "/dashboard",
     icon: ChartPie,
     label: "Dashboard",
+  },
+  {
+    href: "/chat",
+    icon: MessageSquare,
+    label: "Chat",
   },
   {
     href: "/settings",

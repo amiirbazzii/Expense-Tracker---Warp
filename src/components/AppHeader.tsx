@@ -10,6 +10,7 @@ const MAIN_PAGES: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/expenses": "Expenses",
   "/income": "Income",
+  "/chat": "Chat",
   "/settings": "Settings",
 };
 
