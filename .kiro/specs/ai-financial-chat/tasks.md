@@ -74,8 +74,8 @@
   - Show only while waiting for AI response
   - _Requirements: 5.1, 5.3, 5.4_
 
-- [ ] 4. Implement chat page logic and state management
-- [ ] 4.1 Set up message sending flow
+- [x] 4. Implement chat page logic and state management
+- [x] 4.1 Set up message sending flow
   - Create useMutation hook for sendMessage
   - Handle form submission and input validation
   - Display user message immediately in UI (optimistic update)
@@ -83,14 +83,14 @@
   - Update UI with assistant response when received
   - _Requirements: 3.6, 5.1, 5.2_
 
-- [ ] 4.2 Implement error handling UI
+- [x] 4.2 Implement error handling UI
   - Display user-friendly error message when API fails
   - Show "Try Again" button with error message
   - Implement retry logic using retryLastMessage mutation
   - Handle authentication errors with redirect to login
   - _Requirements: 9.1, 9.2, 9.3, 9.4_
 
-- [ ] 4.3 Add auto-scroll behavior
+- [x] 4.3 Add auto-scroll behavior
   - Implement scroll-to-bottom on new message arrival
   - Detect manual scroll and prevent auto-scroll when user scrolled up
   - Restore auto-scroll when user scrolls to bottom

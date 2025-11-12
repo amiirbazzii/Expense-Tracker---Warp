@@ -226,25 +226,31 @@ export const retryLastMessage = mutation({
 - Endpoint: `https://openrouter.ai/api/v1/chat/completions`
 - Authentication: Bearer token from `OPENROUTER_API_KEY` env variable
 - Model: Configurable via `OPENROUTER_MODEL` env variable
-- Default model: `openai/gpt-4.1-nano` (free tier, large context window)
+**API Configuration**:
+- Default model: `google/gemini-flash-1.5-8b` (free tier, large context window)
+- Alternative free models: `meta-llama/llama-3.1-8b-instruct:free`, `mistralai/mistral-7b-instruct:free`
 
 **Request Structure**:
 ```typescript
 {
-  model: process.env.OPENROUTER_MODEL,
+  model: process.env.OPENROUTER_MODEL || "google/gemini-flash-1.5-8b",
   messages: [
     {
       role: "system",
       content: `You are a financial assistant. Today is ${formattedDate}.
                 User's transactions: ${JSON.stringify(transactions)}
-                Analyze the data and provide concise answers (2-3 sentences).`
+                Calculate exact amounts from the data provided.
+                Keep responses concise (2-3 sentences maximum).
+                Include specific numbers and currency symbols.`
     },
-    ...conversationHistory, // Last 10 messages
+    ...conversationHistory, // Last 10 messages (user + assistant)
     {
       role: "user",
       content: userQuestion
     }
-  ]
+  ],
+  temperature: 0.3,
+  max_tokens: 500
 }
 ```
 
@@ -444,9 +450,9 @@ interface ErrorResponse {
 ### Backend Optimizations
 
 **Transaction Data Optimization**:
-- Limit transaction data to last 12 months by default
-- Compress transaction data in prompt (remove unnecessary fields)
-- Cache transaction summaries for repeated queries
+- Include all user transactions (no date filtering)
+- Use existing transaction schema as-is
+- Format transaction data as JSON for AI context
 
 **Conversation Context Management**:
 - Limit context to last 10 messages (configurable)

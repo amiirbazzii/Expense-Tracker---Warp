@@ -22,6 +22,8 @@ export default function ChatPage() {
   const [userHasScrolledUp, setUserHasScrolledUp] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [isLoadingResponse, setIsLoadingResponse] = useState(false);
+  const [optimisticMessage, setOptimisticMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Fetch messages
   const messages = useQuery(
@@ -54,6 +56,23 @@ export default function ChatPage() {
     }
   }, [messages, userHasScrolledUp]);
 
+  // Scroll to bottom when optimistic message or loading state changes
+  useEffect(() => {
+    if ((optimisticMessage || isLoadingResponse) && !userHasScrolledUp) {
+      scrollToBottom();
+    }
+  }, [optimisticMessage, isLoadingResponse, userHasScrolledUp]);
+
+  // Clear optimistic message when it appears in the actual messages
+  useEffect(() => {
+    if (optimisticMessage && messages && messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.role === "user" && lastMessage.content === optimisticMessage) {
+        setOptimisticMessage(null);
+      }
+    }
+  }, [messages, optimisticMessage]);
+
   // Detect manual scroll
   const handleScroll = () => {
     if (!messagesContainerRef.current) return;
@@ -68,16 +87,42 @@ export default function ChatPage() {
   const handleSendMessage = async (content: string) => {
     if (!token || !content.trim()) return;
 
+    const trimmedContent = content.trim();
+    
+    // Clear any previous errors
+    setError(null);
+    
+    // Optimistic update: show user message immediately
+    setOptimisticMessage(trimmedContent);
     setIsLoadingResponse(true);
     setInputValue("");
+    
+    // Disable auto-scroll prevention during send
+    setUserHasScrolledUp(false);
 
     try {
       await sendMessageAction({
         token,
-        content: content.trim(),
+        content: trimmedContent,
       });
-    } catch (error) {
+      
+      // Clear optimistic message after successful send
+      setOptimisticMessage(null);
+    } catch (error: any) {
       console.error("Failed to send message:", error);
+      
+      // Handle authentication errors
+      if (error?.message?.includes("Authentication required") || 
+          error?.message?.includes("User not found")) {
+        router.push("/login");
+        return;
+      }
+      
+      // Set error message for display
+      setError(error?.message || "I'm having trouble right now. Please try again.");
+      
+      // Clear optimistic message on error
+      setOptimisticMessage(null);
     } finally {
       setIsLoadingResponse(false);
     }
@@ -87,12 +132,27 @@ export default function ChatPage() {
   const handleRetry = async () => {
     if (!token) return;
 
+    // Clear error and start loading
+    setError(null);
     setIsLoadingResponse(true);
+    
+    // Disable auto-scroll prevention during retry
+    setUserHasScrolledUp(false);
 
     try {
       await retryMessageAction({ token });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to retry message:", error);
+      
+      // Handle authentication errors
+      if (error?.message?.includes("Authentication required") || 
+          error?.message?.includes("User not found")) {
+        router.push("/login");
+        return;
+      }
+      
+      // Set error message for display
+      setError(error?.message || "I'm having trouble right now. Please try again.");
     } finally {
       setIsLoadingResponse(false);
     }
@@ -151,8 +211,33 @@ export default function ChatPage() {
           </div>
         )}
 
+        {/* Optimistic User Message */}
+        {optimisticMessage && (
+          <div className="space-y-2 mt-2">
+            <MessageBubble
+              role="user"
+              content={optimisticMessage}
+              timestamp={Date.now()}
+              isLatest={true}
+            />
+          </div>
+        )}
+
         {/* Loading Indicator */}
         {isLoadingResponse && <LoadingIndicator />}
+
+        {/* Error Message */}
+        {error && !isLoadingResponse && (
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-800 mb-3">{error}</p>
+            <button
+              onClick={handleRetry}
+              className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 active:scale-95 transition-all"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
 
         {/* Scroll anchor */}
         <div ref={messagesEndRef} />
