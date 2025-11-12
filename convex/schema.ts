@@ -66,4 +66,12 @@ export default defineSchema({
     name: v.string(),
     userId: v.id("users"),
   }).index("by_user", ["userId"]).index("by_user_name", ["userId", "name"]),
+
+  messages: defineTable({
+    userId: v.id("users"),
+    role: v.union(v.literal("user"), v.literal("assistant")),
+    content: v.string(),
+    timestamp: v.number(),
+    createdAt: v.number(),
+  }).index("by_user", ["userId"]).index("by_user_timestamp", ["userId", "timestamp"]),
 });
