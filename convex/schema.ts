@@ -66,4 +66,12 @@ export default defineSchema({
     name: v.string(),
     userId: v.id("users"),
   }).index("by_user", ["userId"]).index("by_user_name", ["userId", "name"]),
+
+  chatMessages: defineTable({
+    userId: v.id("users"),
+    role: v.union(v.literal("user"), v.literal("assistant")),
+    content: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_user_createdAt", ["userId", "createdAt"]),
 });

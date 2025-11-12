@@ -18,6 +18,7 @@ import type * as cardsAndIncome from "../cardsAndIncome.js";
 import type * as expenses from "../expenses.js";
 import type * as internal_ from "../internal.js";
 import type * as userSettings from "../userSettings.js";
+import type * as chat from "../chat.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -33,6 +34,7 @@ declare const fullApi: ApiFromModules<{
   expenses: typeof expenses;
   internal: typeof internal_;
   userSettings: typeof userSettings;
+  chat: typeof chat;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,
