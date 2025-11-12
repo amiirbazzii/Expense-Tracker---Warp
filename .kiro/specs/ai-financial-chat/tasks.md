@@ -96,7 +96,7 @@
   - Restore auto-scroll when user scrolls to bottom
   - _Requirements: 4.7_
 
-- [ ] 5. Update navigation to include chat link
+- [x] 5. Update navigation to include chat link
   - Add chat navigation item to BottomNav component
   - Use MessageCircle icon from lucide-react
   - Add /chat route with proper active state styling
