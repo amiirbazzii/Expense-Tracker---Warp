@@ -92,12 +92,23 @@ export class OpenRouterClient {
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
+                const errorMessage = errorData.error?.message || errorData.message || response.statusText;
                 throw new Error(
-                    `OpenRouter API error: ${response.status} ${response.statusText}. ${JSON.stringify(errorData)}`
+                    `OpenRouter API error (${response.status}): ${errorMessage}. Model: ${this.config.model}`
                 );
             }
 
-            return await response.json();
+            const result = await response.json();
+            
+            // Validate response structure
+            if (!result.choices || !Array.isArray(result.choices)) {
+                console.error('Invalid OpenRouter response structure:', result);
+                throw new Error(
+                    `Invalid response from model ${this.config.model}. The model may not support the requested features or returned an unexpected format.`
+                );
+            }
+            
+            return result;
         } catch (error) {
             console.error('OpenRouter API call failed:', error);
             throw error;

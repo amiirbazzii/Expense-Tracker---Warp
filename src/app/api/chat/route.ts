@@ -291,7 +291,20 @@ async function processChatMessage(
 
   // Initial call to OpenRouter
   const initialResponse = await client.createChatCompletion(messages, tools, 'auto');
+  
+  // Validate response structure - some models may return different formats
+  if (!initialResponse.choices || initialResponse.choices.length === 0) {
+    console.error('Invalid response from OpenRouter:', initialResponse);
+    throw new Error('Invalid response from AI model. The model may not support function calling or returned an unexpected format.');
+  }
+  
   const assistantMessage = initialResponse.choices[0].message;
+  
+  // Validate message structure
+  if (!assistantMessage) {
+    console.error('No message in response:', initialResponse);
+    throw new Error('Invalid response structure from AI model.');
+  }
 
   // Check if function call was requested
   if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
@@ -328,6 +341,26 @@ async function processChatMessage(
     ];
 
     const finalResponse = await client.createChatCompletion(finalMessages);
+    
+    // Validate final response structure
+    if (!finalResponse.choices || finalResponse.choices.length === 0 || !finalResponse.choices[0].message) {
+      console.error('Invalid final response from OpenRouter:', finalResponse);
+      // Fallback: generate response from function result
+      if (functionResult.categories && functionResult.categories.length > 0) {
+        const category = functionResult.categories[0];
+        return {
+          message: `You spent ${currency} ${category.amount.toFixed(2)} on ${category.category} ${functionResult.dateRange}.`,
+          requiresClarification: false
+        };
+      } else if (functionResult.total !== undefined) {
+        return {
+          message: `Your total spending was ${currency} ${functionResult.total.toFixed(2)} ${functionResult.dateRange}.`,
+          requiresClarification: false
+        };
+      }
+      throw new Error('Invalid response from AI model after function call.');
+    }
+    
     const rawContent = finalResponse.choices[0].message.content;
     
     // Clean up any protocol tokens that might be in the response
@@ -463,9 +496,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Handle model compatibility issues
+    if (error.message?.includes('Invalid response from model') || 
+        error.message?.includes('Invalid response structure') ||
+        error.message?.includes('may not support')) {
+      return NextResponse.json(
+        { 
+          error: `This model may not be compatible with function calling. Try a different model like: google/gemini-flash-1.5-8b, anthropic/claude-3.5-sonnet, or openai/gpt-4o-mini`, 
+          code: ChatErrorCode.API_ERROR 
+        } as ChatError,
+        { status: 503 }
+      );
+    }
+
     if (error.message?.includes('OpenRouter')) {
       return NextResponse.json(
-        { error: "I'm having trouble right now. Please try again.", code: ChatErrorCode.API_ERROR } as ChatError,
+        { error: "I'm having trouble connecting to the AI service. Please try again.", code: ChatErrorCode.API_ERROR } as ChatError,
         { status: 503 }
       );
     }
