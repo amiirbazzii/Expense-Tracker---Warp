@@ -1,4 +1,5 @@
 import { extractTimeframe } from './dateUtils';
+import { getCachedCategories, setCachedCategories } from './categoryCache';
 
 export interface QueryIntent {
   type: 'category_spending' | 'total_spending' | 'compare_categories' | 'top_categories' | 'clarification_needed';
@@ -8,11 +9,23 @@ export interface QueryIntent {
   clarificationQuestion?: string;
 }
 
+// Common category keywords - this should ideally be populated from user's actual categories
+const DEFAULT_CATEGORIES = [
+  'coffee', 'food', 'restaurant', 'groceries', 'transport', 'transportation',
+  'entertainment', 'shopping', 'utilities', 'rent', 'mortgage', 'insurance',
+  'health', 'healthcare', 'fitness', 'gym', 'education', 'books',
+  'travel', 'vacation', 'gas', 'fuel', 'clothing', 'electronics',
+  'subscriptions', 'streaming', 'internet', 'phone', 'investments',
+  'savings', 'gifts', 'charity', 'pets', 'home', 'car', 'taxi', 'uber'
+];
+
 /**
  * Parses user messages to extract intent, categories, and timeframes
  * This is a simple rule-based interpreter that can be enhanced with AI later
+ * 
+ * Performance optimization: Uses cached categories when available
  */
-export function interpretQuery(message: string): QueryIntent {
+export function interpretQuery(message: string, userId?: string): QueryIntent {
   const normalized = message.toLowerCase().trim();
   
   // Extract timeframe
@@ -20,7 +33,7 @@ export function interpretQuery(message: string): QueryIntent {
 
   // Check for comparison queries
   if (normalized.includes('more') || normalized.includes('compare') || normalized.includes('vs') || normalized.includes('versus')) {
-    const categories = extractCategories(message);
+    const categories = extractCategories(message, userId);
     
     if (categories.length >= 2) {
       return {
@@ -57,7 +70,7 @@ export function interpretQuery(message: string): QueryIntent {
   }
 
   // Check for specific category spending
-  const categories = extractCategories(message);
+  const categories = extractCategories(message, userId);
   if (categories.length > 0) {
     return {
       type: 'category_spending',
@@ -98,22 +111,23 @@ export function interpretQuery(message: string): QueryIntent {
 /**
  * Extracts potential category names from user message
  * This is a simple implementation that looks for common category keywords
+ * 
+ * Performance optimization: Uses cached categories when available
  */
-function extractCategories(message: string): string[] {
+function extractCategories(message: string, userId?: string): string[] {
   const normalized = message.toLowerCase();
   const categories: string[] = [];
   
-  // Common category keywords - this should ideally be populated from user's actual categories
-  const commonCategories = [
-    'coffee', 'food', 'restaurant', 'groceries', 'transport', 'transportation',
-    'entertainment', 'shopping', 'utilities', 'rent', 'mortgage', 'insurance',
-    'health', 'healthcare', 'fitness', 'gym', 'education', 'books',
-    'travel', 'vacation', 'gas', 'fuel', 'clothing', 'electronics',
-    'subscriptions', 'streaming', 'internet', 'phone', 'investments',
-    'savings', 'gifts', 'charity', 'pets', 'home', 'car', 'taxi', 'uber'
-  ];
+  // Performance optimization: Try to get cached categories first
+  let categoryList = DEFAULT_CATEGORIES;
+  if (userId) {
+    const cached = getCachedCategories(userId);
+    if (cached && cached.length > 0) {
+      categoryList = cached.map(c => c.toLowerCase());
+    }
+  }
 
-  for (const category of commonCategories) {
+  for (const category of categoryList) {
     // Look for whole word matches
     const regex = new RegExp(`\\b${category}\\b`, 'i');
     if (regex.test(normalized)) {
@@ -123,6 +137,14 @@ function extractCategories(message: string): string[] {
   }
 
   return Array.from(new Set(categories)); // Remove duplicates
+}
+
+/**
+ * Update the cached categories for a user
+ * This should be called when fetching user's actual categories from the database
+ */
+export function updateCachedCategories(userId: string, categories: string[]): void {
+  setCachedCategories(userId, categories);
 }
 
 /**

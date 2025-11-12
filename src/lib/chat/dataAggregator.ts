@@ -1,5 +1,6 @@
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../convex/_generated/api';
+import { setCachedCategories } from './categoryCache';
 
 export interface CategorySpending {
   category: string;
@@ -193,14 +194,22 @@ export class DataAggregator {
 
   /**
    * Get user's categories for better query interpretation
+   * Performance optimization: Caches categories for faster subsequent queries
    */
-  async getUserCategories(token: string): Promise<string[]> {
+  async getUserCategories(token: string, userId?: string): Promise<string[]> {
     try {
       const categories = await this.client.query(api.expenses.getCategories, {
         token
       });
 
-      return categories.map(cat => cat.name);
+      const categoryNames = categories.map(cat => cat.name);
+      
+      // Performance optimization: Cache categories if userId is provided
+      if (userId && categoryNames.length > 0) {
+        setCachedCategories(userId, categoryNames);
+      }
+
+      return categoryNames;
     } catch (error) {
       console.error('Error fetching user categories:', error);
       return [];

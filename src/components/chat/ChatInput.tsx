@@ -19,6 +19,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [charCount, setCharCount] = useState(0);
   const maxChars = 500;
+  
+  // Performance optimization: Debounce submit to prevent rapid submissions
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSubmitTimeRef = useRef<number>(0);
+  const DEBOUNCE_DELAY = 300; // 300ms debounce
 
   // Auto-resize textarea
   useEffect(() => {
@@ -35,12 +41,21 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     setCharCount(value.length);
   }, [value]);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (submitTimeoutRef.current) {
+        clearTimeout(submitTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Enter to send, Shift+Enter for new line
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (value.trim() && !disabled) {
-        onSubmit();
+      if (value.trim() && !disabled && !isSubmitting) {
+        handleSubmit();
       }
     }
   };
@@ -53,8 +68,32 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   const handleSubmit = () => {
-    if (value.trim() && !disabled) {
+    if (value.trim() && !disabled && !isSubmitting) {
+      // Performance optimization: Debounce to prevent rapid submissions
+      const now = Date.now();
+      const timeSinceLastSubmit = now - lastSubmitTimeRef.current;
+      
+      if (timeSinceLastSubmit < DEBOUNCE_DELAY) {
+        // Too soon, schedule for later
+        if (submitTimeoutRef.current) {
+          clearTimeout(submitTimeoutRef.current);
+        }
+        
+        submitTimeoutRef.current = setTimeout(() => {
+          setIsSubmitting(true);
+          lastSubmitTimeRef.current = Date.now();
+          onSubmit();
+          setTimeout(() => setIsSubmitting(false), 100);
+        }, DEBOUNCE_DELAY - timeSinceLastSubmit);
+        
+        return;
+      }
+      
+      // Submit immediately
+      setIsSubmitting(true);
+      lastSubmitTimeRef.current = now;
       onSubmit();
+      setTimeout(() => setIsSubmitting(false), 100);
     }
   };
 
@@ -98,10 +137,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         
         <button
           onClick={handleSubmit}
-          disabled={disabled || !value.trim()}
+          disabled={disabled || !value.trim() || isSubmitting}
           aria-label="Send message"
           className={`p-3.5 rounded-2xl transition-all shadow-sm ${
-            disabled || !value.trim()
+            disabled || !value.trim() || isSubmitting
               ? 'bg-[#e1e1e1] text-gray-400 cursor-not-allowed opacity-50'
               : 'bg-black text-white hover:bg-gray-800 active:bg-gray-900 active:scale-95'
           }`}

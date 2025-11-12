@@ -221,6 +221,22 @@ async function getUserCalendar(token: string, aggregator: DataAggregator): Promi
 }
 
 /**
+ * Fetch and cache user categories for faster query parsing
+ * Performance optimization: Categories are cached for 5 minutes
+ */
+async function fetchAndCacheUserCategories(token: string, aggregator: DataAggregator, userId?: string): Promise<void> {
+  try {
+    // Fetch categories in the background (don't block the request)
+    aggregator.getUserCategories(token, userId).catch(err => {
+      console.error('Failed to fetch and cache user categories:', err);
+    });
+  } catch (error) {
+    // Silently fail - this is an optimization, not critical
+    console.error('Error in fetchAndCacheUserCategories:', error);
+  }
+}
+
+/**
  * Get enhanced system prompt with user's currency preference
  */
 function getEnhancedSystemPrompt(currency: string): string {
@@ -401,6 +417,10 @@ export async function POST(request: NextRequest) {
     const currency = await getUserCurrency(token, aggregator);
     const calendar = await getUserCalendar(token, aggregator);
     const useJalali = calendar === 'jalali';
+
+    // Performance optimization: Fetch and cache user categories in the background
+    // This doesn't block the request but improves future query parsing
+    fetchAndCacheUserCategories(token, aggregator, token);
 
     // Process the message
     const conversationHistory = body.conversationHistory || [];

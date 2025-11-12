@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Message, loadChatHistory, saveChatHistory } from '@/lib/chat/chatStorage';
 import { MessageList } from '@/components/chat/MessageList';
@@ -24,14 +24,34 @@ function ChatPageContent() {
   const [awaitingClarification, setAwaitingClarification] = useState(false);
   const [originalQuery, setOriginalQuery] = useState<string>('');
   const [retryDisabled, setRetryDisabled] = useState(false);
+  
+  // Performance optimization: Request cancellation
+  const abortControllerRef = useRef<AbortController | null>(null);
+  
+  // Performance optimization: Debounce timer
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load chat history on mount
+  // Performance optimization: Lazy load chat history
   useEffect(() => {
     const loadHistory = async () => {
       if (user?._id) {
         try {
           const history = await loadChatHistory(user._id);
-          setMessages(history);
+          
+          // Lazy loading: Only load recent messages initially (last 20)
+          // Full history will be loaded on scroll or when needed
+          const INITIAL_MESSAGE_COUNT = 20;
+          if (history.length > INITIAL_MESSAGE_COUNT) {
+            // Load only recent messages first
+            setMessages(history.slice(-INITIAL_MESSAGE_COUNT));
+            
+            // Load full history after a short delay
+            setTimeout(() => {
+              setMessages(history);
+            }, 500);
+          } else {
+            setMessages(history);
+          }
         } catch (err) {
           console.error('Failed to load chat history:', err);
         } finally {
@@ -62,9 +82,31 @@ function ChatPageContent() {
     setInputValue(prompt);
   };
 
+  // Performance optimization: Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Cancel any pending requests
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      // Clear debounce timer
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleSubmit = async (retryMessage?: string) => {
     const messageToSend = retryMessage || inputValue.trim();
     if (!messageToSend || isLoading || !user || !isOnline) return;
+    
+    // Performance optimization: Cancel any pending request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create new abort controller for this request
+    abortControllerRef.current = new AbortController();
 
     const userMessage: Message = {
       id: `msg-${Date.now()}-${Math.random()}`,
@@ -108,7 +150,7 @@ function ChatPageContent() {
         setOriginalQuery(messageToSend);
       }
 
-      // Call the chat API
+      // Call the chat API with abort signal for cancellation
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -119,7 +161,8 @@ function ChatPageContent() {
           message: messageContext,
           conversationHistory,
           isRespondingToClarification: awaitingClarification
-        })
+        }),
+        signal: abortControllerRef.current.signal
       });
 
       if (!response.ok) {
@@ -211,6 +254,14 @@ function ChatPageContent() {
     } catch (err: any) {
       console.error('Failed to send message:', err);
       
+      // Don't show error if request was aborted (user cancelled)
+      if (err.name === 'AbortError') {
+        console.log('Request was cancelled');
+        // Remove the optimistically added user message
+        setMessages(prev => prev.filter(msg => msg.id !== userMessage.id));
+        return;
+      }
+      
       // Handle network errors or other unexpected errors
       setError({
         message: "I'm having trouble right now. Please try again.",
@@ -227,6 +278,7 @@ function ChatPageContent() {
       }
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
     }
   };
 

@@ -121,8 +121,8 @@ export default function RootLayout({
             </AuthProvider>
           </ConvexProvider>
         </ErrorBoundary>
-          <LazyAnalytics />
-          <LazySpeedInsights />
+        <LazyAnalytics />
+        <LazySpeedInsights />
       </body>
     </html>
   );
