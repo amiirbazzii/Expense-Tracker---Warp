@@ -10,7 +10,7 @@ This document describes the environment variables required by Convex backend fun
 
 **Format:** Must start with `sk-or-v1-`
 
-**Example:** `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`
+**Example:** `sk-or-v1-test`
 
 **How to get:**
 1. Sign up at [OpenRouter.ai](https://openrouter.ai/)

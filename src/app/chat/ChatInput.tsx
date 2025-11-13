@@ -36,7 +36,12 @@ export function ChatInput({ value, onChange, onSend, disabled = false }: ChatInp
     
     // Enforce character limit
     if (newValue.length <= MAX_CHARS) {
-      onChange(newValue);
+      // Remove null bytes and control characters (except newlines and tabs)
+      const sanitized = newValue
+        .replace(/\0/g, '')
+        .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
+      
+      onChange(sanitized);
     }
   };
 
@@ -52,9 +57,23 @@ export function ChatInput({ value, onChange, onSend, disabled = false }: ChatInp
   // Handle send
   const handleSend = () => {
     const trimmedValue = value.trim();
-    if (trimmedValue && !disabled) {
-      onSend(trimmedValue);
+    
+    // Additional validation before sending
+    if (!trimmedValue || disabled) {
+      return;
     }
+    
+    // Check for minimum length (at least 1 character)
+    if (trimmedValue.length < 1) {
+      return;
+    }
+    
+    // Check for maximum length
+    if (trimmedValue.length > MAX_CHARS) {
+      return;
+    }
+    
+    onSend(trimmedValue);
   };
 
   // Check if send button should be disabled

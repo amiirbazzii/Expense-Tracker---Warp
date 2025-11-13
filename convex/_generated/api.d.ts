@@ -18,6 +18,7 @@ import type * as cardsAndIncome from "../cardsAndIncome.js";
 import type * as chat from "../chat.js";
 import type * as expenses from "../expenses.js";
 import type * as internal_ from "../internal.js";
+import type * as security from "../security.js";
 import type * as userSettings from "../userSettings.js";
 
 /**
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   chat: typeof chat;
   expenses: typeof expenses;
   internal: typeof internal_;
+  security: typeof security;
   userSettings: typeof userSettings;
 }>;
 export declare const api: FilterApi<

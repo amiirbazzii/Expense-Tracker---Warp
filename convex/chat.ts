@@ -2,27 +2,38 @@ import { v } from "convex/values";
 import { mutation, query, action } from "./_generated/server";
 import { ConvexError } from "convex/values";
 import { api } from "./_generated/api";
+import {
+  sanitizeUserInput,
+  validateMessageContent,
+  validateApiKey,
+  validateToken,
+  sanitizeForPrompt,
+} from "./security";
 
 // Helper function to validate environment variables
 function validateEnvironmentVariables() {
   const apiKey = process.env.OPENROUTER_API_KEY;
   const model = process.env.OPENROUTER_MODEL || "google/gemini-flash-1.5-8b";
 
-  if (!apiKey) {
-    console.error("OPENROUTER_API_KEY environment variable is not set");
-    throw new ConvexError("OpenRouter API key not configured");
+  // Use security utility for validation
+  const validation = validateApiKey(apiKey);
+  if (!validation.valid) {
+    console.error("OPENROUTER_API_KEY validation failed:", validation.error);
+    throw new ConvexError("OpenRouter API key not configured properly");
   }
 
-  if (!apiKey.startsWith("sk-or-v1-")) {
-    console.error("OPENROUTER_API_KEY appears to be invalid (should start with 'sk-or-v1-')");
-    throw new ConvexError("OpenRouter API key is invalid");
-  }
-
-  return { apiKey, model };
+  return { apiKey: apiKey!, model };
 }
 
 // Helper function to get user by token
 async function getUserByToken(ctx: any, token: string) {
+  // Validate token format first
+  const tokenValidation = validateToken(token);
+  if (!tokenValidation.valid) {
+    console.error("Token validation failed:", tokenValidation.error);
+    throw new ConvexError("Authentication required");
+  }
+
   const user = await ctx.db
     .query("users")
     .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", token))
@@ -41,10 +52,11 @@ export const getMessages = query({
     token: v.string(),
   },
   handler: async (ctx, args) => {
-    // Authenticate user
+    // Authenticate user (includes token validation)
     const user = await getUserByToken(ctx, args.token);
 
     // Query messages by userId and order by timestamp ascending
+    // This ensures users can only access their own messages
     const messages = await ctx.db
       .query("messages")
       .withIndex("by_user_timestamp", (q) => 
@@ -64,15 +76,16 @@ export const saveUserMessage = mutation({
     content: v.string(),
   },
   handler: async (ctx, args) => {
+    // Authenticate user (includes token validation)
     const user = await getUserByToken(ctx, args.token);
 
-    const sanitizedContent = args.content.trim();
-    if (!sanitizedContent) {
-      throw new ConvexError("Message content cannot be empty");
+    // Validate and sanitize message content
+    const validation = validateMessageContent(args.content, 500);
+    if (!validation.valid) {
+      throw new ConvexError(validation.error || "Invalid message content");
     }
-    if (sanitizedContent.length > 500) {
-      throw new ConvexError("Message content exceeds 500 character limit");
-    }
+
+    const sanitizedContent = validation.sanitized!;
 
     const timestamp = Date.now();
 
@@ -95,6 +108,7 @@ export const saveAssistantMessage = mutation({
     content: v.string(),
   },
   handler: async (ctx, args) => {
+    // Authenticate user (includes token validation)
     const user = await getUserByToken(ctx, args.token);
 
     const timestamp = Date.now();
@@ -149,7 +163,8 @@ export const sendMessage = action({
       const today = new Date();
       const formattedDate: string = today.toISOString().split('T')[0];
 
-      const transactionData: any = {
+      // Sanitize transaction data to prevent prompt injection
+      const rawTransactionData = {
         expenses: expenses.map((exp: any) => ({
           date: exp.date,
           category: exp.category,
@@ -168,6 +183,8 @@ export const sendMessage = action({
           name: card.name,
         })) || [],
       };
+
+      const transactionData: any = sanitizeForPrompt(rawTransactionData);
 
       // Currency symbol mapping
       const currencySymbols: Record<string, string> = {
@@ -189,6 +206,9 @@ User's transactions: ${JSON.stringify(transactionData)}
 
 Calculate exact amounts from the data provided. Keep responses concise (2-3 sentences maximum). Include specific numbers and currency symbols when relevant. Always format currency amounts according to the user's currency preference.`;
 
+      // Sanitize user input before sending to AI
+      const sanitizedUserContent = sanitizeUserInput(args.content);
+
       // Prepare messages for OpenRouter API
       const apiMessages: any[] = [
         {
@@ -199,11 +219,11 @@ Calculate exact amounts from the data provided. Keep responses concise (2-3 sent
           .slice(0, -1) // Exclude the message we just added
           .map((msg: any) => ({
             role: msg.role,
-            content: msg.content,
+            content: sanitizeUserInput(msg.content), // Sanitize historical messages too
           })),
         {
           role: "user",
-          content: args.content.trim(),
+          content: sanitizedUserContent,
         },
       ];
 
@@ -300,7 +320,8 @@ export const retryLastMessage = action({
       const today = new Date();
       const formattedDate: string = today.toISOString().split('T')[0];
 
-      const transactionData: any = {
+      // Sanitize transaction data to prevent prompt injection
+      const rawTransactionData = {
         expenses: expenses.map((exp: any) => ({
           date: exp.date,
           category: exp.category,
@@ -319,6 +340,8 @@ export const retryLastMessage = action({
           name: card.name,
         })) || [],
       };
+
+      const transactionData: any = sanitizeForPrompt(rawTransactionData);
 
       // Currency symbol mapping
       const currencySymbols: Record<string, string> = {
@@ -340,7 +363,7 @@ User's transactions: ${JSON.stringify(transactionData)}
 
 Calculate exact amounts from the data provided. Keep responses concise (2-3 sentences maximum). Include specific numbers and currency symbols when relevant. Always format currency amounts according to the user's currency preference.`;
 
-      // Prepare messages for OpenRouter API
+      // Prepare messages for OpenRouter API with sanitized content
       const apiMessages: any[] = [
         {
           role: "system",
@@ -350,7 +373,7 @@ Calculate exact amounts from the data provided. Keep responses concise (2-3 sent
           .filter((msg: any) => msg.timestamp <= lastUserMessage.timestamp)
           .map((msg: any) => ({
             role: msg.role,
-            content: msg.content,
+            content: sanitizeUserInput(msg.content), // Sanitize historical messages
           })),
       ];
 
