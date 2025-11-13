@@ -8,6 +8,7 @@ import { api } from "../../../convex/_generated/api";
 import { useAuth } from "@/contexts/AuthContext";
 import AppHeader from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // Component imports
 import { MessageBubble } from "./MessageBubble";
@@ -15,7 +16,7 @@ import { ChatInput } from "./ChatInput";
 import { EmptyState } from "./EmptyState";
 import { LoadingIndicator } from "./LoadingIndicator";
 
-export default function ChatPage() {
+function ChatPageContent() {
   const router = useRouter();
   const { user, token, loading: authLoading } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -261,5 +262,81 @@ export default function ChatPage() {
 
       <BottomNav />
     </div>
+  );
+}
+
+// Chat-specific error fallback component
+function ChatErrorFallback() {
+  const router = useRouter();
+
+  const handleGoBack = () => {
+    router.push("/dashboard");
+  };
+
+  const handleReload = () => {
+    window.location.reload();
+  };
+
+  return (
+    <div className="min-h-screen bg-white flex flex-col">
+      <AppHeader title="Chat" />
+      
+      <div className="flex-1 flex items-center justify-center p-4 pt-[76px]">
+        <div className="text-center max-w-md">
+          <div className="text-red-500 mb-4">
+            <svg 
+              className="mx-auto h-16 w-16" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" 
+              />
+            </svg>
+          </div>
+          
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            Something went wrong
+          </h2>
+          
+          <p className="text-gray-600 mb-6">
+            We encountered an error while loading the chat. This has been logged for debugging.
+          </p>
+          
+          <div className="flex flex-col gap-3">
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={handleReload}
+              className="px-6 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors"
+            >
+              Reload Page
+            </motion.button>
+            
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={handleGoBack}
+              className="px-6 py-3 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors"
+            >
+              Go to Dashboard
+            </motion.button>
+          </div>
+        </div>
+      </div>
+      
+      <BottomNav />
+    </div>
+  );
+}
+
+// Wrap chat page with error boundary
+export default function ChatPage() {
+  return (
+    <ErrorBoundary redirectToHome={false}>
+      <ChatPageContent />
+    </ErrorBoundary>
   );
 }

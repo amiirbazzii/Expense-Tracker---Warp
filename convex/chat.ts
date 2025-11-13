@@ -125,6 +125,40 @@ export const saveAssistantMessage = mutation({
   },
 });
 
+// Helper function to filter transactions by date (last 12 months)
+function filterTransactionsByDate(transactions: any[], monthsBack: number = 12): any[] {
+  const cutoffDate = Date.now() - (monthsBack * 30 * 24 * 60 * 60 * 1000);
+  return transactions.filter((t: any) => t.date >= cutoffDate);
+}
+
+// Helper function to compress transaction data for prompt
+function compressTransactionData(expenses: any[], income: any[], cards: any[]): any {
+  // Filter to last 12 months
+  const recentExpenses = filterTransactionsByDate(expenses, 12);
+  const recentIncome = filterTransactionsByDate(income, 12);
+
+  // Compress by removing redundant fields and aggregating where possible
+  return {
+    expenses: recentExpenses.map((exp: any) => ({
+      d: exp.date, // date
+      c: exp.category, // category
+      a: exp.amount, // amount
+      t: exp.title, // title
+      f: exp.for, // for
+    })),
+    income: recentIncome.map((inc: any) => ({
+      d: inc.date, // date
+      c: inc.category, // category
+      a: inc.amount, // amount
+      s: inc.source, // source
+      n: inc.notes, // notes
+    })),
+    cards: cards?.map((card: any) => ({
+      n: card.name, // name
+    })) || [],
+  };
+}
+
 // Action: Send a message and get AI response
 export const sendMessage = action({
   args: {
@@ -155,7 +189,7 @@ export const sendMessage = action({
       const currency: string = userSettings?.currency || "USD";
       const calendar: string = userSettings?.calendar || "gregorian";
 
-      // Get recent messages for context
+      // Get recent messages for context (limit to last 10)
       const messages: any[] = await ctx.runQuery(api.chat.getMessages, { token: args.token });
       const recentMessages: any[] = messages.slice(-10);
 
@@ -163,28 +197,11 @@ export const sendMessage = action({
       const today = new Date();
       const formattedDate: string = today.toISOString().split('T')[0];
 
-      // Sanitize transaction data to prevent prompt injection
-      const rawTransactionData = {
-        expenses: expenses.map((exp: any) => ({
-          date: exp.date,
-          category: exp.category,
-          amount: exp.amount,
-          title: exp.title,
-          for: exp.for,
-        })),
-        income: income.map((inc: any) => ({
-          date: inc.date,
-          category: inc.category,
-          amount: inc.amount,
-          source: inc.source,
-          notes: inc.notes,
-        })),
-        cards: cards?.map((card: any) => ({
-          name: card.name,
-        })) || [],
-      };
+      // Compress and filter transaction data (last 12 months only)
+      const compressedData = compressTransactionData(expenses, income, cards);
 
-      const transactionData: any = sanitizeForPrompt(rawTransactionData);
+      // Sanitize transaction data to prevent prompt injection
+      const transactionData: any = sanitizeForPrompt(compressedData);
 
       // Currency symbol mapping
       const currencySymbols: Record<string, string> = {
@@ -202,7 +219,9 @@ User's preferences:
 - Currency: ${currency} (format amounts as: ${currencyFormat})
 - Calendar: ${calendar}
 
-User's transactions: ${JSON.stringify(transactionData)}
+User's transactions (last 12 months): ${JSON.stringify(transactionData)}
+
+Note: Transaction data uses compressed format - expenses: {d:date, c:category, a:amount, t:title, f:for}, income: {d:date, c:category, a:amount, s:source, n:notes}, cards: {n:name}.
 
 Calculate exact amounts from the data provided. Keep responses concise (2-3 sentences maximum). Include specific numbers and currency symbols when relevant. Always format currency amounts according to the user's currency preference.`;
 
@@ -230,47 +249,63 @@ Calculate exact amounts from the data provided. Keep responses concise (2-3 sent
       // Validate environment variables and get API configuration
       const { apiKey, model } = validateEnvironmentVariables();
 
-      // Make HTTP request to OpenRouter API
-      const response: Response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://expense-tracker.app",
-          "X-Title": "Expense Tracker AI Chat",
-        },
-        body: JSON.stringify({
-          model,
-          messages: apiMessages,
-          temperature: 0.3,
-          max_tokens: 500,
-        }),
-      });
+      // Make HTTP request to OpenRouter API with 30 second timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-      if (!response.ok) {
-        const errorText: string = await response.text();
-        console.error("OpenRouter API error:", response.status, errorText);
-        throw new ConvexError("I'm having trouble right now. Please try again.");
+      try {
+        const response: Response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://expense-tracker.app",
+            "X-Title": "Expense Tracker AI Chat",
+          },
+          body: JSON.stringify({
+            model,
+            messages: apiMessages,
+            temperature: 0.3,
+            max_tokens: 500,
+          }),
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorText: string = await response.text();
+          console.error("OpenRouter API error:", response.status, errorText);
+          throw new ConvexError("I'm having trouble right now. Please try again.");
+        }
+
+        // Parse AI response
+        const data: any = await response.json();
+        const aiMessage: string = data.choices?.[0]?.message?.content;
+
+        if (!aiMessage) {
+          throw new ConvexError("I'm having trouble right now. Please try again.");
+        }
+
+        // Save assistant message
+        await ctx.runMutation(api.chat.saveAssistantMessage, {
+          token: args.token,
+          content: aiMessage,
+        });
+
+        return {
+          success: true,
+          message: aiMessage,
+        };
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        
+        // Handle timeout specifically
+        if (fetchError.name === 'AbortError') {
+          throw new ConvexError("Request took too long. Please try again.");
+        }
+        throw fetchError;
       }
-
-      // Parse AI response
-      const data: any = await response.json();
-      const aiMessage: string = data.choices?.[0]?.message?.content;
-
-      if (!aiMessage) {
-        throw new ConvexError("I'm having trouble right now. Please try again.");
-      }
-
-      // Save assistant message
-      await ctx.runMutation(api.chat.saveAssistantMessage, {
-        token: args.token,
-        content: aiMessage,
-      });
-
-      return {
-        success: true,
-        message: aiMessage,
-      };
     } catch (error) {
       if (error instanceof ConvexError) {
         throw error;
@@ -313,35 +348,18 @@ export const retryLastMessage = action({
       const currency: string = userSettings?.currency || "USD";
       const calendar: string = userSettings?.calendar || "gregorian";
 
-      // Get recent messages for context
+      // Get recent messages for context (limit to last 10)
       const recentMessages: any[] = messages.slice(-10);
 
       // Construct system prompt
       const today = new Date();
       const formattedDate: string = today.toISOString().split('T')[0];
 
-      // Sanitize transaction data to prevent prompt injection
-      const rawTransactionData = {
-        expenses: expenses.map((exp: any) => ({
-          date: exp.date,
-          category: exp.category,
-          amount: exp.amount,
-          title: exp.title,
-          for: exp.for,
-        })),
-        income: income.map((inc: any) => ({
-          date: inc.date,
-          category: inc.category,
-          amount: inc.amount,
-          source: inc.source,
-          notes: inc.notes,
-        })),
-        cards: cards?.map((card: any) => ({
-          name: card.name,
-        })) || [],
-      };
+      // Compress and filter transaction data (last 12 months only)
+      const compressedData = compressTransactionData(expenses, income, cards);
 
-      const transactionData: any = sanitizeForPrompt(rawTransactionData);
+      // Sanitize transaction data to prevent prompt injection
+      const transactionData: any = sanitizeForPrompt(compressedData);
 
       // Currency symbol mapping
       const currencySymbols: Record<string, string> = {
@@ -359,7 +377,9 @@ User's preferences:
 - Currency: ${currency} (format amounts as: ${currencyFormat})
 - Calendar: ${calendar}
 
-User's transactions: ${JSON.stringify(transactionData)}
+User's transactions (last 12 months): ${JSON.stringify(transactionData)}
+
+Note: Transaction data uses compressed format - expenses: {d:date, c:category, a:amount, t:title, f:for}, income: {d:date, c:category, a:amount, s:source, n:notes}, cards: {n:name}.
 
 Calculate exact amounts from the data provided. Keep responses concise (2-3 sentences maximum). Include specific numbers and currency symbols when relevant. Always format currency amounts according to the user's currency preference.`;
 
@@ -380,47 +400,63 @@ Calculate exact amounts from the data provided. Keep responses concise (2-3 sent
       // Validate environment variables and get API configuration
       const { apiKey, model } = validateEnvironmentVariables();
 
-      // Make HTTP request to OpenRouter API
-      const response: Response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://expense-tracker.app",
-          "X-Title": "Expense Tracker AI Chat",
-        },
-        body: JSON.stringify({
-          model,
-          messages: apiMessages,
-          temperature: 0.3,
-          max_tokens: 500,
-        }),
-      });
+      // Make HTTP request to OpenRouter API with 30 second timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-      if (!response.ok) {
-        const errorText: string = await response.text();
-        console.error("OpenRouter API error:", response.status, errorText);
-        throw new ConvexError("I'm having trouble right now. Please try again.");
+      try {
+        const response: Response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://expense-tracker.app",
+            "X-Title": "Expense Tracker AI Chat",
+          },
+          body: JSON.stringify({
+            model,
+            messages: apiMessages,
+            temperature: 0.3,
+            max_tokens: 500,
+          }),
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorText: string = await response.text();
+          console.error("OpenRouter API error:", response.status, errorText);
+          throw new ConvexError("I'm having trouble right now. Please try again.");
+        }
+
+        // Parse AI response
+        const data: any = await response.json();
+        const aiMessage: string = data.choices?.[0]?.message?.content;
+
+        if (!aiMessage) {
+          throw new ConvexError("I'm having trouble right now. Please try again.");
+        }
+
+        // Save new assistant response
+        await ctx.runMutation(api.chat.saveAssistantMessage, {
+          token: args.token,
+          content: aiMessage,
+        });
+
+        return {
+          success: true,
+          message: aiMessage,
+        };
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        
+        // Handle timeout specifically
+        if (fetchError.name === 'AbortError') {
+          throw new ConvexError("Request took too long. Please try again.");
+        }
+        throw fetchError;
       }
-
-      // Parse AI response
-      const data: any = await response.json();
-      const aiMessage: string = data.choices?.[0]?.message?.content;
-
-      if (!aiMessage) {
-        throw new ConvexError("I'm having trouble right now. Please try again.");
-      }
-
-      // Save new assistant response
-      await ctx.runMutation(api.chat.saveAssistantMessage, {
-        token: args.token,
-        content: aiMessage,
-      });
-
-      return {
-        success: true,
-        message: aiMessage,
-      };
     } catch (error) {
       if (error instanceof ConvexError) {
         throw error;
