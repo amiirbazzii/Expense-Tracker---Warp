@@ -46,6 +46,59 @@ async function getUserByToken(ctx: any, token: string) {
   return user;
 }
 
+// Rate limiting configuration
+const RATE_LIMIT_MESSAGES = 50; // Messages per hour
+const RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour in milliseconds
+
+// Helper function to check and update rate limit
+async function checkRateLimit(ctx: any, userId: any): Promise<{ allowed: boolean; resetTime?: number }> {
+  const now = Date.now();
+  
+  // Get existing rate limit record
+  const rateLimitRecord = await ctx.db
+    .query("rateLimits")
+    .withIndex("by_user", (q: any) => q.eq("userId", userId))
+    .first();
+
+  if (!rateLimitRecord) {
+    // No record exists, create one
+    await ctx.db.insert("rateLimits", {
+      userId,
+      messageCount: 1,
+      windowStart: now,
+    });
+    return { allowed: true };
+  }
+
+  // Check if the current window has expired
+  const windowEnd = rateLimitRecord.windowStart + RATE_LIMIT_WINDOW;
+  
+  if (now >= windowEnd) {
+    // Window expired, reset the counter
+    await ctx.db.patch(rateLimitRecord._id, {
+      messageCount: 1,
+      windowStart: now,
+    });
+    return { allowed: true };
+  }
+
+  // Window is still active, check if limit is reached
+  if (rateLimitRecord.messageCount >= RATE_LIMIT_MESSAGES) {
+    // Limit exceeded
+    return {
+      allowed: false,
+      resetTime: windowEnd,
+    };
+  }
+
+  // Increment the counter
+  await ctx.db.patch(rateLimitRecord._id, {
+    messageCount: rateLimitRecord.messageCount + 1,
+  });
+
+  return { allowed: true };
+}
+
 // Query: Get all messages for authenticated user
 export const getMessages = query({
   args: {
@@ -125,6 +178,20 @@ export const saveAssistantMessage = mutation({
   },
 });
 
+// Mutation: Check and update rate limit
+export const checkAndUpdateRateLimit = mutation({
+  args: {
+    token: v.string(),
+  },
+  handler: async (ctx, args): Promise<{ allowed: boolean; resetTime?: number }> => {
+    // Authenticate user (includes token validation)
+    const user = await getUserByToken(ctx, args.token);
+
+    // Check and update rate limit
+    return await checkRateLimit(ctx, user._id);
+  },
+});
+
 // Helper function to filter transactions by date (last 12 months)
 function filterTransactionsByDate(transactions: any[], monthsBack: number = 12): any[] {
   const cutoffDate = Date.now() - (monthsBack * 30 * 24 * 60 * 60 * 1000);
@@ -166,18 +233,36 @@ export const sendMessage = action({
     content: v.string(),
   },
   handler: async (ctx, args): Promise<{ success: boolean; message: string }> => {
-    // Save user message first
+    // Get user data for authentication first (before saving message)
+    const user: any = await ctx.runQuery(api.auth.getCurrentUser, { token: args.token });
+    if (!user) {
+      throw new ConvexError("Authentication required");
+    }
+
+    // Check rate limit before processing
+    const rateLimitCheck = await ctx.runMutation(api.chat.checkAndUpdateRateLimit, {
+      token: args.token,
+    });
+
+    if (!rateLimitCheck.allowed) {
+      const resetTime = new Date(rateLimitCheck.resetTime!);
+      const resetTimeStr = resetTime.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+      });
+      throw new ConvexError(
+        `You've reached the message limit of ${RATE_LIMIT_MESSAGES} messages per hour. Please try again after ${resetTimeStr}.`
+      );
+    }
+
+    // Save user message after rate limit check passes
     await ctx.runMutation(api.chat.saveUserMessage, {
       token: args.token,
       content: args.content,
     });
 
     try {
-      // Get user data for authentication
-      const user: any = await ctx.runQuery(api.auth.getCurrentUser, { token: args.token });
-      if (!user) {
-        throw new ConvexError("Authentication required");
-      }
 
       // Retrieve all user transactions
       const expenses: any[] = await ctx.runQuery(api.expenses.getExpenses, { token: args.token });

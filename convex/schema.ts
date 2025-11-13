@@ -74,4 +74,10 @@ export default defineSchema({
     timestamp: v.number(),
     createdAt: v.number(),
   }).index("by_user", ["userId"]).index("by_user_timestamp", ["userId", "timestamp"]),
+
+  rateLimits: defineTable({
+    userId: v.id("users"),
+    messageCount: v.number(),
+    windowStart: v.number(),
+  }).index("by_user", ["userId"]),
 });
