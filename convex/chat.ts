@@ -3,6 +3,24 @@ import { mutation, query, action } from "./_generated/server";
 import { ConvexError } from "convex/values";
 import { api } from "./_generated/api";
 
+// Helper function to validate environment variables
+function validateEnvironmentVariables() {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  const model = process.env.OPENROUTER_MODEL || "google/gemini-flash-1.5-8b";
+
+  if (!apiKey) {
+    console.error("OPENROUTER_API_KEY environment variable is not set");
+    throw new ConvexError("OpenRouter API key not configured");
+  }
+
+  if (!apiKey.startsWith("sk-or-v1-")) {
+    console.error("OPENROUTER_API_KEY appears to be invalid (should start with 'sk-or-v1-')");
+    throw new ConvexError("OpenRouter API key is invalid");
+  }
+
+  return { apiKey, model };
+}
+
 // Helper function to get user by token
 async function getUserByToken(ctx: any, token: string) {
   const user = await ctx.db
@@ -189,13 +207,8 @@ Calculate exact amounts from the data provided. Keep responses concise (2-3 sent
         },
       ];
 
-      // Get API key and model from environment
-      const apiKey: string | undefined = process.env.OPENROUTER_API_KEY;
-      const model: string = process.env.OPENROUTER_MODEL || "google/gemini-flash-1.5-8b";
-
-      if (!apiKey) {
-        throw new ConvexError("OpenRouter API key not configured");
-      }
+      // Validate environment variables and get API configuration
+      const { apiKey, model } = validateEnvironmentVariables();
 
       // Make HTTP request to OpenRouter API
       const response: Response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -341,13 +354,8 @@ Calculate exact amounts from the data provided. Keep responses concise (2-3 sent
           })),
       ];
 
-      // Get API key and model from environment
-      const apiKey: string | undefined = process.env.OPENROUTER_API_KEY;
-      const model: string = process.env.OPENROUTER_MODEL || "google/gemini-flash-1.5-8b";
-
-      if (!apiKey) {
-        throw new ConvexError("OpenRouter API key not configured");
-      }
+      // Validate environment variables and get API configuration
+      const { apiKey, model } = validateEnvironmentVariables();
 
       // Make HTTP request to OpenRouter API
       const response: Response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
