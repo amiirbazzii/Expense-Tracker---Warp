@@ -6,15 +6,16 @@ const withPWA = require('next-pwa')({
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
   sw: 'sw.js',
+  importScripts: ['/background-sync-sw.js'],
   buildExcludes: [/app-build-manifest\.json$/, /middleware-manifest\.json$/],
   publicExcludes: ['!robots.txt', '!sitemap.xml'],
   // Enable offline support - cache the start URL
   dynamicStartUrl: true,
-  // Don't use fallbacks - we want cached pages to load
-  // fallbacks: {
-  //   document: '/offline',
-  //   image: '/logo.png',
-  // },
+  dynamicStartUrlRedirect: '/dashboard',
+  // Use fallbacks for offline pages that haven't been cached yet
+  fallbacks: {
+    document: '/offline.html',
+  },
   // Aggressive caching for offline-first experience
   cacheOnFrontEndNav: true,
   reloadOnOnline: false, // Don't auto-reload when coming back online
@@ -93,18 +94,19 @@ const withPWA = require('next-pwa')({
         ]
       },
     },
-    // App pages - Cache first for instant offline access with fallback
+    // App pages - Network first so pages get cached on visit, served from cache offline
     {
       urlPattern: ({ request, url }) => {
         const pathname = new URL(url).pathname;
-        // Cache main app pages aggressively for offline-first
+        // Cache main app pages for offline access
         const appPages = ['/dashboard', '/expenses', '/income', '/cards', '/settings', '/onboarding'];
         return request.destination === 'document' &&
           appPages.some(page => pathname.startsWith(page));
       },
-      handler: 'CacheFirst',
+      handler: 'NetworkFirst',
       options: {
         cacheName: 'app-pages',
+        networkTimeoutSeconds: 5,
         expiration: {
           maxEntries: 30,
           maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
@@ -112,35 +114,19 @@ const withPWA = require('next-pwa')({
         cacheableResponse: {
           statuses: [0, 200],
         },
-        plugins: [
-          {
-            handlerDidError: async ({ request }) => {
-              // If page not in cache and offline, return offline page
-              console.log('App page not cached, returning offline fallback');
-              const offlinePage = await caches.match('/offline.html');
-              if (offlinePage) {
-                return offlinePage;
-              }
-              // Last resort: return a basic response
-              return new Response(
-                '<html><body><h1>Offline</h1><p>This page is not available offline. Please connect to the internet.</p></body></html>',
-                { headers: { 'Content-Type': 'text/html' } }
-              );
-            }
-          }
-        ]
       },
     },
-    // Root and other navigation - Cache first for offline access
+    // Root and auth pages - Network first for offline access
     {
       urlPattern: ({ request, url }) => {
         const pathname = new URL(url).pathname;
         return request.destination === 'document' &&
           (pathname === '/' || pathname === '/login' || pathname === '/register');
       },
-      handler: 'CacheFirst',
+      handler: 'NetworkFirst',
       options: {
         cacheName: 'auth-pages',
+        networkTimeoutSeconds: 5,
         expiration: {
           maxEntries: 10,
           maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
@@ -148,25 +134,15 @@ const withPWA = require('next-pwa')({
         cacheableResponse: {
           statuses: [0, 200],
         },
-        plugins: [
-          {
-            handlerDidError: async () => {
-              const offlinePage = await caches.match('/offline.html');
-              return offlinePage || new Response(
-                '<html><body><h1>Offline</h1><p>Please connect to the internet.</p></body></html>',
-                { headers: { 'Content-Type': 'text/html' } }
-              );
-            }
-          }
-        ]
       },
     },
-    // Other navigation requests - Cache first for offline support
+    // Other navigation requests - Network first for offline support
     {
       urlPattern: ({ request }) => request.destination === 'document',
-      handler: 'CacheFirst',
+      handler: 'NetworkFirst',
       options: {
         cacheName: 'pages',
+        networkTimeoutSeconds: 5,
         expiration: {
           maxEntries: 50,
           maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
@@ -174,17 +150,6 @@ const withPWA = require('next-pwa')({
         cacheableResponse: {
           statuses: [0, 200],
         },
-        plugins: [
-          {
-            handlerDidError: async () => {
-              const offlinePage = await caches.match('/offline.html');
-              return offlinePage || new Response(
-                '<html><body><h1>Offline</h1><p>Please connect to the internet.</p></body></html>',
-                { headers: { 'Content-Type': 'text/html' } }
-              );
-            }
-          }
-        ]
       },
     },
     // Vercel analytics - Network only, fail silently when offline

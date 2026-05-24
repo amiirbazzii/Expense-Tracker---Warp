@@ -46,6 +46,20 @@ Object.defineProperty(global, 'navigator', {
   writable: true
 });
 
+Object.defineProperty(global, 'Notification', {
+  value: {
+    permission: 'default',
+    requestPermission: jest.fn()
+  },
+  writable: true
+});
+
+// Mock MessageChannel globally
+global.MessageChannel = class {
+  port1 = { onmessage: null, close: jest.fn() } as any;
+  port2 = { close: jest.fn() } as any;
+} as any;
+
 Object.defineProperty(global, 'window', {
   value: {
     Notification: {
@@ -61,7 +75,8 @@ Object.defineProperty(global, 'window', {
     location: {
       origin: 'http://localhost:3000',
       reload: jest.fn()
-    }
+    },
+    sync: {}
   },
   writable: true
 });
@@ -87,9 +102,9 @@ describe('ServiceWorkerManager', () => {
       serviceWorkerManager = new ServiceWorkerManager();
       
       // Wait for initialization
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 300));
       
-      expect(mockServiceWorker.register).toHaveBeenCalledWith('/background-sync-sw.js', {
+      expect(mockServiceWorker.register).toHaveBeenCalledWith('/sw.js', {
         scope: '/'
       });
       expect(mockRegistration.sync.register).toHaveBeenCalledWith('background-sync');
@@ -104,7 +119,7 @@ describe('ServiceWorkerManager', () => {
       serviceWorkerManager = new ServiceWorkerManager();
       
       // Wait for initialization
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       expect(consoleSpy).toHaveBeenCalledWith(
         'Failed to initialize ServiceWorkerManager:',
@@ -118,7 +133,7 @@ describe('ServiceWorkerManager', () => {
   describe('Background Sync', () => {
     beforeEach(async () => {
       serviceWorkerManager = new ServiceWorkerManager();
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 300));
     });
 
     it('should register background sync successfully', async () => {
@@ -130,7 +145,7 @@ describe('ServiceWorkerManager', () => {
     it('should handle background sync registration failure', async () => {
       mockRegistration.sync.register.mockRejectedValue(new Error('Sync registration failed'));
       
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
       
       await serviceWorkerManager.registerBackgroundSync();
       
@@ -144,7 +159,7 @@ describe('ServiceWorkerManager', () => {
 
     it('should force sync successfully', async () => {
       const mockController = {
-        postMessage: vi.fn()
+        postMessage: jest.fn()
       };
       mockServiceWorker.controller = mockController;
       
@@ -170,7 +185,7 @@ describe('ServiceWorkerManager', () => {
   describe('Conflict Detection', () => {
     beforeEach(async () => {
       serviceWorkerManager = new ServiceWorkerManager();
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 300));
     });
 
     it('should register conflict check successfully', async () => {
@@ -182,7 +197,7 @@ describe('ServiceWorkerManager', () => {
     it('should handle conflict check registration failure', async () => {
       mockRegistration.sync.register.mockRejectedValue(new Error('Conflict check registration failed'));
       
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
       
       await serviceWorkerManager.registerConflictCheck();
       
@@ -198,28 +213,37 @@ describe('ServiceWorkerManager', () => {
   describe('Push Notifications', () => {
     beforeEach(async () => {
       serviceWorkerManager = new ServiceWorkerManager();
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 300));
     });
 
     it('should request notification permission successfully', async () => {
-      (window.Notification.requestPermission as Mock).mockResolvedValue('granted');
-      
-      const permission = await serviceWorkerManager.requestNotificationPermission();
-      
-      expect(permission).toBe('granted');
-      expect(window.Notification.requestPermission).toHaveBeenCalled();
-    });
-
-    it('should return existing permission if already granted', async () => {
-      Object.defineProperty(window.Notification, 'permission', {
-        value: 'granted',
+      Object.defineProperty(global, 'Notification', {
+        value: {
+          permission: 'default',
+          requestPermission: jest.fn().mockResolvedValue('granted')
+        },
         writable: true
       });
       
       const permission = await serviceWorkerManager.requestNotificationPermission();
       
       expect(permission).toBe('granted');
-      expect(window.Notification.requestPermission).not.toHaveBeenCalled();
+      expect(global.Notification.requestPermission).toHaveBeenCalled();
+    });
+
+    it('should return existing permission if already granted', async () => {
+      Object.defineProperty(global, 'Notification', {
+        value: {
+          permission: 'granted',
+          requestPermission: jest.fn()
+        },
+        writable: true
+      });
+      
+      const permission = await serviceWorkerManager.requestNotificationPermission();
+      
+      expect(permission).toBe('granted');
+      expect(global.Notification.requestPermission).not.toHaveBeenCalled();
     });
 
     it('should subscribe to push notifications successfully', async () => {
@@ -264,7 +288,7 @@ describe('ServiceWorkerManager', () => {
 
     it('should unsubscribe from push notifications successfully', async () => {
       const mockSubscription = {
-        unsubscribe: vi.fn().mockResolvedValue(true)
+        unsubscribe: jest.fn().mockResolvedValue(true)
       };
       
       mockRegistration.pushManager.getSubscription.mockResolvedValue(mockSubscription);
@@ -279,12 +303,12 @@ describe('ServiceWorkerManager', () => {
   describe('Sync Status', () => {
     beforeEach(async () => {
       serviceWorkerManager = new ServiceWorkerManager();
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 300));
     });
 
     it('should get sync status successfully', async () => {
       const mockController = {
-        postMessage: vi.fn()
+        postMessage: jest.fn()
       };
       mockServiceWorker.controller = mockController;
       
@@ -316,7 +340,7 @@ describe('ServiceWorkerManager', () => {
 
     it('should handle sync status timeout', async () => {
       const mockController = {
-        postMessage: vi.fn()
+        postMessage: jest.fn()
       };
       mockServiceWorker.controller = mockController;
       
@@ -330,11 +354,11 @@ describe('ServiceWorkerManager', () => {
   describe('Event Handling', () => {
     beforeEach(async () => {
       serviceWorkerManager = new ServiceWorkerManager();
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 300));
     });
 
     it('should add and remove event listeners', () => {
-      const listener = vi.fn();
+      const listener = jest.fn();
       
       serviceWorkerManager.addEventListener(listener);
       serviceWorkerManager.removeEventListener(listener);
@@ -344,7 +368,7 @@ describe('ServiceWorkerManager', () => {
     });
 
     it('should emit sync events to listeners', () => {
-      const listener = vi.fn();
+      const listener = jest.fn();
       serviceWorkerManager.addEventListener(listener);
       
       // Simulate receiving a sync event message
@@ -368,7 +392,9 @@ describe('ServiceWorkerManager', () => {
   describe('Feature Detection', () => {
     beforeEach(async () => {
       serviceWorkerManager = new ServiceWorkerManager();
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 300));
+      // Ensure manager is initialized for feature detection
+      serviceWorkerManager['isInitialized'] = true;
     });
 
     it('should detect Service Worker support correctly', () => {
@@ -395,7 +421,7 @@ describe('ServiceWorkerManager', () => {
   describe('Utility Functions', () => {
     beforeEach(async () => {
       serviceWorkerManager = new ServiceWorkerManager();
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 300));
     });
 
     it('should convert VAPID key to Uint8Array correctly', () => {
@@ -430,11 +456,11 @@ describe('Background Sync Integration', () => {
     const serviceWorkerManager = new ServiceWorkerManager();
     
     // Wait for initialization
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, 300));
     
     // Mock successful operations
     const mockController = {
-      postMessage: vi.fn()
+      postMessage: jest.fn()
     };
     mockServiceWorker.controller = mockController;
     

@@ -45,12 +45,12 @@ export class ServiceWorkerManager {
     }
 
     try {
-      // Register the background sync service worker
-      this.registration = await navigator.serviceWorker.register('/background-sync-sw.js', {
+      // Register the main service worker
+      this.registration = await navigator.serviceWorker.register('/sw.js', {
         scope: '/'
       });
 
-      console.log('Background Sync Service Worker registered:', this.registration);
+      console.log('Service Worker registered:', this.registration);
 
       // Setup message channel for communication
       this.setupMessageChannel();

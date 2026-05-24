@@ -3,32 +3,7 @@
  * Tests for Service Worker background sync functionality
  */
 
-import { it } from 'node:test';
-import { describe } from 'node:test';
-import { it } from 'node:test';
-import { it } from 'node:test';
-import { beforeEach } from 'node:test';
-import { describe } from 'node:test';
-import { it } from 'node:test';
-import { it } from 'node:test';
-import { beforeEach } from 'node:test';
-import { describe } from 'node:test';
-import { it } from 'node:test';
-import { it } from 'node:test';
-import { it } from 'node:test';
-import { beforeEach } from 'node:test';
-import { describe } from 'node:test';
-import { it } from 'node:test';
-import { it } from 'node:test';
-import { it } from 'node:test';
-import { beforeEach } from 'node:test';
-import { describe } from 'node:test';
-import { it } from 'node:test';
-import { it } from 'node:test';
-import { describe } from 'node:test';
-import { afterEach } from 'node:test';
-import { beforeEach } from 'node:test';
-import { describe } from 'node:test';
+
 import { ServiceWorkerManager } from '../src/lib/workers/ServiceWorkerManager';
 
 // Mock Service Worker APIs
@@ -127,7 +102,7 @@ describe('ServiceWorkerManager', () => {
       // Wait for initialization to complete
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      expect(mockServiceWorker.register).toHaveBeenCalledWith('/background-sync-sw.js', {
+      expect(mockServiceWorker.register).toHaveBeenCalledWith('/sw.js', {
         scope: '/'
       });
       // Sync registration happens during initialization

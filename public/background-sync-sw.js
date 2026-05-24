@@ -31,26 +31,6 @@ let lastSyncTimestamp = 0;
 let pendingOperations = [];
 
 /**
- * Service Worker Installation
- */
-self.addEventListener('install', (event) => {
-  console.log('Background Sync Service Worker installing...');
-  
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll([
-        '/',
-        '/offline',
-        '/manifest.json'
-      ]);
-    })
-  );
-  
-  // Skip waiting to activate immediately
-  self.skipWaiting();
-});
-
-/**
  * Service Worker Activation
  */
 self.addEventListener('activate', (event) => {
@@ -58,16 +38,6 @@ self.addEventListener('activate', (event) => {
   
   event.waitUntil(
     Promise.all([
-      // Clean up old caches
-      caches.keys().then((cacheNames) => {
-        return Promise.all(
-          cacheNames.map((cacheName) => {
-            if (cacheName !== CACHE_NAME) {
-              return caches.delete(cacheName);
-            }
-          })
-        );
-      }),
       // Claim all clients
       self.clients.claim(),
       // Initialize sync state
@@ -137,122 +107,6 @@ function openDatabase() {
       }
     };
   });
-}
-
-/**
- * Handle fetch events with caching strategies
- */
-self.addEventListener('fetch', (event) => {
-  const { request } = event;
-  const url = new URL(request.url);
-  
-  // Skip non-GET requests and external URLs
-  if (request.method !== 'GET' || !url.origin.includes(self.location.origin)) {
-    return;
-  }
-  
-  // Determine cache strategy based on URL
-  let strategy = CACHE_STRATEGIES.NETWORK_FIRST;
-  
-  if (url.pathname.includes('/api/')) {
-    strategy = CACHE_STRATEGIES.NETWORK_FIRST;
-  } else if (url.pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2)$/)) {
-    strategy = CACHE_STRATEGIES.CACHE_FIRST;
-  } else {
-    strategy = CACHE_STRATEGIES.STALE_WHILE_REVALIDATE;
-  }
-  
-  event.respondWith(handleFetchWithStrategy(request, strategy));
-});
-
-/**
- * Handle fetch with specific caching strategy
- */
-async function handleFetchWithStrategy(request, strategy) {
-  const cache = await caches.open(CACHE_NAME);
-  
-  switch (strategy) {
-    case CACHE_STRATEGIES.CACHE_FIRST:
-      return handleCacheFirst(request, cache);
-    
-    case CACHE_STRATEGIES.NETWORK_FIRST:
-      return handleNetworkFirst(request, cache);
-    
-    case CACHE_STRATEGIES.STALE_WHILE_REVALIDATE:
-      return handleStaleWhileRevalidate(request, cache);
-    
-    default:
-      return fetch(request);
-  }
-}
-
-/**
- * Cache First strategy
- */
-async function handleCacheFirst(request, cache) {
-  const cachedResponse = await cache.match(request);
-  
-  if (cachedResponse) {
-    return cachedResponse;
-  }
-  
-  try {
-    const networkResponse = await fetch(request);
-    if (networkResponse.ok) {
-      cache.put(request, networkResponse.clone());
-    }
-    return networkResponse;
-  } catch (error) {
-    console.error('Network request failed:', error);
-    return new Response('Network error', { status: 503 });
-  }
-}
-
-/**
- * Network First strategy
- */
-async function handleNetworkFirst(request, cache) {
-  try {
-    const networkResponse = await fetch(request);
-    if (networkResponse.ok) {
-      cache.put(request, networkResponse.clone());
-    }
-    return networkResponse;
-  } catch (error) {
-    console.error('Network request failed, trying cache:', error);
-    const cachedResponse = await cache.match(request);
-    
-    if (cachedResponse) {
-      return cachedResponse;
-    }
-    
-    return new Response('Offline', { status: 503 });
-  }
-}
-
-/**
- * Stale While Revalidate strategy
- */
-async function handleStaleWhileRevalidate(request, cache) {
-  const cachedResponse = await cache.match(request);
-  
-  // Start network request in background
-  const networkPromise = fetch(request).then((networkResponse) => {
-    if (networkResponse.ok) {
-      cache.put(request, networkResponse.clone());
-    }
-    return networkResponse;
-  }).catch((error) => {
-    console.error('Background network request failed:', error);
-  });
-  
-  // Return cached response immediately if available
-  if (cachedResponse) {
-    return cachedResponse;
-  }
-  
-  // Wait for network response if no cache
-  return networkPromise;
 }
 
 /**
