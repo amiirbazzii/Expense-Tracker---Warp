@@ -34,7 +34,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      router.replace("/expenses");
+      router.replace("/add");
     }
   }, [user, router]);
 
@@ -56,7 +56,7 @@ export default function LoginPage() {
     try {
       await login(username.trim(), password);
       toast.success("Welcome back!");
-      router.push("/expenses");
+      router.push("/add");
     } catch (error: unknown) {
       const message = error instanceof ConvexError ? (error.data as { message: string }).message : error instanceof Error ? error.message : "Login failed. Please try again.";
       if (message.toLowerCase().includes("username not found")) {

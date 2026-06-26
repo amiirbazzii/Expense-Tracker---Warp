@@ -44,6 +44,7 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
     return map[code] ?? code;
   };
 
+
   // Format raw numeric string with commas
   const formatNumber = (numStr: string) => {
     if (!numStr) return "";
@@ -79,7 +80,7 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
   return (
     <div className={`w-full ${className}`.trim()}>
       <InputContainer
-        rightAdornment={<span className="text-gray-400 whitespace-nowrap">{getSymbol(symbol)}</span>}
+        rightAdornment={<span className="text-gray-400 text-sm whitespace-nowrap font-normal">{getSymbol(symbol)}</span>}
       >
         <input
           ref={inputRef}
@@ -88,7 +89,8 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
           pattern="[0-9,]*\.?[0-9]*"
           value={formatNumber(value)}
           onChange={handleChange}
-          className={`w-full bg-transparent outline-none placeholder:text-gray-500 ${value ? 'font-medium text-gray-900' : 'font-normal text-gray-900'}`}
+          className={`w-full bg-transparent outline-none text-black placeholder:text-gray-500 ${value ? 'font-medium text-gray-900' : 'font-normal text-gray-900'}`}
+          placeholder="Enter amount"
           {...rest}
         />
       </InputContainer>

@@ -151,7 +151,7 @@ export default function EditExpensePage() {
       });
 
       toast.success("The expense has been successfully updated.");
-      router.push("/expenses");
+      router.push("/add?tab=expense");
     } catch (error: unknown) {
       toast.error("There was an error updating the expense. Please try again.");
     } finally {

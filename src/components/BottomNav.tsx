@@ -3,28 +3,23 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { CirclePlus, ChartPie, Settings, CircleArrowUp } from "lucide-react";
+import { CirclePlus, ChartPie, Settings } from "lucide-react";
 
 const navItems = [
   {
-    href: "/expenses",
+    href: "/add",
     icon: CirclePlus,
-    label: "Expenses",
-  },
-  {
-    href: "/income",
-    icon: CircleArrowUp,
-    label: "Income",
+    label: "Add",
   },
   {
     href: "/dashboard",
     icon: ChartPie,
-    label: "Dashboard",
+    label: "Report",
   },
   {
     href: "/settings",
     icon: Settings,
-    label: "Settings",
+    label: "Setting",
   },
 ];
 
@@ -32,10 +27,11 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 md:hidden z-40">
       <div className="flex justify-around">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href || 
+            (item.href === "/add" && (pathname === "/expenses" || pathname === "/income" || pathname.startsWith("/expenses/edit") || pathname.startsWith("/income/edit")));
           const Icon = item.icon;
 
           return (
@@ -45,8 +41,8 @@ export function BottomNav() {
                 className={`flex flex-col items-center p-2 min-w-[44px] min-h-[44px] justify-center ${isActive ? "text-black" : "text-gray-400"
                   }`}
               >
-                <Icon size={24} />
-                <span className={`text-xs mt-1 ${isActive ? "font-medium" : "font-normal"
+                <Icon size={24} className={isActive ? "stroke-[2.5px]" : "stroke-[2px]"} />
+                <span className={`text-xs mt-1 ${isActive ? "font-semibold text-black" : "font-normal text-gray-400"
                   }`}>{item.label}</span>
               </motion.div>
             </Link>
@@ -56,3 +52,4 @@ export function BottomNav() {
     </nav>
   );
 }
+

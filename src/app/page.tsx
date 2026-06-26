@@ -66,8 +66,8 @@ export default function Home() {
       // Use requestIdleCallback for non-critical redirects
       const redirect = () => {
         if (user || (token && !isOnline)) {
-          console.log('Home: Redirecting to expenses');
-          router.replace("/expenses");
+          console.log('Home: Redirecting to add transaction page');
+          router.replace("/add");
         } else {
           // For new users or when no authentication is available
           console.log('Home: Redirecting to login');

@@ -2,6 +2,7 @@ import React from "react";
 
 interface InputContainerProps {
   leftIcon?: React.ElementType;
+  leftElement?: React.ReactNode;
   rightAdornment?: React.ReactNode;
   className?: string;
   contentClassName?: string;
@@ -17,6 +18,7 @@ interface InputContainerProps {
  */
 export const InputContainer: React.FC<InputContainerProps> = ({
   leftIcon: LeftIcon,
+  leftElement,
   rightAdornment,
   className = "",
   contentClassName = "",
@@ -25,6 +27,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({
   return (
     <div className={`relative flex items-center w-full h-14 px-4 rounded-[10px] transition-all duration-300 border border-[#D3D3D3] bg-[#f8f8f8] focus-within:border-black focus-within:shadow-[inset_0px_0px_0px_1px_#000] ${className}`.trim()}>
       {LeftIcon && <LeftIcon className="size-4 mr-3 shrink-0 text-[#707070]" />}
+      {leftElement && <div className="mr-3 shrink-0 text-[#707070] flex items-center justify-center font-normal text-base select-none">{leftElement}</div>}
       <div className={`flex items-center flex-1 min-w-0 ${contentClassName}`.trim()}>
         {children}
       </div>
@@ -38,3 +41,4 @@ export const InputContainer: React.FC<InputContainerProps> = ({
 };
 
 export default InputContainer;
+

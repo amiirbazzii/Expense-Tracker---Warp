@@ -7,10 +7,11 @@ import { HeaderRow } from "@/components/HeaderRow";
 import { ArrowLeft } from "lucide-react";
 
 const MAIN_PAGES: Record<string, string> = {
-  "/dashboard": "Dashboard",
-  "/expenses": "Expenses",
-  "/income": "Income",
-  "/settings": "Settings",
+  "/dashboard": "Report",
+  "/add": "Add Transaction",
+  "/settings": "Setting",
+  "/expenses": "Add Transaction",
+  "/income": "Add Transaction",
 };
 
 function deriveTitleFromPath(pathname: string): string {
@@ -70,6 +71,7 @@ export function AppHeader({ title: overrideTitle }: { title?: string }) {
       />
     );
   }
+
 
   // Internal pages: back icon + page name
   return (

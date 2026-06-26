@@ -104,7 +104,7 @@ export default function EditIncomePage() {
       });
 
       toast.success("Your income has been successfully updated.");
-      router.push("/income");
+      router.push("/add?tab=income");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "There was an error updating your income. Please try again.";
       toast.error(message);

@@ -41,7 +41,7 @@ export function OfflineCacheHelper() {
     setShow(false);
   };
 
-  const importantPages = ['/dashboard', '/expenses', '/income', '/cards', '/settings'];
+  const importantPages = ['/dashboard', '/add', '/cards', '/settings'];
   const uncachedPages = importantPages.filter(page => !cachedPages.includes(page));
 
   if (!show || uncachedPages.length === 0) return null;

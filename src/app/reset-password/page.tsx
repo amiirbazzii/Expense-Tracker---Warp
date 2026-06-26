@@ -76,7 +76,7 @@ function ResetPasswordForm() {
       
       // Store the new token and redirect
       localStorage.setItem("auth-token", result.token);
-      router.push("/expenses");
+      router.push("/add");
     } catch (error: unknown) {
       const message = error instanceof ConvexError 
         ? (error.data as { message: string }).message 

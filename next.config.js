@@ -99,7 +99,7 @@ const withPWA = require('next-pwa')({
       urlPattern: ({ request, url }) => {
         const pathname = new URL(url).pathname;
         // Cache main app pages for offline access
-        const appPages = ['/dashboard', '/expenses', '/income', '/cards', '/settings', '/onboarding'];
+        const appPages = ['/dashboard', '/add', '/cards', '/settings', '/onboarding'];
         return request.destination === 'document' &&
           appPages.some(page => pathname.startsWith(page));
       },
