@@ -66,4 +66,17 @@ export default defineSchema({
     name: v.string(),
     userId: v.id("users"),
   }).index("by_user", ["userId"]).index("by_user_name", ["userId", "name"]),
+
+  loans: defineTable({
+    name: v.string(),
+    totalAmount: v.number(),
+    totalInstallments: v.number(),
+    paidInstallments: v.number(),
+    installmentAmount: v.number(),
+    monthlyPaymentDay: v.number(), // 1-31
+    startMonth: v.number(), // 1-12
+    startYear: v.number(),  // e.g. 2025
+    userId: v.id("users"),
+    createdAt: v.number(),
+  }).index("by_user", ["userId"]),
 });

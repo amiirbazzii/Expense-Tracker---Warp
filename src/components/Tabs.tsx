@@ -22,15 +22,19 @@ export const Tabs: React.FC<TabsProps> = ({
   className = "",
 }) => {
   return (
-    <div className={`flex border-b border-gray-150 mb-6 relative bg-[#f9f9f9] ${className}`.trim()}>
+    <div
+      className={`flex border-b border-gray-150 mb-6 relative bg-[#f9f9f9] ${className}`.trim()}
+    >
       {tabs.map((tab, idx) => (
         <React.Fragment key={tab.id}>
-          {idx > 0 && <div className="w-[1px] bg-gray-200 my-3" />}
+          {idx > 0 && <div className="w-[1px] bg-gray-200" />}
           <button
             type="button"
             onClick={() => onChange(tab.id)}
             className={`flex-1 py-4 text-center text-base relative outline-none focus:outline-none transition-colors ${
-              activeTab === tab.id ? "text-black font-semibold" : "text-gray-500 font-normal"
+              activeTab === tab.id
+                ? "text-black font-semibold"
+                : "text-gray-500 font-normal"
             }`}
           >
             {tab.label}
