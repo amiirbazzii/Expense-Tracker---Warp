@@ -314,6 +314,7 @@ export default function DashboardPage() {
 
           {/* Card Balances */}
           <TotalBalanceCard className="mb-6 rounded-2xl" />
+
           <motion.div
             animate={{ opacity: 1, y: 0 }}
             className="rounded-xl border border-gray-200 bg-[#F9F9F9] mb-6 overflow-hidden"
@@ -329,15 +330,14 @@ export default function DashboardPage() {
                 isMainTitle={true}
                 isLoading={effIsLoading || navigating}
               />
-
-              {/* Loans Section */}
-              <DashboardLoanSection
-                loans={loanData}
-                isLoading={loanLoading}
-                month={loanMonth}
-                year={numericYear}
-              />
             </div>
+            {/* Loans Section */}
+            <DashboardLoanSection
+              loans={loanData}
+              isLoading={loanLoading}
+              month={loanMonth}
+              year={numericYear}
+            />
             {cards && (
               <CardFilter
                 cards={cards}

@@ -1,22 +1,16 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { BottomNav } from "@/components/BottomNav";
 import AppHeader from "@/components/AppHeader";
-import { Plus, ChevronDown } from "lucide-react";
-import { useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
+import { Plus, ChevronRight } from "lucide-react";
 import { DateFilterHeader } from "@/components/DateFilterHeader";
 import { FullScreenLoader } from "@/components/FullScreenLoader";
-import { useSettings } from "@/contexts/SettingsContext";
-import { useOfflineFirstData } from "@/hooks/useOfflineFirstData";
 import { format } from "date-fns";
 
 // Import loan components
-import { DashboardLoanSection } from "@/features/loans/components/DashboardLoanSection";
 import { LoanCard } from "@/features/loans/components/LoanCard";
 import { LoanForm } from "@/features/loans/components/LoanForm";
 import { LoanActionSheet } from "@/features/loans/components/LoanActionSheet";
@@ -27,8 +21,6 @@ import { Loan } from "@/features/loans/types";
 
 export default function LoansPage() {
   const { token } = useAuth();
-  const { settings } = useSettings();
-  const router = useRouter();
   const [navigating, setNavigating] = useState(false);
 
   // Get current month/year for date filter
@@ -36,7 +28,15 @@ export default function LoansPage() {
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
 
   // Loan data hook
-  const { loans, summary, isLoading, createLoan, updateLoan, deleteLoan, payInstallment } = useLoanData();
+  const {
+    loans,
+    summary,
+    isLoading,
+    createLoan,
+    updateLoan,
+    deleteLoan,
+    payInstallment,
+  } = useLoanData();
 
   // UI state
   const [showForm, setShowForm] = useState(false);
@@ -77,8 +77,10 @@ export default function LoansPage() {
       const remaining = loan.totalInstallments - loan.paidInstallments;
       if (remaining <= 0) return false;
 
-      const startOffset = (loan.startYear * 12 + loan.startMonth) + loan.paidInstallments;
-      const endOffset = (loan.startYear * 12 + loan.startMonth) + loan.totalInstallments - 1;
+      const startOffset =
+        loan.startYear * 12 + loan.startMonth + loan.paidInstallments;
+      const endOffset =
+        loan.startYear * 12 + loan.startMonth + loan.totalInstallments - 1;
       const checkOffset = currentYear * 12 + currentMonth;
 
       return checkOffset >= startOffset && checkOffset <= endOffset;
@@ -145,9 +147,7 @@ export default function LoansPage() {
     <>
       <div className="min-h-screen bg-white">
         <AppHeader />
-        {(navigating || isLoading) && (
-          <FullScreenLoader message="Loading..." />
-        )}
+        {(navigating || isLoading) && <FullScreenLoader message="Loading..." />}
 
         <div className="max-w-md mx-auto p-4 pt-[92px] pb-28">
           {/* Loan Summary Cards */}
@@ -176,7 +176,10 @@ export default function LoansPage() {
           {isLoading ? (
             <div className="space-y-3 mt-4">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-28 animate-pulse bg-gray-100 rounded-xl" />
+                <div
+                  key={i}
+                  className="h-28 animate-pulse bg-gray-100 rounded-xl"
+                />
               ))}
             </div>
           ) : hasLoans ? (
@@ -192,13 +195,31 @@ export default function LoansPage() {
               )}
             </div>
           ) : (
-            // Empty state - show CTA to add first loan
-            <DashboardLoanSection
-              loans={loans}
-              isLoading={isLoading}
-              month={currentMonth}
-              year={currentYear}
-            />
+            // Empty state - show CTA to add first loan directly opening the form
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.98 }}
+              onClick={() => {
+                setEditingLoan(null);
+                setShowForm(true);
+              }}
+              className="w-full mt-4 flex items-center justify-between p-4 rounded-xl border border-gray-200 bg-white shadow-sm transition-colors active:bg-gray-50"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-indigo-50 text-indigo-600">
+                  <Plus size={20} />
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-semibold text-gray-900">
+                    Add your first loan
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Track installments easily
+                  </p>
+                </div>
+              </div>
+              <ChevronRight size={20} className="text-gray-400" />
+            </motion.button>
           )}
 
           {/* FAB for adding new loan */}

@@ -5,83 +5,57 @@ import { motion } from "framer-motion";
 import { useSettings } from "@/contexts/SettingsContext";
 import { formatCurrency } from "@/lib/formatters";
 import { LoanSummary } from "../types";
-import { Landmark, Wallet, TrendingDown } from "lucide-react";
 
 interface LoanSummaryCardsProps {
   summary: LoanSummary | undefined;
 }
 
-const cardItems = [
-  {
-    key: "active",
-    label: "Active Loans",
-    icon: Landmark,
-    getValue: (s: LoanSummary) => String(s.activeCount),
-    color: "text-indigo-600",
-    bgColor: "bg-indigo-50",
-  },
-  {
-    key: "total",
-    label: "Total Loan Amount",
-    icon: Wallet,
-    getValue: null, // Uses currency formatting
-    field: "totalAmount" as const,
-    color: "text-gray-900",
-    bgColor: "bg-gray-50",
-  },
-  {
-    key: "remaining",
-    label: "Remaining Balance",
-    icon: TrendingDown,
-    getValue: null,
-    field: "remainingBalance" as const,
-    color: "text-orange-600",
-    bgColor: "bg-orange-50",
-  },
-];
-
 export function LoanSummaryCards({ summary }: LoanSummaryCardsProps) {
   const { settings } = useSettings();
 
+  const getDisplayValue = (field: keyof LoanSummary | "active") => {
+    if (!summary) return "—";
+    if (field === "active") return `${summary.activeCount} Loans`;
+
+    const amount = summary[field as keyof LoanSummary];
+    if (typeof amount !== "number") return "—";
+
+    return settings
+      ? formatCurrency(amount, settings.currency)
+      : `$${amount.toLocaleString()}`;
+  };
+
   return (
-    <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1">
-      {cardItems.map((item, index) => {
-        const Icon = item.icon;
-        let displayValue = "—";
+    <div className="flex items-center justify-between py-6">
+      {/* Active Loans */}
+      <div className="text-left px-2">
+        <p className="text-sm text-gray-500">Active</p>
+        <p className="text-base font-bold text-black whitespace-nowrap">
+          {getDisplayValue("active")}
+        </p>
+      </div>
 
-        if (summary) {
-          if (item.getValue) {
-            displayValue = item.getValue(summary);
-          } else if (item.field) {
-            const amount = summary[item.field];
-            displayValue = settings
-              ? formatCurrency(amount, settings.currency)
-              : `$${amount.toLocaleString()}`;
-          }
-        }
+      {/* Divider */}
+      <div className="h-10 w-[1px] bg-gray-200 mx-2" />
 
-        return (
-          <motion.div
-            key={item.key}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.08 }}
-            className="flex-1 min-w-[110px] rounded-xl border border-gray-200 bg-white p-3"
-          >
-            <div
-              className={`inline-flex items-center justify-center w-8 h-8 rounded-lg ${item.bgColor} mb-2`}
-            >
-              <Icon size={16} className={item.color} />
-            </div>
-            <p className="text-[11px] text-gray-500 leading-tight mb-1">
-              {item.label}
-            </p>
-            <p className={`text-sm font-bold ${item.color} truncate`}>
-              {displayValue}
-            </p>
-          </motion.div>
-        );
-      })}
+      {/* Total Amount */}
+      <div className="text-left px-2">
+        <p className="text-sm text-gray-500">Total</p>
+        <p className="text-base font-bold text-black whitespace-nowrap">
+          {getDisplayValue("totalAmount")}
+        </p>
+      </div>
+
+      {/* Divider */}
+      <div className="h-10 w-[1px] bg-gray-200 mx-2" />
+
+      {/* Remaining Balance */}
+      <div className="text-left px-2">
+        <p className="text-sm text-gray-500">Remaining</p>
+        <p className="text-base font-bold text-black whitespace-nowrap">
+          {getDisplayValue("remainingBalance")}
+        </p>
+      </div>
     </div>
   );
 }
