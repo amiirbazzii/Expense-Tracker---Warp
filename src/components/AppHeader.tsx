@@ -24,7 +24,7 @@ function deriveTitleFromPath(pathname: string): string {
   return first.replace(/[-_]/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
 }
 
-export function AppHeader({ title: overrideTitle }: { title?: string }) {
+export function AppHeader({ title: overrideTitle, right }: { title?: string; right?: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -68,6 +68,7 @@ export function AppHeader({ title: overrideTitle }: { title?: string }) {
             <h1 className="text-xl font-bold text-gray-900">{title}</h1>
           </div>
         }
+        right={right}
       />
     );
   }
@@ -89,6 +90,7 @@ export function AppHeader({ title: overrideTitle }: { title?: string }) {
           <h1 className="text-xl font-bold text-gray-900">{title}</h1>
         </div>
       }
+      right={right}
     />
   );
 }

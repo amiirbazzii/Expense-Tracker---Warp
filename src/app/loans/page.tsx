@@ -103,7 +103,11 @@ export default function LoansPage() {
       })
       .filter(
         (loan): loan is Loan & { isCurrentMonthPaid: boolean } => loan !== null,
-      );
+      )
+      .sort((a, b) => {
+        if (a.isCurrentMonthPaid === b.isCurrentMonthPaid) return 0;
+        return a.isCurrentMonthPaid ? 1 : -1;
+      });
   }, [loans, currentMonth, currentYear]);
 
   // Month name for display
@@ -169,7 +173,21 @@ export default function LoansPage() {
   return (
     <>
       <div className="min-h-screen bg-white">
-        <AppHeader />
+        <AppHeader
+          right={
+            hasLoans ? (
+              <button
+                onClick={() => {
+                  setEditingLoan(null);
+                  setShowForm(true);
+                }}
+                className="text-sm font-semibold text-black bg-gray-100 py-3 px-5 transition-colors rounded-full"
+              >
+                Add Loan
+              </button>
+            ) : null
+          }
+        />
         {(navigating || isLoading) && <FullScreenLoader message="Loading..." />}
 
         <div className="max-w-md mx-auto p-4 pt-[72px] pb-28">
@@ -246,23 +264,6 @@ export default function LoansPage() {
                   </div>
                 </div>
                 <ChevronRight size={20} className="text-gray-400" />
-              </motion.button>
-            )}
-
-            {/* FAB for adding new loan */}
-            {hasLoans && (
-              <motion.button
-                type="button"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => {
-                  setEditingLoan(null);
-                  setShowForm(true);
-                }}
-                className="fixed bottom-24 right-4 z-50 w-14 h-14 rounded-full bg-indigo-600 text-white shadow-lg flex items-center justify-center"
-                aria-label="Add new loan"
-              >
-                <Plus size={28} />
               </motion.button>
             )}
           </div>
