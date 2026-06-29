@@ -9,6 +9,7 @@ import { Plus, ChevronRight } from "lucide-react";
 import { DateFilterHeader } from "@/components/DateFilterHeader";
 import { FullScreenLoader } from "@/components/FullScreenLoader";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 // Import loan components
 import { LoanCard } from "@/features/loans/components/LoanCard";
@@ -41,7 +42,9 @@ export default function LoansPage() {
   // UI state
   const [showForm, setShowForm] = useState(false);
   const [editingLoan, setEditingLoan] = useState<Loan | null>(null);
-  const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
+  const [selectedLoan, setSelectedLoan] = useState<
+    (Loan & { isCurrentMonthPaid?: boolean }) | null
+  >(null);
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [showPaySheet, setShowPaySheet] = useState(false);
 
@@ -73,25 +76,41 @@ export default function LoansPage() {
   // Filter loans for the selected month
   const filteredLoans = useMemo(() => {
     if (!loans) return [];
-    return loans.filter((loan) => {
-      const remaining = loan.totalInstallments - loan.paidInstallments;
-      if (remaining <= 0) return false;
+    return loans
+      .map((loan) => {
+        const remaining = loan.totalInstallments - loan.paidInstallments;
+        if (remaining <= 0) return null;
 
-      const startOffset =
-        loan.startYear * 12 + loan.startMonth + loan.paidInstallments;
-      const endOffset =
-        loan.startYear * 12 + loan.startMonth + loan.totalInstallments - 1;
-      const checkOffset = currentYear * 12 + currentMonth;
+        // Calculate the original schedule (without paidInstallments offset)
+        const scheduleStartOffset = loan.startYear * 12 + loan.startMonth;
+        const scheduleEndOffset =
+          loan.startYear * 12 + loan.startMonth + loan.totalInstallments - 1;
+        const checkOffset = currentYear * 12 + currentMonth;
 
-      return checkOffset >= startOffset && checkOffset <= endOffset;
-    });
+        // Check if current month falls within the loan's original schedule
+        const isInCurrentMonth =
+          checkOffset >= scheduleStartOffset &&
+          checkOffset <= scheduleEndOffset;
+
+        if (!isInCurrentMonth) return null;
+
+        // Determine which installment number this month corresponds to (0-indexed)
+        const installmentIndex = checkOffset - scheduleStartOffset;
+        // Check if this month's installment has been paid
+        const isCurrentMonthPaid = installmentIndex < loan.paidInstallments;
+
+        return { ...loan, isCurrentMonthPaid };
+      })
+      .filter(
+        (loan): loan is Loan & { isCurrentMonthPaid: boolean } => loan !== null,
+      );
   }, [loans, currentMonth, currentYear]);
 
   // Month name for display
   const monthName = format(new Date(currentYear, currentMonth - 1), "MMMM");
 
   // Handlers
-  const handleLoanTap = (loan: Loan) => {
+  const handleLoanTap = (loan: Loan & { isCurrentMonthPaid?: boolean }) => {
     setSelectedLoan(loan);
     setShowActionSheet(true);
   };
@@ -112,8 +131,9 @@ export default function LoansPage() {
     if (confirm(`Are you sure you want to delete "${loan.name}"?`)) {
       try {
         await deleteLoan(loan._id);
+        toast.success("Loan deleted successfully!");
       } catch (err: any) {
-        alert(err?.message || "Failed to delete loan.");
+        toast.error(err?.message || "Failed to delete loan.");
       }
     }
   };
@@ -130,8 +150,10 @@ export default function LoansPage() {
   }) => {
     if (editingLoan) {
       await updateLoan(editingLoan._id, data);
+      toast.success("Loan updated successfully!");
     } else {
       await createLoan(data);
+      toast.success("Loan created successfully!");
     }
     setShowForm(false);
     setEditingLoan(null);
@@ -139,6 +161,7 @@ export default function LoansPage() {
 
   const handlePayComplete = () => {
     setShowPaySheet(false);
+    // Toast is shown in PayInstallmentSheet component
   };
 
   const hasLoans = loans && loans.length > 0;

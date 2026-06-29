@@ -8,7 +8,7 @@ import { CreditCard, Pencil, Trash2 } from "lucide-react";
 interface LoanActionSheetProps {
   open: boolean;
   onClose: () => void;
-  loan: Loan | null;
+  loan: (Loan & { isCurrentMonthPaid?: boolean }) | null;
   onPayInstallment: (loan: Loan) => void;
   onEdit: (loan: Loan) => void;
   onDelete: (loan: Loan) => void;
@@ -53,13 +53,15 @@ export function LoanActionSheet({
 
   const handlers = { onPayInstallment, onEdit, onDelete };
   const allPaid = loan.paidInstallments >= loan.totalInstallments;
+  const currentMonthPaid = loan.isCurrentMonthPaid || false;
 
   return (
     <BottomSheet open={open} onClose={onClose} title={loan.name}>
       <div className="space-y-2">
         {actions.map((action) => {
           const Icon = action.icon;
-          const disabled = action.key === "pay" && allPaid;
+          const disabled =
+            action.key === "pay" && (allPaid || currentMonthPaid);
 
           return (
             <button
@@ -81,9 +83,18 @@ export function LoanActionSheet({
               >
                 <Icon size={18} className={action.color} />
               </div>
-              <span className={`text-sm font-medium ${action.color}`}>
-                {action.label}
-              </span>
+              <div className="flex flex-col items-start">
+                <span className={`text-sm font-medium ${action.color}`}>
+                  {action.label}
+                </span>
+                {disabled && action.key === "pay" && (
+                  <span className="text-xs text-gray-400 mt-0.5">
+                    {allPaid
+                      ? "All installments paid"
+                      : "This month already paid"}
+                  </span>
+                )}
+              </div>
             </button>
           );
         })}

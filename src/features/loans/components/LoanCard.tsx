@@ -7,15 +7,16 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { formatCurrency } from "@/lib/formatters";
 
 interface LoanCardProps {
-  loan: Loan;
+  loan: Loan & { isCurrentMonthPaid?: boolean };
   onTap: (loan: Loan) => void;
 }
 
 export function LoanCard({ loan, onTap }: LoanCardProps) {
   const { settings } = useSettings();
-  const progress = loan.totalInstallments > 0
-    ? (loan.paidInstallments / loan.totalInstallments) * 100
-    : 0;
+  const progress =
+    loan.totalInstallments > 0
+      ? (loan.paidInstallments / loan.totalInstallments) * 100
+      : 0;
   const remaining = loan.totalInstallments - loan.paidInstallments;
 
   const formattedTotal = settings
@@ -39,9 +40,7 @@ export function LoanCard({ loan, onTap }: LoanCardProps) {
           <h3 className="text-base font-semibold text-gray-900 truncate">
             {loan.name}
           </h3>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {formattedTotal}
-          </p>
+          <p className="text-sm text-gray-500 mt-0.5">{formattedTotal}</p>
         </div>
         <div className="flex flex-col items-end shrink-0 ml-3">
           <span className="text-xs font-medium text-gray-500">
@@ -59,9 +58,10 @@ export function LoanCard({ loan, onTap }: LoanCardProps) {
         <motion.div
           className="h-full rounded-full"
           style={{
-            background: progress >= 100
-              ? "#22c55e"
-              : "linear-gradient(90deg, #6366f1, #8b5cf6)",
+            background:
+              progress >= 100
+                ? "#22c55e"
+                : "linear-gradient(90deg, #6366f1, #8b5cf6)",
           }}
           initial={{ width: 0 }}
           animate={{ width: `${Math.min(progress, 100)}%` }}
@@ -74,9 +74,16 @@ export function LoanCard({ loan, onTap }: LoanCardProps) {
         <span className="text-xs text-gray-500">
           {loan.paidInstallments} of {loan.totalInstallments} paid
         </span>
-        <span className="text-xs font-medium text-gray-600">
-          {remaining} remaining
-        </span>
+        <div className="flex items-center gap-2">
+          {loan.isCurrentMonthPaid && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+              Paid
+            </span>
+          )}
+          <span className="text-xs font-medium text-gray-600">
+            {remaining} remaining
+          </span>
+        </div>
       </div>
     </motion.button>
   );
