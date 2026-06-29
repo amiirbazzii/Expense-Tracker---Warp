@@ -1,19 +1,35 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Loan } from "../types";
 import { useSettings } from "@/contexts/SettingsContext";
 import { formatCurrency } from "@/lib/formatters";
-import { Landmark, CalendarIcon } from "lucide-react";
+import {
+  Landmark,
+  CalendarIcon,
+  CreditCard,
+  Pencil,
+  Trash2,
+} from "lucide-react";
+import { DropdownMenu } from "@/components/DropdownMenu";
 
 interface LoanCardProps {
   loan: Loan & { isCurrentMonthPaid?: boolean };
-  onTap: (loan: Loan) => void;
+  onPayInstallment: (loan: Loan) => void;
+  onEdit: (loan: Loan) => void;
+  onDelete: (loan: Loan) => void;
 }
 
-export function LoanCard({ loan, onTap }: LoanCardProps) {
+export function LoanCard({
+  loan,
+  onPayInstallment,
+  onEdit,
+  onDelete,
+}: LoanCardProps) {
   const { settings } = useSettings();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
   const progress =
     loan.totalInstallments > 0
       ? (loan.paidInstallments / loan.totalInstallments) * 100
@@ -28,13 +44,35 @@ export function LoanCard({ loan, onTap }: LoanCardProps) {
     ? formatCurrency(loan.installmentAmount, settings.currency)
     : `$${loan.installmentAmount.toLocaleString()}`;
 
+  const allPaid = loan.paidInstallments >= loan.totalInstallments;
+  const currentMonthPaid = loan.isCurrentMonthPaid || false;
+  const payDisabled = allPaid || currentMonthPaid;
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (cardRef.current && !cardRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, []);
+
   return (
-    <motion.button
-      type="button"
+    <motion.div
+      ref={cardRef}
       whileTap={{ scale: 0.98 }}
-      onClick={() => onTap(loan)}
+      onClick={() => setIsMenuOpen((prev) => !prev)}
       // استایل کلی کارت: پس‌زمینه، گوشه‌ها، پدینگ
-      className={`w-full text-left rounded-xl border border-gray-200 pt-4 transition-all ${
+      className={`relative w-full text-left rounded-xl border border-gray-200 pt-4 transition-all cursor-pointer ${
+        isMenuOpen ? "z-30" : "z-0"
+      } ${
         loan.isCurrentMonthPaid
           ? "bg-[#F9F9F9] active:bg-gray-200"
           : "bg-white active:bg-gray-50 shadow-sm"
@@ -103,6 +141,58 @@ export function LoanCard({ loan, onTap }: LoanCardProps) {
           <span className="text-gray-400">/{loan.totalInstallments}</span>
         </div>
       </div>
-    </motion.button>
+
+      <DropdownMenu isOpen={isMenuOpen}>
+        <button
+          type="button"
+          disabled={payDisabled}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!payDisabled) {
+              onPayInstallment(loan);
+              setIsMenuOpen(false);
+            }
+          }}
+          className={`flex items-center w-full px-4 py-2 text-sm text-left ${
+            payDisabled
+              ? "text-gray-400 bg-gray-50 cursor-not-allowed"
+              : "text-gray-700 hover:bg-indigo-50"
+          }`}
+        >
+          <CreditCard size={14} className="mr-2" />
+          {allPaid
+            ? "All installments paid"
+            : currentMonthPaid
+              ? "This month already paid"
+              : "Pay Installment"}
+        </button>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit(loan);
+            setIsMenuOpen(false);
+          }}
+          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
+        >
+          <Pencil size={14} className="mr-2" />
+          Edit Loan
+        </button>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(loan);
+            setIsMenuOpen(false);
+          }}
+          className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
+        >
+          <Trash2 size={14} className="mr-2" />
+          Delete Loan
+        </button>
+      </DropdownMenu>
+    </motion.div>
   );
 }

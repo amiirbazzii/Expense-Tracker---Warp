@@ -14,7 +14,7 @@ import { toast } from "sonner";
 // Import loan components
 import { LoanCard } from "@/features/loans/components/LoanCard";
 import { LoanForm } from "@/features/loans/components/LoanForm";
-import { LoanActionSheet } from "@/features/loans/components/LoanActionSheet";
+
 import { LoanSummaryCards } from "@/features/loans/components/LoanSummaryCards";
 import { PayInstallmentSheet } from "@/features/loans/components/PayInstallmentSheet";
 import { useLoanData } from "@/features/loans/hooks/useLoanData";
@@ -45,7 +45,7 @@ export default function LoansPage() {
   const [selectedLoan, setSelectedLoan] = useState<
     (Loan & { isCurrentMonthPaid?: boolean }) | null
   >(null);
-  const [showActionSheet, setShowActionSheet] = useState(false);
+
   const [showPaySheet, setShowPaySheet] = useState(false);
 
   // Handle month navigation
@@ -114,24 +114,17 @@ export default function LoansPage() {
   const monthName = format(new Date(currentYear, currentMonth - 1), "MMMM");
 
   // Handlers
-  const handleLoanTap = (loan: Loan & { isCurrentMonthPaid?: boolean }) => {
-    setSelectedLoan(loan);
-    setShowActionSheet(true);
-  };
-
   const handlePayInstallment = (loan: Loan) => {
-    setShowActionSheet(false);
+    setSelectedLoan(loan);
     setShowPaySheet(true);
   };
 
   const handleEditLoan = (loan: Loan) => {
-    setShowActionSheet(false);
     setEditingLoan(loan);
     setShowForm(true);
   };
 
   const handleDeleteLoan = async (loan: Loan) => {
-    setShowActionSheet(false);
     if (confirm(`Are you sure you want to delete "${loan.name}"?`)) {
       try {
         await deleteLoan(loan._id);
@@ -230,7 +223,9 @@ export default function LoansPage() {
                     <LoanCard
                       key={loan._id}
                       loan={loan}
-                      onTap={handleLoanTap}
+                      onPayInstallment={handlePayInstallment}
+                      onEdit={handleEditLoan}
+                      onDelete={handleDeleteLoan}
                     />
                   ))
                 ) : (
@@ -279,16 +274,6 @@ export default function LoansPage() {
             }}
             onSubmit={handleFormSubmit}
             editingLoan={editingLoan}
-          />
-
-          {/* Loan Action Sheet */}
-          <LoanActionSheet
-            open={showActionSheet}
-            onClose={() => setShowActionSheet(false)}
-            loan={selectedLoan}
-            onPayInstallment={handlePayInstallment}
-            onEdit={handleEditLoan}
-            onDelete={handleDeleteLoan}
           />
 
           {/* Pay Installment Sheet */}
