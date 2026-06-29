@@ -172,127 +172,132 @@ export default function LoansPage() {
         <AppHeader />
         {(navigating || isLoading) && <FullScreenLoader message="Loading..." />}
 
-        <div className="max-w-md mx-auto p-4 pt-[92px] pb-28">
+        <div className="max-w-md mx-auto p-4 pt-[72px] pb-28">
           {/* Loan Summary Cards */}
           {hasLoans && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mb-4"
             >
               <LoanSummaryCards summary={summary} />
             </motion.div>
           )}
 
           {/* Date Filter Header */}
-          <DateFilterHeader
-            monthName={monthName}
-            year={String(currentYear)}
-            onPreviousMonth={handlePreviousMonth}
-            onNextMonth={handleNextMonth}
-            subtitle="Loan Installments"
-            isMainTitle={false}
-            isLoading={isLoading || navigating}
+          <div className="rounded-xl border border-gray-200 bg-[#F9F9F9] p-4">
+            <DateFilterHeader
+              monthName={monthName}
+              year={String(currentYear)}
+              onPreviousMonth={handlePreviousMonth}
+              onNextMonth={handleNextMonth}
+              subtitle="Loan Installments"
+              isMainTitle={false}
+              isLoading={isLoading || navigating}
+            />
+
+            {/* Loan List or Empty State */}
+            {isLoading ? (
+              <div className="space-y-3 mt-4">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="h-28 animate-pulse bg-gray-100 rounded-xl"
+                  />
+                ))}
+              </div>
+            ) : hasLoans ? (
+              <div className="space-y-3 mt-4">
+                {filteredLoans.length > 0 ? (
+                  filteredLoans.map((loan) => (
+                    <LoanCard
+                      key={loan._id}
+                      loan={loan}
+                      onTap={handleLoanTap}
+                    />
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p className="text-sm">No installments due this month</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              // Empty state - show CTA to add first loan directly opening the form
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  setEditingLoan(null);
+                  setShowForm(true);
+                }}
+                className="w-full mt-4 flex items-center justify-between p-4 rounded-xl border border-gray-200 bg-white shadow-sm transition-colors active:bg-gray-50"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-indigo-50 text-indigo-600">
+                    <Plus size={20} />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-gray-900">
+                      Add your first loan
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Track installments easily
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight size={20} className="text-gray-400" />
+              </motion.button>
+            )}
+
+            {/* FAB for adding new loan */}
+            {hasLoans && (
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  setEditingLoan(null);
+                  setShowForm(true);
+                }}
+                className="fixed bottom-24 right-4 z-50 w-14 h-14 rounded-full bg-indigo-600 text-white shadow-lg flex items-center justify-center"
+                aria-label="Add new loan"
+              >
+                <Plus size={28} />
+              </motion.button>
+            )}
+          </div>
+
+          <BottomNav />
+
+          {/* Loan Form Bottom Sheet */}
+          <LoanForm
+            open={showForm}
+            onClose={() => {
+              setShowForm(false);
+              setEditingLoan(null);
+            }}
+            onSubmit={handleFormSubmit}
+            editingLoan={editingLoan}
           />
 
-          {/* Loan List or Empty State */}
-          {isLoading ? (
-            <div className="space-y-3 mt-4">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="h-28 animate-pulse bg-gray-100 rounded-xl"
-                />
-              ))}
-            </div>
-          ) : hasLoans ? (
-            <div className="space-y-3 mt-4">
-              {filteredLoans.length > 0 ? (
-                filteredLoans.map((loan) => (
-                  <LoanCard key={loan._id} loan={loan} onTap={handleLoanTap} />
-                ))
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <p className="text-sm">No installments due this month</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            // Empty state - show CTA to add first loan directly opening the form
-            <motion.button
-              type="button"
-              whileTap={{ scale: 0.98 }}
-              onClick={() => {
-                setEditingLoan(null);
-                setShowForm(true);
-              }}
-              className="w-full mt-4 flex items-center justify-between p-4 rounded-xl border border-gray-200 bg-white shadow-sm transition-colors active:bg-gray-50"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-indigo-50 text-indigo-600">
-                  <Plus size={20} />
-                </div>
-                <div className="text-left">
-                  <p className="text-sm font-semibold text-gray-900">
-                    Add your first loan
-                  </p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Track installments easily
-                  </p>
-                </div>
-              </div>
-              <ChevronRight size={20} className="text-gray-400" />
-            </motion.button>
-          )}
+          {/* Loan Action Sheet */}
+          <LoanActionSheet
+            open={showActionSheet}
+            onClose={() => setShowActionSheet(false)}
+            loan={selectedLoan}
+            onPayInstallment={handlePayInstallment}
+            onEdit={handleEditLoan}
+            onDelete={handleDeleteLoan}
+          />
 
-          {/* FAB for adding new loan */}
-          {hasLoans && (
-            <motion.button
-              type="button"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                setEditingLoan(null);
-                setShowForm(true);
-              }}
-              className="fixed bottom-24 right-4 z-50 w-14 h-14 rounded-full bg-indigo-600 text-white shadow-lg flex items-center justify-center"
-              aria-label="Add new loan"
-            >
-              <Plus size={28} />
-            </motion.button>
-          )}
+          {/* Pay Installment Sheet */}
+          <PayInstallmentSheet
+            open={showPaySheet}
+            onClose={() => setShowPaySheet(false)}
+            loan={selectedLoan}
+            onPaid={handlePayComplete}
+          />
         </div>
-
-        <BottomNav />
-
-        {/* Loan Form Bottom Sheet */}
-        <LoanForm
-          open={showForm}
-          onClose={() => {
-            setShowForm(false);
-            setEditingLoan(null);
-          }}
-          onSubmit={handleFormSubmit}
-          editingLoan={editingLoan}
-        />
-
-        {/* Loan Action Sheet */}
-        <LoanActionSheet
-          open={showActionSheet}
-          onClose={() => setShowActionSheet(false)}
-          loan={selectedLoan}
-          onPayInstallment={handlePayInstallment}
-          onEdit={handleEditLoan}
-          onDelete={handleDeleteLoan}
-        />
-
-        {/* Pay Installment Sheet */}
-        <PayInstallmentSheet
-          open={showPaySheet}
-          onClose={() => setShowPaySheet(false)}
-          loan={selectedLoan}
-          onPaid={handlePayComplete}
-        />
       </div>
     </>
   );

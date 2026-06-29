@@ -26,11 +26,11 @@ export function LoanSummaryCards({ summary }: LoanSummaryCardsProps) {
   };
 
   return (
-    <div className="flex items-center justify-between py-6">
+    <div className="flex items-center justify-center py-6">
       {/* Active Loans */}
       <div className="text-left px-2">
         <p className="text-sm text-gray-500">Active</p>
-        <p className="text-base font-bold text-black whitespace-nowrap">
+        <p className="text-base font-medium text-black whitespace-nowrap">
           {getDisplayValue("active")}
         </p>
       </div>
@@ -41,7 +41,7 @@ export function LoanSummaryCards({ summary }: LoanSummaryCardsProps) {
       {/* Total Amount */}
       <div className="text-left px-2">
         <p className="text-sm text-gray-500">Total</p>
-        <p className="text-base font-bold text-black whitespace-nowrap">
+        <p className="text-base font-medium text-black whitespace-nowrap">
           {getDisplayValue("totalAmount")}
         </p>
       </div>
@@ -52,7 +52,7 @@ export function LoanSummaryCards({ summary }: LoanSummaryCardsProps) {
       {/* Remaining Balance */}
       <div className="text-left px-2">
         <p className="text-sm text-gray-500">Remaining</p>
-        <p className="text-base font-bold text-black whitespace-nowrap">
+        <p className="text-base font-medium text-black whitespace-nowrap">
           {getDisplayValue("remainingBalance")}
         </p>
       </div>
