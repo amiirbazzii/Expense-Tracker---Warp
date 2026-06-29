@@ -1,15 +1,26 @@
 "use client";
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter } from 'next/navigation';
-import { CreditCard, Calendar, Trash2, Edit, RefreshCw, AlertCircle } from 'lucide-react';
-import { Doc, Id } from '../../../convex/_generated/dataModel';
-import { useSettings } from '@/contexts/SettingsContext';
-import { formatCurrency, formatDate } from '@/lib/formatters';
+import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+import {
+  CreditCard,
+  Calendar,
+  Trash2,
+  Edit,
+  RefreshCw,
+  AlertCircle,
+} from "lucide-react";
+import { Doc, Id } from "../../../convex/_generated/dataModel";
+import { useSettings } from "@/contexts/SettingsContext";
+import { formatCurrency, formatDate } from "@/lib/formatters";
+import { DropdownMenu } from "@/components/DropdownMenu";
 
-type ExpenseItem = (Doc<"expenses"> | Omit<Doc<"expenses">, '_id' | 'userId'>) & {
-  status?: 'pending' | 'failed';
+type ExpenseItem = (
+  | Doc<"expenses">
+  | Omit<Doc<"expenses">, "_id" | "userId">
+) & {
+  status?: "pending" | "failed";
   _id: string | Id<"expenses">;
 };
 
@@ -18,16 +29,22 @@ interface ExpenseCardProps {
   cardName: string;
   onDelete: (id: Id<"expenses">) => void;
   onRetry?: (id: string) => void;
-  status?: 'pending' | 'failed';
+  status?: "pending" | "failed";
 }
 
-export function ExpenseCard({ expense, cardName, onDelete, onRetry, status }: ExpenseCardProps) {
+export function ExpenseCard({
+  expense,
+  cardName,
+  onDelete,
+  onRetry,
+  status,
+}: ExpenseCardProps) {
   const { settings } = useSettings();
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  
+  const cardRef = useRef<HTMLDivElement>(null);
 
-    const handleDelete = (e: React.MouseEvent) => {
+  const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     onDelete(expense._id as Id<"expenses">);
   };
@@ -39,17 +56,37 @@ export function ExpenseCard({ expense, cardName, onDelete, onRetry, status }: Ex
 
   const handleRetry = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (onRetry && typeof expense._id === 'string') {
+    if (onRetry && typeof expense._id === "string") {
       onRetry(expense._id);
     }
   };
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (cardRef.current && !cardRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, []);
+
   const isOffline = !!status;
 
-  const forText = expense.for && expense.for.length > 0 ? ` for ${expense.for.join(', ')}` : '';
+  const forText =
+    expense.for && expense.for.length > 0
+      ? ` for ${expense.for.join(", ")}`
+      : "";
 
   return (
     <motion.div
+      ref={cardRef}
       layout
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -66,19 +103,25 @@ export function ExpenseCard({ expense, cardName, onDelete, onRetry, status }: Ex
                 {expense.title}
               </h3>
               {status && (
-                <span className={`px-2 py-0.5 text-xs font-medium rounded ${
-                  status === 'pending' 
-                    ? 'bg-yellow-100 text-yellow-800' 
-                    : 'bg-red-100 text-red-800'
-                }`}>
+                <span
+                  className={`px-2 py-0.5 text-xs font-medium rounded ${
+                    status === "pending"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
+                >
                   {status}
                 </span>
               )}
             </div>
             <p className="text-[16px] leading-5 font-semibold text-red-600 whitespace-nowrap">
-              -{settings ? formatCurrency(expense.amount, settings.currency) : expense.amount.toFixed(2)}
+              -
+              {settings
+                ? formatCurrency(expense.amount, settings.currency)
+                : expense.amount.toFixed(2)}
             </p>
-          </div>          <div className="mt-1.5 flex items-center gap-4 text-[13px] leading-5 text-gray-600">
+          </div>{" "}
+          <div className="mt-1.5 flex items-center gap-4 text-[13px] leading-5 text-gray-600">
             <span className="inline-flex items-center min-w-0">
               <CreditCard className="w-[14px] h-[14px] mr-1.5 text-gray-400" />
               <span className="truncate">{cardName}</span>
@@ -87,7 +130,7 @@ export function ExpenseCard({ expense, cardName, onDelete, onRetry, status }: Ex
               <Calendar className="w-[14px] h-[14px] mr-1.5 text-gray-400" />
               <span>
                 {settings
-                  ? formatDate(expense.date, settings.calendar, 'yyyy ,d MMM')
+                  ? formatDate(expense.date, settings.calendar, "yyyy ,d MMM")
                   : new Date(expense.date).toLocaleDateString()}
               </span>
             </span>
@@ -105,54 +148,45 @@ export function ExpenseCard({ expense, cardName, onDelete, onRetry, status }: Ex
               </span>
             ))}
             {/* Move 'for' items into tags */}
-            {Array.isArray(expense.for) && expense.for.map((f) => (
-              <span
-                key={`for-${String(f)}`}
-                className="px-3 py-1 text-[12px] leading-5 font-medium rounded-lg bg-[#EEEEEE] text-[#434343]"
-              >
-                {`for ${f}`}
-              </span>
-            ))}
+            {Array.isArray(expense.for) &&
+              expense.for.map((f) => (
+                <span
+                  key={`for-${String(f)}`}
+                  className="px-3 py-1 text-[12px] leading-5 font-medium rounded-lg bg-[#EEEEEE] text-[#434343]"
+                >
+                  {`for ${f}`}
+                </span>
+              ))}
           </div>
         </div>
       </div>
-      <AnimatePresence>
-        {isMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: -10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -10 }}
-            className="absolute right-4 top-4 mt-2 w-36 bg-white rounded-lg shadow-lg z-10 border border-gray-100 overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
+      <DropdownMenu isOpen={isMenuOpen}>
+        {status === "failed" && onRetry && (
+          <button
+            onClick={handleRetry}
+            className="flex items-center w-full px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 text-left"
           >
-            {status === 'failed' && onRetry && (
-              <button
-                onClick={handleRetry}
-                className="flex items-center w-full px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 text-left"
-              >
-                <RefreshCw size={14} className="mr-2" />
-                Retry Sync
-              </button>
-            )}
-            {!status && (
-              <button
-                onClick={handleEdit}
-                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
-              >
-                <Edit size={14} className="mr-2" />
-                Edit
-              </button>
-            )}
-            <button
-              onClick={handleDelete}
-              className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
-            >
-              <Trash2 size={14} className="mr-2" />
-              Delete
-            </button>
-          </motion.div>
+            <RefreshCw size={14} className="mr-2" />
+            Retry Sync
+          </button>
         )}
-      </AnimatePresence>
+        {!status && (
+          <button
+            onClick={handleEdit}
+            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
+          >
+            <Edit size={14} className="mr-2" />
+            Edit
+          </button>
+        )}
+        <button
+          onClick={handleDelete}
+          className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
+        >
+          <Trash2 size={14} className="mr-2" />
+          Delete
+        </button>
+      </DropdownMenu>
     </motion.div>
   );
 }

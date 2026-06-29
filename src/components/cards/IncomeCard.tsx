@@ -1,29 +1,38 @@
 "use client";
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { Id } from "../../../convex/_generated/dataModel";
-import { CreditCard, Calendar, Trash2, Edit } from 'lucide-react';
-import { Doc } from '../../../convex/_generated/dataModel';
-import { useAuth } from '@/contexts/AuthContext';
-import { useSettings } from '@/contexts/SettingsContext';
-import { formatCurrency, formatDate } from '@/lib/formatters';
+import { CreditCard, Calendar, Trash2, Edit } from "lucide-react";
+import { Doc } from "../../../convex/_generated/dataModel";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSettings } from "@/contexts/SettingsContext";
+import { formatCurrency, formatDate } from "@/lib/formatters";
+import { DropdownMenu } from "@/components/DropdownMenu";
 
 interface IncomeCardProps {
   income: Doc<"income">;
   cardName: string;
   onDelete: (incomeId: Id<"income">) => void;
-  status?: 'pending' | 'failed';
+  status?: "pending" | "failed";
   onRetry?: (itemId: string) => void;
 }
 
-export function IncomeCard({ income, cardName, onDelete, status, onRetry }: IncomeCardProps) {
+export function IncomeCard({
+  income,
+  cardName,
+  onDelete,
+  status,
+  onRetry,
+}: IncomeCardProps) {
   const { token } = useAuth();
   const { settings } = useSettings();
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const hasNotes = typeof income.notes === 'string' && income.notes.trim().length > 0;
+  const cardRef = useRef<HTMLDivElement>(null);
+  const hasNotes =
+    typeof income.notes === "string" && income.notes.trim().length > 0;
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -35,8 +44,25 @@ export function IncomeCard({ income, cardName, onDelete, status, onRetry }: Inco
     router.push(`/income/edit/${income._id}`);
   };
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (cardRef.current && !cardRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, []);
+
   return (
     <motion.div
+      ref={cardRef}
       layout
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -53,17 +79,22 @@ export function IncomeCard({ income, cardName, onDelete, status, onRetry }: Inco
                 {income.source}
               </h3>
               {status && (
-                <span className={`px-2 py-0.5 text-xs font-medium rounded ${
-                  status === 'pending' 
-                    ? 'bg-yellow-100 text-yellow-800' 
-                    : 'bg-red-100 text-red-800'
-                }`}>
+                <span
+                  className={`px-2 py-0.5 text-xs font-medium rounded ${
+                    status === "pending"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
+                >
                   {status}
                 </span>
               )}
             </div>
             <p className="text-[16px] leading-5 font-semibold text-green-600 whitespace-nowrap">
-              +{settings ? formatCurrency(income.amount, settings.currency) : income.amount.toFixed(2)}
+              +
+              {settings
+                ? formatCurrency(income.amount, settings.currency)
+                : income.amount.toFixed(2)}
             </p>
           </div>
           {/* Info row */}
@@ -76,7 +107,7 @@ export function IncomeCard({ income, cardName, onDelete, status, onRetry }: Inco
               <Calendar className="w-[14px] h-[14px] mr-1.5 text-gray-400" />
               <span>
                 {settings
-                  ? formatDate(income.date, settings.calendar, 'yyyy ,d MMM')
+                  ? formatDate(income.date, settings.calendar, "yyyy ,d MMM")
                   : new Date(income.date).toLocaleDateString()}
               </span>
             </span>
@@ -87,7 +118,10 @@ export function IncomeCard({ income, cardName, onDelete, status, onRetry }: Inco
           <div className="mt-3 flex flex-wrap gap-2">
             {Array.isArray((income as any).category)
               ? (income as any).category.map((cat: string) => (
-                  <span key={cat} className="px-3 py-1 text-[12px] leading-5 font-medium rounded-lg bg-[#EEEEEE] text-[#434343]">
+                  <span
+                    key={cat}
+                    className="px-3 py-1 text-[12px] leading-5 font-medium rounded-lg bg-[#EEEEEE] text-[#434343]"
+                  >
                     {cat}
                   </span>
                 ))
@@ -109,48 +143,48 @@ export function IncomeCard({ income, cardName, onDelete, status, onRetry }: Inco
           )}
         </div>
       </div>
-      <AnimatePresence>
-        {isMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: -10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -10 }}
-            className="absolute right-4 top-4 mt-2 w-36 bg-white rounded-lg shadow-lg z-10 border border-gray-100 overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
+      <DropdownMenu isOpen={isMenuOpen}>
+        {status === "failed" && onRetry && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRetry(income._id);
+            }}
+            className="flex items-center w-full px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 text-left"
           >
-            {status === 'failed' && onRetry && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRetry(income._id);
-                }}
-                className="flex items-center w-full px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 text-left"
-              >
-                <svg className="w-3.5 h-3.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Retry Sync
-              </button>
-            )}
-            {!status && (
-              <button
-                onClick={handleEdit}
-                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
-              >
-                <Edit size={14} className="mr-2" />
-                Edit
-              </button>
-            )}
-            <button
-              onClick={handleDelete}
-              className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
+            <svg
+              className="w-3.5 h-3.5 mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              <Trash2 size={14} className="mr-2" />
-              Delete
-            </button>
-          </motion.div>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            Retry Sync
+          </button>
         )}
-      </AnimatePresence>
+        {!status && (
+          <button
+            onClick={handleEdit}
+            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
+          >
+            <Edit size={14} className="mr-2" />
+            Edit
+          </button>
+        )}
+        <button
+          onClick={handleDelete}
+          className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
+        >
+          <Trash2 size={14} className="mr-2" />
+          Delete
+        </button>
+      </DropdownMenu>
     </motion.div>
   );
 }
