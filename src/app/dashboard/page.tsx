@@ -144,12 +144,13 @@ export default function DashboardPage() {
   const { loans: loanData, isLoading: loanLoading } = useLoanData();
 
   // Compute current month/year for the loan section from the dashboard's currentDate
-  const loanMonth = currentDate
-    ? currentDate.month() + 1
-    : new Date().getMonth() + 1;
-  const numericYear = currentDate
-    ? currentDate.year()
-    : new Date().getFullYear();
+  // IMPORTANT: Use .valueOf() + native Date to always get Gregorian month/year,
+  // because moment().month()/.year() return Jalali values when locale is 'fa'.
+  const loanGregorianDate = currentDate
+    ? new Date(currentDate.valueOf())
+    : new Date();
+  const loanMonth = loanGregorianDate.getMonth() + 1;
+  const numericYear = loanGregorianDate.getFullYear();
 
   // Derive income categories from the loaded income data (exclude transfers)
   const incomeCategoryNames: string[] = useMemo(() => {

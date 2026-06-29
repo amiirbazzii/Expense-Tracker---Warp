@@ -45,7 +45,7 @@ export function DashboardLoanSection({
       type="button"
       whileTap={{ scale: 0.98 }}
       onClick={handlePress}
-      className="w-full flex items-center justify-between transition-colors active:bg-gray-50 border-t border-gray-200"
+      className="w-full flex items-center justify-center transition-colors active:bg-gray-50 border-t border-gray-200"
     >
       {!hasLoans ? (
         // Empty state CTA
@@ -56,7 +56,7 @@ export function DashboardLoanSection({
       ) : (
         // Monthly Summary
         <>
-          <div className="flex items-center gap-3 py-3 px-4">
+          <div className="flex flex-1 items-center gap-3 py-3 px-4">
             <div className="text-left">
               <p className="text-xs text-gray-500 leading-tight">
                 Amount to pay this month
