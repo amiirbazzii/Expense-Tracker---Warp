@@ -40,38 +40,51 @@ export function BottomSheet({
 
           {/* Sheet */}
           <motion.div
-            className="fixed inset-x-0 bottom-0 z-[70]"
+            className="fixed inset-x-0 bottom-0 z-[70] px-2"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", stiffness: 280, damping: 30 }}
           >
             <div className="mx-auto max-w-md bg-white rounded-t-2xl shadow-xl">
-              <div className="flex items-center justify-between p-4 border-b">
-                <h3 className="text-base font-semibold text-gray-900">
+              {/* Drag handle */}
+              <div className="flex justify-center pt-3 pb-3">
+                <div className="w-16 h-[5px] bg-black rounded-full" />
+              </div>
+
+              {/* Header row */}
+              <div className="flex items-center px-4">
+                <div className="flex-1" />
+                <h3 className="text-xl font-medium text-center text-black">
                   {title}
                 </h3>
-                <button
-                  onClick={onClose}
-                  className="rounded-full p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                  aria-label="Close"
-                >
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                <div className="flex-1 flex justify-end">
+                  <button
+                    onClick={onClose}
+                    className="rounded-full p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                    aria-label="Close"
                   >
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                  </svg>
-                </button>
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                </div>
               </div>
-              <div className="max-h-[70vh] overflow-y-auto p-4">{children}</div>
+
+              {/* Content */}
+              <div className="max-h-[70vh] overflow-y-auto p-4 pb-10">
+                {children}
+              </div>
             </div>
           </motion.div>
         </>
