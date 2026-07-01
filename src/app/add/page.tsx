@@ -18,15 +18,17 @@ import {
   User,
   CaseSensitive,
   TrendingUp,
-  Type
+  Type,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTimeFramedData } from "@/hooks/useTimeFramedData";
 import { DateFilterHeader } from "@/components/DateFilterHeader";
 import { Id } from "../../../convex/_generated/dataModel";
-import { ExpenseCard } from '@/components/cards/ExpenseCard';
+import { ExpenseCard } from "@/components/cards/ExpenseCard";
 import { IncomeCard } from "@/components/cards/IncomeCard";
+import { EditExpenseSheet } from "@/components/EditExpenseSheet";
+import { EditIncomeSheet } from "@/components/EditIncomeSheet";
 import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import { Input } from "@/components/Input";
@@ -66,9 +68,9 @@ interface IncomeFormData {
 const capitalizeWords = (str: string) => {
   return str
     .toLowerCase()
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 };
 
 function AddTransactionContent() {
@@ -79,18 +81,18 @@ function AddTransactionContent() {
 
   // Tab State
   const tabParam = searchParams.get("tab");
-  const [activeTab, setActiveTab] = useState<'expense' | 'income'>(
-    tabParam === 'income' ? 'income' : 'expense'
+  const [activeTab, setActiveTab] = useState<"expense" | "income">(
+    tabParam === "income" ? "income" : "expense",
   );
 
   // Sync tab active value from URL param if changed
   useEffect(() => {
-    if (tabParam === 'income' || tabParam === 'expense') {
+    if (tabParam === "income" || tabParam === "expense") {
       setActiveTab(tabParam);
     }
   }, [tabParam]);
 
-  const handleTabChange = (tab: 'expense' | 'income') => {
+  const handleTabChange = (tab: "expense" | "income") => {
     setActiveTab(tab);
     router.replace(`/add?tab=${tab}`, { scroll: false });
   };
@@ -117,23 +119,32 @@ function AddTransactionContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSyncingExpenses, setIsSyncingExpenses] = useState(false);
   const [isSyncingIncome, setIsSyncingIncome] = useState(false);
-  const [pendingExpenseDeletions, setPendingExpenseDeletions] = useState<string[]>([]);
-  const [pendingIncomeDeletions, setPendingIncomeDeletions] = useState<string[]>([]);
+  const [pendingExpenseDeletions, setPendingExpenseDeletions] = useState<
+    string[]
+  >([]);
+  const [pendingIncomeDeletions, setPendingIncomeDeletions] = useState<
+    string[]
+  >([]);
+  const [editingExpenseId, setEditingExpenseId] =
+    useState<Id<"expenses"> | null>(null);
+  const [editingIncomeId, setEditingIncomeId] = useState<Id<"income"> | null>(
+    null,
+  );
 
   // Offline Queues
   const {
     queue: offlineExpenses,
     addToQueue: addExpenseToOfflineQueue,
     removeFromQueue: removeExpenseFromOfflineQueue,
-    updateItemStatus: updateExpenseOfflineStatus
-  } = useOfflineQueue<ExpenseCreationData>('offline-expenses');
+    updateItemStatus: updateExpenseOfflineStatus,
+  } = useOfflineQueue<ExpenseCreationData>("offline-expenses");
 
   const {
     queue: offlineIncome,
     addToQueue: addIncomeToOfflineQueue,
     removeFromQueue: removeIncomeFromOfflineQueue,
-    updateItemStatus: updateIncomeOfflineStatus
-  } = useOfflineQueue<any>('offline-income');
+    updateItemStatus: updateIncomeOfflineStatus,
+  } = useOfflineQueue<any>("offline-income");
 
   // Convex Mutations
   const createExpenseMutation = useMutation(api.expenses.createExpense);
@@ -144,10 +155,22 @@ function AddTransactionContent() {
   const deleteIncomeMutation = useMutation(api.cardsAndIncome.deleteIncome);
 
   // Convex Queries
-  const cardsQuery = useQuery(api.cardsAndIncome.getMyCards, token ? { token } : "skip");
-  const categoriesQuery = useQuery(api.expenses.getCategories, token ? { token } : "skip");
-  const forValuesQuery = useQuery(api.expenses.getForValues, token ? { token } : "skip");
-  const allIncomeCategoriesQuery = useQuery(api.cardsAndIncome.getUniqueIncomeCategories, token ? { token } : "skip");
+  const cardsQuery = useQuery(
+    api.cardsAndIncome.getMyCards,
+    token ? { token } : "skip",
+  );
+  const categoriesQuery = useQuery(
+    api.expenses.getCategories,
+    token ? { token } : "skip",
+  );
+  const forValuesQuery = useQuery(
+    api.expenses.getForValues,
+    token ? { token } : "skip",
+  );
+  const allIncomeCategoriesQuery = useQuery(
+    api.cardsAndIncome.getUniqueIncomeCategories,
+    token ? { token } : "skip",
+  );
 
   // Offline First Backup Data
   const {
@@ -155,33 +178,42 @@ function AddTransactionContent() {
     forValues: offlineForValues,
     cards: offlineCards,
     income: offlineIncomeData,
-    isLoading: isOfflineDataLoading
+    isLoading: isOfflineDataLoading,
   } = useOfflineFirstData();
 
   // Unified Data Combinations
-  const cards = cardsQuery !== undefined ? cardsQuery : (offlineCards as any[])?.map((card: any) => ({
-    _id: card.cardId,
-    name: card.cardName,
-    userId: '',
-    createdAt: 0,
-    _creationTime: 0
-  }));
+  const cards =
+    cardsQuery !== undefined
+      ? cardsQuery
+      : (offlineCards as any[])?.map((card: any) => ({
+          _id: card.cardId,
+          name: card.cardName,
+          userId: "",
+          createdAt: 0,
+          _creationTime: 0,
+        }));
 
-  const categories = categoriesQuery !== undefined ? categoriesQuery : offlineCategories;
-  const forValues = forValuesQuery !== undefined ? forValuesQuery : offlineForValues;
+  const categories =
+    categoriesQuery !== undefined ? categoriesQuery : offlineCategories;
+  const forValues =
+    forValuesQuery !== undefined ? forValuesQuery : offlineForValues;
 
   // Extract offline income categories
-  const offlineIncomeCategoryNames = offlineIncomeData && Array.isArray(offlineIncomeData)
-    ? Array.from(new Set(
-      offlineIncomeData
-        .map((inc: any) => inc.category)
-        .filter((cat: any) => cat && typeof cat === 'string')
-    ))
-    : [];
+  const offlineIncomeCategoryNames =
+    offlineIncomeData && Array.isArray(offlineIncomeData)
+      ? Array.from(
+          new Set(
+            offlineIncomeData
+              .map((inc: any) => inc.category)
+              .filter((cat: any) => cat && typeof cat === "string"),
+          ),
+        )
+      : [];
 
-  const allIncomeCategories = allIncomeCategoriesQuery !== undefined
-    ? allIncomeCategoriesQuery
-    : offlineIncomeCategoryNames;
+  const allIncomeCategories =
+    allIncomeCategoriesQuery !== undefined
+      ? allIncomeCategoriesQuery
+      : offlineIncomeCategoryNames;
 
   const isCardsLoading = cardsQuery === undefined && isOfflineDataLoading;
 
@@ -195,8 +227,8 @@ function AddTransactionContent() {
     goToPreviousMonth: goToPreviousExpenseMonth,
     goToNextMonth: goToNextExpenseMonth,
     refetch: refetchExpenses,
-    isUsingOfflineData: isUsingOfflineExpenseData
-  } = useTimeFramedData('expense', token);
+    isUsingOfflineData: isUsingOfflineExpenseData,
+  } = useTimeFramedData("expense", token);
 
   const {
     data: incomes,
@@ -206,15 +238,17 @@ function AddTransactionContent() {
     goToPreviousMonth: goToPreviousIncomeMonth,
     goToNextMonth: goToNextIncomeMonth,
     refetch: refetchIncome,
-    isUsingOfflineData: isUsingOfflineIncomeData
-  } = useTimeFramedData('income', token);
+    isUsingOfflineData: isUsingOfflineIncomeData,
+  } = useTimeFramedData("income", token);
 
   // Sync offline expenses when online
   useEffect(() => {
     if (isOnline && offlineExpenses.length > 0 && !isSyncingExpenses && token) {
       const syncOfflineExpenses = async () => {
         setIsSyncingExpenses(true);
-        const itemsToSync = offlineExpenses.filter(item => item.status === 'pending');
+        const itemsToSync = offlineExpenses.filter(
+          (item) => item.status === "pending",
+        );
 
         if (itemsToSync.length === 0) {
           setIsSyncingExpenses(false);
@@ -231,15 +265,20 @@ function AddTransactionContent() {
             } catch (error) {
               console.error(`Failed to sync expense ${item.id}:`, error);
 
-              if (error && typeof error === 'object' && 'message' in error) {
-                const errorMessage = (error as any).message || '';
-                if (errorMessage.includes('Authentication required') || errorMessage.includes('authentication')) {
-                  toast.error("Your session has expired during sync. Please log in again.");
-                  router.push('/login');
+              if (error && typeof error === "object" && "message" in error) {
+                const errorMessage = (error as any).message || "";
+                if (
+                  errorMessage.includes("Authentication required") ||
+                  errorMessage.includes("authentication")
+                ) {
+                  toast.error(
+                    "Your session has expired during sync. Please log in again.",
+                  );
+                  router.push("/login");
                   return;
                 }
               }
-              updateExpenseOfflineStatus(item.id, 'failed');
+              updateExpenseOfflineStatus(item.id, "failed");
             }
           });
 
@@ -252,14 +291,26 @@ function AddTransactionContent() {
       };
       syncOfflineExpenses();
     }
-  }, [isOnline, offlineExpenses, isSyncingExpenses, token, createExpenseMutation, removeExpenseFromOfflineQueue, updateExpenseOfflineStatus, refetchExpenses, router]);
+  }, [
+    isOnline,
+    offlineExpenses,
+    isSyncingExpenses,
+    token,
+    createExpenseMutation,
+    removeExpenseFromOfflineQueue,
+    updateExpenseOfflineStatus,
+    refetchExpenses,
+    router,
+  ]);
 
   // Sync offline income when online
   useEffect(() => {
     if (isOnline && offlineIncome.length > 0 && !isSyncingIncome && token) {
       const syncOfflineIncome = async () => {
         setIsSyncingIncome(true);
-        const itemsToSync = offlineIncome.filter(item => item.status === 'pending');
+        const itemsToSync = offlineIncome.filter(
+          (item) => item.status === "pending",
+        );
 
         if (itemsToSync.length === 0) {
           setIsSyncingIncome(false);
@@ -275,7 +326,7 @@ function AddTransactionContent() {
               removeIncomeFromOfflineQueue(item.id);
             } catch (error) {
               console.error(`Failed to sync income ${item.id}:`, error);
-              updateIncomeOfflineStatus(item.id, 'failed');
+              updateIncomeOfflineStatus(item.id, "failed");
             }
           });
 
@@ -288,11 +339,20 @@ function AddTransactionContent() {
       };
       syncOfflineIncome();
     }
-  }, [isOnline, offlineIncome, isSyncingIncome, token, createIncomeMutation, removeIncomeFromOfflineQueue, updateIncomeOfflineStatus, refetchIncome]);
+  }, [
+    isOnline,
+    offlineIncome,
+    isSyncingIncome,
+    token,
+    createIncomeMutation,
+    removeIncomeFromOfflineQueue,
+    updateIncomeOfflineStatus,
+    refetchIncome,
+  ]);
 
   // Retry sync methods
   const handleRetrySyncExpense = async (itemId: string) => {
-    const itemToRetry = offlineExpenses.find(item => item.id === itemId);
+    const itemToRetry = offlineExpenses.find((item) => item.id === itemId);
     if (!itemToRetry || !token) return;
 
     toast.info(`Retrying to sync expense: ${itemToRetry.data.title}`);
@@ -303,13 +363,13 @@ function AddTransactionContent() {
       refetchExpenses();
     } catch (error) {
       console.error("Failed to sync expense:", error);
-      updateExpenseOfflineStatus(itemToRetry.id, 'failed');
+      updateExpenseOfflineStatus(itemToRetry.id, "failed");
       toast.error("Sync failed again. Please check your connection.");
     }
   };
 
   const handleRetrySyncIncome = async (itemId: string) => {
-    const itemToRetry = offlineIncome.find(item => item.id === itemId);
+    const itemToRetry = offlineIncome.find((item) => item.id === itemId);
     if (!itemToRetry || !token) return;
 
     toast.info(`Retrying to sync income: ${itemToRetry.data.source}`);
@@ -320,7 +380,7 @@ function AddTransactionContent() {
       refetchIncome();
     } catch (error) {
       console.error("Failed to sync income:", error);
-      updateIncomeOfflineStatus(itemToRetry.id, 'failed');
+      updateIncomeOfflineStatus(itemToRetry.id, "failed");
       toast.error("Sync failed again. Please check your connection.");
     }
   };
@@ -329,10 +389,10 @@ function AddTransactionContent() {
   useEffect(() => {
     if (cards && cards.length > 0) {
       if (!expenseForm.cardId) {
-        setExpenseForm(prev => ({ ...prev, cardId: cards[0]._id }));
+        setExpenseForm((prev) => ({ ...prev, cardId: cards[0]._id }));
       }
       if (!incomeForm.cardId) {
-        setIncomeForm(prev => ({ ...prev, cardId: cards[0]._id }));
+        setIncomeForm((prev) => ({ ...prev, cardId: cards[0]._id }));
       }
     }
   }, [cards, expenseForm.cardId, incomeForm.cardId]);
@@ -341,7 +401,11 @@ function AddTransactionContent() {
   const handleExpenseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!expenseForm.amount || !expenseForm.title || expenseForm.category.length === 0) {
+    if (
+      !expenseForm.amount ||
+      !expenseForm.title ||
+      expenseForm.category.length === 0
+    ) {
       toast.error("Please enter the amount, title, and category.");
       return;
     }
@@ -381,7 +445,9 @@ function AddTransactionContent() {
         refetchExpenses();
       } else {
         addExpenseToOfflineQueue(expenseData);
-        toast.success("You are offline. Expense saved locally and will be synced later.");
+        toast.success(
+          "You are offline. Expense saved locally and will be synced later.",
+        );
       }
 
       setExpenseForm({
@@ -393,13 +459,16 @@ function AddTransactionContent() {
         cardId: expenseForm.cardId, // Keep same card selected
       });
     } catch (error: unknown) {
-      console.error('Error creating expense:', error);
+      console.error("Error creating expense:", error);
 
-      if (error && typeof error === 'object' && 'message' in error) {
-        const errorMessage = (error as any).message || '';
-        if (errorMessage.includes('Authentication required') || errorMessage.includes('authentication')) {
+      if (error && typeof error === "object" && "message" in error) {
+        const errorMessage = (error as any).message || "";
+        if (
+          errorMessage.includes("Authentication required") ||
+          errorMessage.includes("authentication")
+        ) {
           toast.error("Your session has expired. Please log in again.");
-          router.push('/login');
+          router.push("/login");
           return;
         }
       }
@@ -412,7 +481,11 @@ function AddTransactionContent() {
   const handleIncomeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!incomeForm.amount || !incomeForm.source || incomeForm.category.length === 0) {
+    if (
+      !incomeForm.amount ||
+      !incomeForm.source ||
+      incomeForm.category.length === 0
+    ) {
       toast.error("Please enter the amount, source, and category.");
       return;
     }
@@ -446,7 +519,9 @@ function AddTransactionContent() {
         refetchIncome();
       } else {
         addIncomeToOfflineQueue(incomeData);
-        toast.success("You are offline. Income saved locally and will be synced later.");
+        toast.success(
+          "You are offline. Income saved locally and will be synced later.",
+        );
       }
 
       setIncomeForm({
@@ -458,7 +533,10 @@ function AddTransactionContent() {
         notes: "",
       });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "There was an error adding your income. Please try again.";
+      const message =
+        error instanceof Error
+          ? error.message
+          : "There was an error adding your income. Please try again.";
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -469,8 +547,8 @@ function AddTransactionContent() {
   const fetchCategorySuggestions = async (query: string): Promise<string[]> => {
     if (!categories) return [];
     return categories
-      .filter(cat => cat.name.toLowerCase().includes(query.toLowerCase()))
-      .map(cat => cat.name);
+      .filter((cat) => cat.name.toLowerCase().includes(query.toLowerCase()))
+      .map((cat) => cat.name);
   };
 
   const handleCreateCategory = async (name: string): Promise<void> => {
@@ -489,8 +567,8 @@ function AddTransactionContent() {
   const fetchForSuggestions = async (query: string): Promise<string[]> => {
     if (!forValues) return [];
     return forValues
-      .filter(f => f.value.toLowerCase().includes(query.toLowerCase()))
-      .map(f => f.value);
+      .filter((f) => f.value.toLowerCase().includes(query.toLowerCase()))
+      .map((f) => f.value);
   };
 
   const handleCreateForValue = async (value: string): Promise<void> => {
@@ -506,41 +584,49 @@ function AddTransactionContent() {
     }
   };
 
-  const fetchIncomeCategorySuggestions = async (query: string): Promise<string[]> => {
+  const fetchIncomeCategorySuggestions = async (
+    query: string,
+  ): Promise<string[]> => {
     if (!allIncomeCategories) return [];
-    return allIncomeCategories.filter((cat: string) => cat.toLowerCase().includes(query.toLowerCase()));
+    return allIncomeCategories.filter((cat: string) =>
+      cat.toLowerCase().includes(query.toLowerCase()),
+    );
   };
 
   // Card mappings for quick name lookup
-  const cardMap = cards?.reduce((acc, card) => {
-    acc[card._id] = card.name;
-    return acc;
-  }, {} as Record<string, string>) || {};
+  const cardMap =
+    cards?.reduce(
+      (acc, card) => {
+        acc[card._id] = card.name;
+        return acc;
+      },
+      {} as Record<string, string>,
+    ) || {};
 
   // Expense Lists Mapping
-  const mappedOfflineExpenses = offlineExpenses.map(item => ({
+  const mappedOfflineExpenses = offlineExpenses.map((item) => ({
     ...item.data,
     _id: item.id,
     _creationTime: item.createdAt,
-    userId: '',
+    userId: "",
     status: item.status,
   }));
 
   const combinedExpenses = [...(expenses || []), ...mappedOfflineExpenses]
-    .filter(expense => !pendingExpenseDeletions.includes(expense._id))
+    .filter((expense) => !pendingExpenseDeletions.includes(expense._id))
     .sort((a, b) => b.date - a.date);
 
   // Income Lists Mapping
-  const mappedOfflineIncome = offlineIncome.map(item => ({
+  const mappedOfflineIncome = offlineIncome.map((item) => ({
     ...item.data,
     _id: item.id,
     _creationTime: item.createdAt,
-    userId: '',
+    userId: "",
     status: item.status,
   }));
 
   const combinedIncome = [...(incomes || []), ...mappedOfflineIncome]
-    .filter(income => !pendingIncomeDeletions.includes(income._id))
+    .filter((income) => !pendingIncomeDeletions.includes(income._id))
     .sort((a, b) => b.date - a.date);
 
   if (cards === undefined && isOnline) {
@@ -576,7 +662,9 @@ function AddTransactionContent() {
               transition={{ duration: 0.3 }}
             >
               <div className="mb-4">
-                <h2 className="text-2xl font-medium text-gray-900">Add New Expense</h2>
+                <h2 className="text-2xl font-medium text-gray-900">
+                  Add New Expense
+                </h2>
                 <p className="mt-1 text-sm font-light leading-5 text-gray-900">
                   Fill in the details below to track your expense
                 </p>
@@ -586,7 +674,9 @@ function AddTransactionContent() {
                 <div>
                   <CurrencyInput
                     value={expenseForm.amount}
-                    onChangeValue={(val) => setExpenseForm({ ...expenseForm, amount: val })}
+                    onChangeValue={(val) =>
+                      setExpenseForm({ ...expenseForm, amount: val })
+                    }
                     required
                   />
                 </div>
@@ -595,7 +685,9 @@ function AddTransactionContent() {
                   <Input
                     type="text"
                     value={expenseForm.title}
-                    onChange={(e) => setExpenseForm({ ...expenseForm, title: e.target.value })}
+                    onChange={(e) =>
+                      setExpenseForm({ ...expenseForm, title: e.target.value })
+                    }
                     placeholder="Add a title"
                     icon={Type}
                     required
@@ -605,15 +697,32 @@ function AddTransactionContent() {
                 <div>
                   <InputContainer
                     leftIcon={CreditCard}
-                    rightAdornment={(
-                      <svg className="size-5 text-gray-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    rightAdornment={
+                      <svg
+                        className="size-5 text-gray-500"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M6 9l6 6 6-6"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
                       </svg>
-                    )}
+                    }
                   >
                     <select
                       value={expenseForm.cardId}
-                      onChange={(e) => setExpenseForm({ ...expenseForm, cardId: e.target.value })}
+                      onChange={(e) =>
+                        setExpenseForm({
+                          ...expenseForm,
+                          cardId: e.target.value,
+                        })
+                      }
                       className="w-full bg-transparent outline-none text-black placeholder:text-gray-500 py-1 px-0 appearance-none font-normal"
                       required
                     >
@@ -633,7 +742,9 @@ function AddTransactionContent() {
                   label="Categories *"
                   multiple
                   value={expenseForm.category}
-                  onChange={(newCategories) => setExpenseForm({ ...expenseForm, category: newCategories })}
+                  onChange={(newCategories) =>
+                    setExpenseForm({ ...expenseForm, category: newCategories })
+                  }
                   fetchSuggestions={fetchCategorySuggestions}
                   onCreateNew={handleCreateCategory}
                   formatNewItem={capitalizeWords}
@@ -646,7 +757,9 @@ function AddTransactionContent() {
                   label="For (Optional)"
                   multiple={false}
                   value={expenseForm.for}
-                  onChange={(newFor) => setExpenseForm({ ...expenseForm, for: newFor })}
+                  onChange={(newFor) =>
+                    setExpenseForm({ ...expenseForm, for: newFor })
+                  }
                   fetchSuggestions={fetchForSuggestions}
                   onCreateNew={handleCreateForValue}
                   formatNewItem={capitalizeWords}
@@ -658,7 +771,9 @@ function AddTransactionContent() {
                   label="Date *"
                   value={format(expenseForm.date, "yyyy-MM-dd")}
                   onChange={(dateString) => {
-                    const [year, month, day] = dateString.split('-').map(Number);
+                    const [year, month, day] = dateString
+                      .split("-")
+                      .map(Number);
                     const newDate = new Date(expenseForm.date);
                     newDate.setFullYear(year, month - 1, day);
                     setExpenseForm({ ...expenseForm, date: newDate });
@@ -668,7 +783,11 @@ function AddTransactionContent() {
                 <Button
                   type="submit"
                   className="w-full bg-[#EAEAEA] text-gray-700 hover:bg-[#E0E0E0]"
-                  disabled={isSubmitting || expenseForm.category.length === 0 || !expenseForm.cardId}
+                  disabled={
+                    isSubmitting ||
+                    expenseForm.category.length === 0 ||
+                    !expenseForm.cardId
+                  }
                   loading={isSubmitting}
                 >
                   Add Expense
@@ -706,26 +825,36 @@ function AddTransactionContent() {
                     <ExpenseCard
                       key={expense._id}
                       expense={expense as any}
-                      cardName={cardMap[expense.cardId!] || 'Unknown Card'}
+                      cardName={cardMap[expense.cardId!] || "Unknown Card"}
                       onDelete={(expenseId: Id<"expenses">) => {
-                        setPendingExpenseDeletions(prev => [...prev, expenseId]);
+                        setPendingExpenseDeletions((prev) => [
+                          ...prev,
+                          expenseId,
+                        ]);
 
                         const toastId = toast.success("Expense deleted", {
                           action: {
                             label: "Undo",
                             onClick: () => {
-                              setPendingExpenseDeletions(prev => prev.filter(id => id !== expenseId));
+                              setPendingExpenseDeletions((prev) =>
+                                prev.filter((id) => id !== expenseId),
+                              );
                               toast.dismiss(toastId);
                             },
                           },
                           onAutoClose: async () => {
                             try {
-                              await deleteExpenseMutation({ token: token!, expenseId: expenseId as any });
+                              await deleteExpenseMutation({
+                                token: token!,
+                                expenseId: expenseId as any,
+                              });
                               refetchExpenses();
                             } catch (error) {
                               console.error("Failed to delete expense:", error);
                               toast.error("Failed to delete expense.");
-                              setPendingExpenseDeletions(prev => prev.filter(id => id !== expenseId));
+                              setPendingExpenseDeletions((prev) =>
+                                prev.filter((id) => id !== expenseId),
+                              );
                             }
                           },
                           duration: 5000,
@@ -733,13 +862,16 @@ function AddTransactionContent() {
                       }}
                       status={(expense as any).status}
                       onRetry={handleRetrySyncExpense}
+                      onEdit={(id) => setEditingExpenseId(id as Id<"expenses">)}
                     />
                   ))}
                 </div>
               ) : (
                 <div className="text-center py-12">
                   <Receipt className="mx-auto text-gray-400 mb-4" size={48} />
-                  <p className="text-gray-500">You have no expenses recorded for this month.</p>
+                  <p className="text-gray-500">
+                    You have no expenses recorded for this month.
+                  </p>
                 </div>
               )}
             </div>
@@ -753,7 +885,9 @@ function AddTransactionContent() {
               transition={{ duration: 0.3 }}
             >
               <div className="mb-4">
-                <h2 className="text-2xl font-medium text-gray-900">Add New Income</h2>
+                <h2 className="text-2xl font-medium text-gray-900">
+                  Add New Income
+                </h2>
                 <p className="mt-1 text-sm font-light leading-5 text-gray-900">
                   Fill in the details below to track your income
                 </p>
@@ -763,7 +897,9 @@ function AddTransactionContent() {
                 <div>
                   <CurrencyInput
                     value={incomeForm.amount}
-                    onChangeValue={(val) => setIncomeForm({ ...incomeForm, amount: val })}
+                    onChangeValue={(val) =>
+                      setIncomeForm({ ...incomeForm, amount: val })
+                    }
                     required
                   />
                 </div>
@@ -772,7 +908,9 @@ function AddTransactionContent() {
                   <Input
                     type="text"
                     value={incomeForm.source}
-                    onChange={(e) => setIncomeForm({ ...incomeForm, source: e.target.value })}
+                    onChange={(e) =>
+                      setIncomeForm({ ...incomeForm, source: e.target.value })
+                    }
                     placeholder="Add a title"
                     icon={CaseSensitive}
                     required
@@ -782,15 +920,29 @@ function AddTransactionContent() {
                 <div>
                   <InputContainer
                     leftIcon={CreditCard}
-                    rightAdornment={(
-                      <svg className="size-5 text-gray-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    rightAdornment={
+                      <svg
+                        className="size-5 text-gray-500"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M6 9l6 6 6-6"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
                       </svg>
-                    )}
+                    }
                   >
                     <select
                       value={incomeForm.cardId}
-                      onChange={(e) => setIncomeForm({ ...incomeForm, cardId: e.target.value })}
+                      onChange={(e) =>
+                        setIncomeForm({ ...incomeForm, cardId: e.target.value })
+                      }
                       className="w-full bg-transparent outline-none text-black placeholder:text-gray-500 py-1 px-0 appearance-none font-normal"
                       required
                     >
@@ -810,9 +962,11 @@ function AddTransactionContent() {
                   label="Category *"
                   multiple={false}
                   value={incomeForm.category}
-                  onChange={(newCategory) => setIncomeForm({ ...incomeForm, category: newCategory })}
+                  onChange={(newCategory) =>
+                    setIncomeForm({ ...incomeForm, category: newCategory })
+                  }
                   fetchSuggestions={fetchIncomeCategorySuggestions}
-                  onCreateNew={async () => { }}
+                  onCreateNew={async () => {}}
                   formatNewItem={capitalizeWords}
                   placeholder="Choose category"
                 />
@@ -821,7 +975,9 @@ function AddTransactionContent() {
                   label="Date *"
                   value={format(incomeForm.date, "yyyy-MM-dd")}
                   onChange={(dateString) => {
-                    const [year, month, day] = dateString.split('-').map(Number);
+                    const [year, month, day] = dateString
+                      .split("-")
+                      .map(Number);
                     const newDate = new Date(incomeForm.date);
                     newDate.setFullYear(year, month - 1, day);
                     setIncomeForm({ ...incomeForm, date: newDate });
@@ -832,8 +988,10 @@ function AddTransactionContent() {
                   <div className="px-4 py-3">
                     <textarea
                       value={incomeForm.notes}
-                      onChange={(e) => setIncomeForm({ ...incomeForm, notes: e.target.value })}
-                      className={`w-full bg-transparent outline-none placeholder:text-gray-500 resize-none min-h-[88px] text-sm ${incomeForm.notes ? 'font-medium text-gray-900' : 'font-normal text-gray-900'}`}
+                      onChange={(e) =>
+                        setIncomeForm({ ...incomeForm, notes: e.target.value })
+                      }
+                      className={`w-full bg-transparent outline-none placeholder:text-gray-500 resize-none min-h-[88px] text-sm ${incomeForm.notes ? "font-medium text-gray-900" : "font-normal text-gray-900"}`}
                       placeholder="Notes (Optional)"
                     />
                   </div>
@@ -842,7 +1000,11 @@ function AddTransactionContent() {
                 <Button
                   type="submit"
                   className="w-full bg-[#EAEAEA] text-gray-700 hover:bg-[#E0E0E0]"
-                  disabled={isSubmitting || incomeForm.category.length === 0 || !incomeForm.cardId}
+                  disabled={
+                    isSubmitting ||
+                    incomeForm.category.length === 0 ||
+                    !incomeForm.cardId
+                  }
                   loading={isSubmitting}
                 >
                   Add Income
@@ -880,40 +1042,56 @@ function AddTransactionContent() {
                     <IncomeCard
                       key={incomeRecord._id}
                       income={incomeRecord as any}
-                      cardName={cardMap[incomeRecord.cardId] || 'Unknown Card'}
+                      cardName={cardMap[incomeRecord.cardId] || "Unknown Card"}
                       status={(incomeRecord as any).status}
                       onRetry={handleRetrySyncIncome}
                       onDelete={(incomeId: Id<"income">) => {
-                        setPendingIncomeDeletions(prev => [...prev, incomeId]);
+                        setPendingIncomeDeletions((prev) => [
+                          ...prev,
+                          incomeId,
+                        ]);
 
                         const toastId = toast.success("Income deleted", {
                           action: {
                             label: "Undo",
                             onClick: () => {
-                              setPendingIncomeDeletions(prev => prev.filter(id => id !== incomeId));
+                              setPendingIncomeDeletions((prev) =>
+                                prev.filter((id) => id !== incomeId),
+                              );
                               toast.dismiss(toastId);
                             },
                           },
                           onAutoClose: async () => {
                             try {
-                              await deleteIncomeMutation({ token: token!, incomeId: incomeId as any });
+                              await deleteIncomeMutation({
+                                token: token!,
+                                incomeId: incomeId as any,
+                              });
                               refetchIncome();
                             } catch (error) {
                               console.error("Failed to delete income:", error);
                               toast.error("Failed to delete income.");
-                              setPendingIncomeDeletions(prev => prev.filter(id => id !== incomeId));
+                              setPendingIncomeDeletions((prev) =>
+                                prev.filter((id) => id !== incomeId),
+                              );
                             }
                           },
                           duration: 5000,
                         });
                       }}
+                      onEdit={(id) => setEditingIncomeId(id as Id<"income">)}
                     />
                   ))}
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <TrendingUp className="mx-auto text-gray-400 mb-4" size={48} />
-                  <p className="text-gray-500">You have no income recorded for this month.</p>
+                  <TrendingUp
+                    className="mx-auto text-gray-400 mb-4"
+                    size={48}
+                  />
+                  <p className="text-gray-500">
+                    You have no income recorded for this month.
+                  </p>
                 </div>
               )}
             </div>
@@ -922,6 +1100,19 @@ function AddTransactionContent() {
       </div>
 
       <BottomNav />
+
+      <EditExpenseSheet
+        expenseId={editingExpenseId}
+        open={editingExpenseId !== null}
+        onClose={() => setEditingExpenseId(null)}
+        onSuccess={refetchExpenses}
+      />
+      <EditIncomeSheet
+        incomeId={editingIncomeId}
+        open={editingIncomeId !== null}
+        onClose={() => setEditingIncomeId(null)}
+        onSuccess={refetchIncome}
+      />
     </div>
   );
 }
@@ -929,11 +1120,15 @@ function AddTransactionContent() {
 export default function AddTransactionPage() {
   return (
     <ProtectedRoute>
-      <Suspense fallback={
-        <div className="min-h-screen bg-white flex items-center justify-center">
-          <div className="text-lg text-black">Loading add transaction page...</div>
-        </div>
-      }>
+      <Suspense
+        fallback={
+          <div className="min-h-screen bg-white flex items-center justify-center">
+            <div className="text-lg text-black">
+              Loading add transaction page...
+            </div>
+          </div>
+        }
+      >
         <AddTransactionContent />
       </Suspense>
     </ProtectedRoute>

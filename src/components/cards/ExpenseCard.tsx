@@ -29,6 +29,7 @@ interface ExpenseCardProps {
   cardName: string;
   onDelete: (id: Id<"expenses">) => void;
   onRetry?: (id: string) => void;
+  onEdit?: (id: string) => void;
   status?: "pending" | "failed";
 }
 
@@ -37,6 +38,7 @@ export function ExpenseCard({
   cardName,
   onDelete,
   onRetry,
+  onEdit,
   status,
 }: ExpenseCardProps) {
   const { settings } = useSettings();
@@ -51,7 +53,11 @@ export function ExpenseCard({
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
-    router.push(`/expenses/edit/${expense._id}`);
+    if (onEdit) {
+      onEdit(expense._id as string);
+    } else {
+      router.push(`/expenses/edit/${expense._id}`);
+    }
   };
 
   const handleRetry = (e: React.MouseEvent) => {

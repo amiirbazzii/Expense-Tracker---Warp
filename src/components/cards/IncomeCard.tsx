@@ -17,6 +17,7 @@ interface IncomeCardProps {
   onDelete: (incomeId: Id<"income">) => void;
   status?: "pending" | "failed";
   onRetry?: (itemId: string) => void;
+  onEdit?: (id: string) => void;
 }
 
 export function IncomeCard({
@@ -25,6 +26,7 @@ export function IncomeCard({
   onDelete,
   status,
   onRetry,
+  onEdit,
 }: IncomeCardProps) {
   const { token } = useAuth();
   const { settings } = useSettings();
@@ -41,7 +43,11 @@ export function IncomeCard({
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
-    router.push(`/income/edit/${income._id}`);
+    if (onEdit) {
+      onEdit(income._id);
+    } else {
+      router.push(`/income/edit/${income._id}`);
+    }
   };
 
   useEffect(() => {
