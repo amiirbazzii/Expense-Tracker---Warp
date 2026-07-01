@@ -41,19 +41,40 @@ export function PayInstallmentSheet({
   const { token } = useAuth();
 
   // Cards, categories, forValues from Convex
-  const cardsQuery = useQuery(api.cardsAndIncome.getMyCards, token ? { token } : "skip");
-  const categoriesQuery = useQuery(api.expenses.getCategories, token ? { token } : "skip");
-  const forValuesQuery = useQuery(api.expenses.getForValues, token ? { token } : "skip");
+  const cardsQuery = useQuery(
+    api.cardsAndIncome.getMyCards,
+    token ? { token } : "skip",
+  );
+  const categoriesQuery = useQuery(
+    api.expenses.getCategories,
+    token ? { token } : "skip",
+  );
+  const forValuesQuery = useQuery(
+    api.expenses.getForValues,
+    token ? { token } : "skip",
+  );
 
-  const { cards: offlineCards, categories: offlineCategories, forValues: offlineForValues } =
-    useOfflineFirstData();
+  const {
+    cards: offlineCards,
+    categories: offlineCategories,
+    forValues: offlineForValues,
+  } = useOfflineFirstData();
 
-  const cards = cardsQuery !== undefined
-    ? cardsQuery
-    : (offlineCards as any[])?.map((c: any) => ({ _id: c.cardId, name: c.cardName, userId: "", createdAt: 0, _creationTime: 0 }));
+  const cards =
+    cardsQuery !== undefined
+      ? cardsQuery
+      : (offlineCards as any[])?.map((c: any) => ({
+          _id: c.cardId,
+          name: c.cardName,
+          userId: "",
+          createdAt: 0,
+          _creationTime: 0,
+        }));
 
-  const categories = categoriesQuery !== undefined ? categoriesQuery : offlineCategories;
-  const forValues = forValuesQuery !== undefined ? forValuesQuery : offlineForValues;
+  const categories =
+    categoriesQuery !== undefined ? categoriesQuery : offlineCategories;
+  const forValues =
+    forValuesQuery !== undefined ? forValuesQuery : offlineForValues;
 
   const createExpenseMutation = useMutation(api.expenses.createExpense);
   const createCategoryMutation = useMutation(api.expenses.createCategory);
@@ -75,13 +96,8 @@ export function PayInstallmentSheet({
       setAmount(String(loan.installmentAmount));
       setTitle(loan.name);
       setCategory(["Installment"]);
-      // Pre-fill date to the monthly payment day of this month
-      const now = new Date();
-      const payDay = Math.min(
-        loan.monthlyPaymentDay,
-        new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-      );
-      setDate(new Date(now.getFullYear(), now.getMonth(), payDay));
+      // Pre-fill with today's date
+      setDate(new Date());
       setPaidFor([]);
       // Auto-select first card
       if (cards && cards.length > 0 && !cardId) {
@@ -170,11 +186,7 @@ export function PayInstallmentSheet({
   return (
     <BottomSheet open={open} onClose={onClose} title="Pay Installment">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <CurrencyInput
-          value={amount}
-          onChangeValue={setAmount}
-          required
-        />
+        <CurrencyInput value={amount} onChangeValue={setAmount} required />
 
         <Input
           type="text"
@@ -188,8 +200,20 @@ export function PayInstallmentSheet({
         <InputContainer
           leftIcon={CreditCard}
           rightAdornment={
-            <svg className="size-5 text-gray-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <svg
+              className="size-5 text-gray-500"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path
+                d="M6 9l6 6 6-6"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           }
         >
