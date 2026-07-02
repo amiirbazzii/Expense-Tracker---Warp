@@ -7,9 +7,13 @@ import { ConvexProvider } from "@/providers/ConvexProvider";
 import { OfflineFirstWrapper } from "@/providers/OfflineFirstWrapper";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
-import { OfflineProvider } from "@/contexts/OfflineContext";
-import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
-import { LazyAnalytics, LazySpeedInsights, LazyToaster, LazyEnhancedNetworkStatusIndicator } from "@/components/LazyComponents";
+
+import {
+  LazyAnalytics,
+  LazySpeedInsights,
+  LazyToaster,
+  LazyEnhancedNetworkStatusIndicator,
+} from "@/components/LazyComponents";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LanguageWrapper } from "@/components/LanguageWrapper";
 import { InstallPrompt } from "@/components/InstallPrompt";
@@ -46,7 +50,7 @@ const poppins = Poppins({
   variable: "--font-poppins",
   display: "swap",
   preload: true,
-  fallback: ['system-ui', 'arial'],
+  fallback: ["system-ui", "arial"],
 });
 
 export const metadata: Metadata = {
@@ -91,38 +95,58 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
         <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
-        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="16x16"
+          href="/favicon-16x16.png"
+        />
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="32x32"
+          href="/favicon-32x32.png"
+        />
+        <link
+          rel="apple-touch-icon"
+          sizes="180x180"
+          href="/apple-touch-icon.png"
+        />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta
+          name="apple-mobile-web-app-status-bar-style"
+          content="black-translucent"
+        />
         <meta name="apple-mobile-web-app-title" content="Expense Tracker" />
       </head>
-      <body className={`${poppins.variable} ${geistMono.variable} ${iranSansX.variable} font-sans antialiased`}>
+      <body
+        className={`${poppins.variable} ${geistMono.variable} ${iranSansX.variable} font-sans antialiased`}
+      >
         <ErrorBoundary>
-          <ServiceWorkerRegistration />
           <ConvexProvider>
             <AuthProvider>
               <OfflineFirstWrapper>
                 <SettingsProvider>
                   <LanguageWrapper>
-                    <OfflineProvider>
-                      {children}
-                      <div id="modal-root"></div>
-                      <LazyEnhancedNetworkStatusIndicator />
-                      <InstallPrompt />
-                      <LazyToaster position="top-center" />
-                    </OfflineProvider>
+                    {children}
+                    <div id="modal-root"></div>
+                    <LazyEnhancedNetworkStatusIndicator />
+                    <InstallPrompt />
+                    <LazyToaster position="top-center" />
                   </LanguageWrapper>
                 </SettingsProvider>
               </OfflineFirstWrapper>
             </AuthProvider>
           </ConvexProvider>
         </ErrorBoundary>
-          <LazyAnalytics />
-          <LazySpeedInsights />
+        <LazyAnalytics />
+        <LazySpeedInsights />
       </body>
     </html>
   );
