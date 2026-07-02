@@ -36,6 +36,7 @@ import { Button } from "@/components/Button";
 import InputContainer from "@/components/InputContainer";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useOfflineQueue } from "@/hooks/useOfflineQueue";
+import { useOfflineFirst } from "@/providers/OfflineFirstProvider";
 import { useOfflineFirstData } from "@/hooks/useOfflineFirstData";
 
 type ExpenseCreationData = {
@@ -78,6 +79,7 @@ function AddTransactionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isOnline = useOnlineStatus();
+  const { localStorageManager } = useOfflineFirst();
 
   // Tab State
   const tabParam = searchParams.get("tab");
@@ -439,6 +441,10 @@ function AddTransactionContent() {
     };
 
     try {
+      if (localStorageManager) {
+        await localStorageManager.saveExpense(expenseData);
+      }
+
       if (isOnline) {
         await createExpenseMutation({ token: token!, ...expenseData });
         toast.success("Your expense has been added.");
@@ -513,6 +519,10 @@ function AddTransactionContent() {
     };
 
     try {
+      if (localStorageManager) {
+        await localStorageManager.saveIncome(incomeData);
+      }
+
       if (isOnline) {
         await createIncomeMutation({ token: token!, ...incomeData });
         toast.success("Your income has been added.");
@@ -557,6 +567,9 @@ function AddTransactionContent() {
       return;
     }
     try {
+      if (localStorageManager) {
+        await localStorageManager.saveCategory({ name, type: "expense" });
+      }
       await createCategoryMutation({ token, name });
     } catch (error) {
       toast.error("Failed to create category.");
@@ -577,6 +590,9 @@ function AddTransactionContent() {
       return;
     }
     try {
+      if (localStorageManager) {
+        await localStorageManager.saveForValue({ value });
+      }
       await createForValueMutation({ token, value });
     } catch (error) {
       toast.error("Failed to add 'for' value.");

@@ -1,4 +1,4 @@
-import * as localforage from 'localforage';
+import * as localforage from "localforage";
 import {
   LocalDataSchema,
   LocalExpense,
@@ -12,8 +12,10 @@ import {
   LocalDataExport,
   PendingOperation,
   SyncState,
-  LocalMetadata
-} from '../types/local-storage';
+  LocalMetadata,
+  PendingMutation,
+  MutationAction,
+} from "../types/local-storage";
 
 /**
  * LocalStorageManager provides a comprehensive interface for local data operations
@@ -26,10 +28,10 @@ export class LocalStorageManager {
 
   constructor() {
     this.storage = localforage.createInstance({
-      name: 'ExpenseTrackerV2',
-      storeName: 'local_first_data',
-      description: 'Local-first data storage with cloud sync capabilities',
-      version: 2.0
+      name: "ExpenseTrackerV2",
+      storeName: "local_first_data",
+      description: "Local-first data storage with cloud sync capabilities",
+      version: 2.0,
     });
   }
 
@@ -54,74 +56,220 @@ export class LocalStorageManager {
 
       this.initialized = true;
     } catch (error) {
-      console.error('Failed to initialize LocalStorageManager:', error);
+      console.error("Failed to initialize LocalStorageManager:", error);
       throw error;
     }
   }
 
   private async initializeMetadata(userId: string): Promise<void> {
     const metadata: LocalMetadata = {
-      version: '2.0.0',
+      version: "2.0.0",
       deviceId: this.generateDeviceId(),
       userId,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      schemaVersion: 2
+      schemaVersion: 2,
     };
 
-    await this.storage.setItem('metadata', metadata);
+    await this.storage.setItem("metadata", metadata);
   }
 
   private async initializeSyncState(): Promise<void> {
     const syncState: SyncState = {
       lastSync: 0,
       pendingOperations: [],
-      dataHash: '',
+      dataHash: "",
       conflictResolutions: [],
       totalRecords: 0,
-      lastModified: Date.now()
+      lastModified: Date.now(),
     };
 
-    await this.storage.setItem('syncState', syncState);
+    await this.storage.setItem("syncState", syncState);
   }
 
   private generateDeviceId(): string {
-    return 'device_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+    return (
+      "device_" + Math.random().toString(36).substr(2, 9) + "_" + Date.now()
+    );
   }
 
   // Metadata operations
   async getMetadata(): Promise<LocalMetadata | null> {
-    return await this.storage.getItem('metadata');
+    return await this.storage.getItem("metadata");
   }
 
   async updateMetadata(updates: Partial<LocalMetadata>): Promise<void> {
     const metadata = await this.getMetadata();
     if (metadata) {
       const updated = { ...metadata, ...updates, updatedAt: Date.now() };
-      await this.storage.setItem('metadata', updated);
+      await this.storage.setItem("metadata", updated);
     }
   }
 
   // Sync state operations
   async getSyncState(): Promise<SyncState | null> {
-    return await this.storage.getItem('syncState');
+    return await this.storage.getItem("syncState");
   }
 
   async updateSyncState(updates: Partial<SyncState>): Promise<void> {
     const syncState = await this.getSyncState();
     if (syncState) {
       const updated = { ...syncState, ...updates };
-      await this.storage.setItem('syncState', updated);
+      await this.storage.setItem("syncState", updated);
     }
   }
 
+  // ==========================================
+  // Dynamic Mutation Queue Operations (Task 1)
+  // ==========================================
+
+  /**
+   * Enqueue: Push a new mutation dynamically into the pending queue.
+   */
+  async enqueue(
+    action: MutationAction,
+    storeName: string,
+    payload: any,
+  ): Promise<PendingMutation> {
+    const result =
+      await this.storage.getItem<PendingMutation[]>("pending_mutations");
+    const mutations = Array.isArray(result) ? result : [];
+    const newMutation: PendingMutation = {
+      id: `mut_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      action,
+      storeName,
+      payload,
+      timestamp: Date.now(),
+    };
+    mutations.push(newMutation);
+    await this.storage.setItem("pending_mutations", mutations);
+    return newMutation;
+  }
+
+  /**
+   * Fetch Ordered: Retrieve all pending operations, strictly ordered by FIFO (First-In, First-Out).
+   */
+  async fetchOrdered(): Promise<PendingMutation[]> {
+    const result =
+      await this.storage.getItem<PendingMutation[]>("pending_mutations");
+    const mutations = Array.isArray(result) ? result : [];
+    return mutations.sort((a, b) => a.timestamp - b.timestamp);
+  }
+
+  /**
+   * Dequeue: Remove a mutation by its ID once it has been successfully synced.
+   */
+  async dequeue(id: string): Promise<boolean> {
+    const result =
+      await this.storage.getItem<PendingMutation[]>("pending_mutations");
+    const mutations = Array.isArray(result) ? result : [];
+    const index = mutations.findIndex((mut) => mut.id === id);
+    if (index === -1) return false;
+    mutations.splice(index, 1);
+    await this.storage.setItem("pending_mutations", mutations);
+    return true;
+  }
+
+  // ==========================================
+  // Generic Dynamic CRUD Operations
+  // ==========================================
+
+  async saveEntity<T extends LocalEntity>(
+    entityType: string,
+    data: any,
+  ): Promise<T> {
+    const collection = await this.getEntityCollection<T>(entityType);
+
+    const id =
+      data.id ||
+      data.cloudId ||
+      `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const localEntity: T = {
+      ...data,
+      id,
+      localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      syncStatus: "pending",
+      version: 1,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    } as unknown as T;
+
+    collection[id] = localEntity;
+    await this.setEntityCollection(entityType, collection);
+
+    // Enqueue the CREATE mutation
+    await this.enqueue("CREATE", entityType, localEntity);
+
+    return localEntity;
+  }
+
+  async getEntities<T extends LocalEntity>(entityType: string): Promise<T[]> {
+    const collection = await this.getEntityCollection<T>(entityType);
+    return Object.values(collection);
+  }
+
+  async getEntityById<T extends LocalEntity>(
+    entityType: string,
+    id: string,
+  ): Promise<T | null> {
+    const collection = await this.getEntityCollection<T>(entityType);
+    return collection[id] || null;
+  }
+
+  async updateEntity<T extends LocalEntity>(
+    entityType: string,
+    id: string,
+    updates: Partial<T>,
+  ): Promise<T | null> {
+    const collection = await this.getEntityCollection<T>(entityType);
+    const entity = collection[id];
+
+    if (!entity) return null;
+
+    const updated: T = {
+      ...entity,
+      ...updates,
+      version: entity.version + 1,
+      updatedAt: Date.now(),
+      syncStatus: "pending",
+    };
+
+    collection[id] = updated;
+    await this.setEntityCollection(entityType, collection);
+
+    // Enqueue the UPDATE mutation
+    await this.enqueue("UPDATE", entityType, updated);
+
+    return updated;
+  }
+
+  async deleteEntity(entityType: string, id: string): Promise<boolean> {
+    const collection = await this.getEntityCollection<LocalEntity>(entityType);
+
+    if (!collection[id]) return false;
+
+    const original = collection[id];
+    delete collection[id];
+    await this.setEntityCollection(entityType, collection);
+
+    // Enqueue the DELETE mutation
+    await this.enqueue("DELETE", entityType, { id, original });
+
+    return true;
+  }
+
   // Generic entity operations
-  private async getEntityCollection<T extends LocalEntity>(entityType: EntityType): Promise<{ [id: string]: T }> {
+  private async getEntityCollection<T extends LocalEntity>(
+    entityType: EntityType,
+  ): Promise<{ [id: string]: T }> {
     const collection = await this.storage.getItem(entityType);
     return (collection as { [id: string]: T }) || {};
   }
 
-  private async setEntityCollection<T extends LocalEntity>(entityType: EntityType, collection: { [id: string]: T }): Promise<void> {
+  private async setEntityCollection<T extends LocalEntity>(
+    entityType: EntityType,
+    collection: { [id: string]: T },
+  ): Promise<void> {
     await this.storage.setItem(entityType, collection);
     await this.updateLastModified();
   }
@@ -131,27 +279,37 @@ export class LocalStorageManager {
   }
 
   // Expense operations
-  async saveExpense(expense: Omit<LocalExpense, 'id' | 'localId' | 'syncStatus' | 'version' | 'createdAt' | 'updatedAt'>): Promise<LocalExpense> {
-    const collection = await this.getEntityCollection<LocalExpense>('expenses');
+  async saveExpense(
+    expense: Omit<
+      LocalExpense,
+      "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
+    >,
+  ): Promise<LocalExpense> {
+    const collection = await this.getEntityCollection<LocalExpense>("expenses");
 
     const localExpense: LocalExpense = {
       ...expense,
-      id: expense.cloudId || `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id:
+        expense.cloudId ||
+        `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      syncStatus: 'pending',
+      syncStatus: "pending",
       version: 1,
       createdAt: Date.now(),
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
     };
 
     collection[localExpense.id] = localExpense;
-    await this.setEntityCollection('expenses', collection);
+    await this.setEntityCollection("expenses", collection);
+
+    // Enqueue mutation dynamically
+    await this.enqueue("CREATE", "expenses", localExpense);
 
     return localExpense;
   }
 
   async getExpenses(filters?: DataFilters): Promise<LocalExpense[]> {
-    const collection = await this.getEntityCollection<LocalExpense>('expenses');
+    const collection = await this.getEntityCollection<LocalExpense>("expenses");
     let expenses = Object.values(collection);
 
     if (filters) {
@@ -162,12 +320,15 @@ export class LocalStorageManager {
   }
 
   async getExpenseById(id: string): Promise<LocalExpense | null> {
-    const collection = await this.getEntityCollection<LocalExpense>('expenses');
+    const collection = await this.getEntityCollection<LocalExpense>("expenses");
     return collection[id] || null;
   }
 
-  async updateExpense(id: string, updates: Partial<LocalExpense>): Promise<LocalExpense | null> {
-    const collection = await this.getEntityCollection<LocalExpense>('expenses');
+  async updateExpense(
+    id: string,
+    updates: Partial<LocalExpense>,
+  ): Promise<LocalExpense | null> {
+    const collection = await this.getEntityCollection<LocalExpense>("expenses");
     const expense = collection[id];
 
     if (!expense) return null;
@@ -177,48 +338,65 @@ export class LocalStorageManager {
       ...updates,
       version: expense.version + 1,
       updatedAt: Date.now(),
-      syncStatus: 'pending'
+      syncStatus: "pending",
     };
 
     collection[id] = updated;
-    await this.setEntityCollection('expenses', collection);
+    await this.setEntityCollection("expenses", collection);
+
+    // Enqueue mutation dynamically
+    await this.enqueue("UPDATE", "expenses", updated);
 
     return updated;
   }
 
   async deleteExpense(id: string): Promise<boolean> {
-    const collection = await this.getEntityCollection<LocalExpense>('expenses');
+    const collection = await this.getEntityCollection<LocalExpense>("expenses");
 
     if (!collection[id]) return false;
 
+    const original = collection[id];
     delete collection[id];
-    await this.setEntityCollection('expenses', collection);
+    await this.setEntityCollection("expenses", collection);
+
+    // Enqueue mutation dynamically
+    await this.enqueue("DELETE", "expenses", { id, original });
 
     return true;
   }
 
   // Income operations
-  async saveIncome(income: Omit<LocalIncome, 'id' | 'localId' | 'syncStatus' | 'version' | 'createdAt' | 'updatedAt'>): Promise<LocalIncome> {
-    const collection = await this.getEntityCollection<LocalIncome>('income');
+  async saveIncome(
+    income: Omit<
+      LocalIncome,
+      "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
+    >,
+  ): Promise<LocalIncome> {
+    const collection = await this.getEntityCollection<LocalIncome>("income");
 
     const localIncome: LocalIncome = {
       ...income,
-      id: income.cloudId || `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id:
+        income.cloudId ||
+        `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      syncStatus: 'pending',
+      syncStatus: "pending",
       version: 1,
       createdAt: Date.now(),
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
     };
 
     collection[localIncome.id] = localIncome;
-    await this.setEntityCollection('income', collection);
+    await this.setEntityCollection("income", collection);
+
+    // Enqueue mutation dynamically
+    await this.enqueue("CREATE", "income", localIncome);
 
     return localIncome;
   }
 
   async getIncome(filters?: DataFilters): Promise<LocalIncome[]> {
-    const collection = await this.getEntityCollection<LocalIncome>('income');
+    const collection = await this.getEntityCollection<LocalIncome>("income");
     let income = Object.values(collection);
 
     if (filters) {
@@ -228,8 +406,11 @@ export class LocalStorageManager {
     return income.sort((a, b) => b.date - a.date);
   }
 
-  async updateIncome(id: string, updates: Partial<LocalIncome>): Promise<LocalIncome | null> {
-    const collection = await this.getEntityCollection<LocalIncome>('income');
+  async updateIncome(
+    id: string,
+    updates: Partial<LocalIncome>,
+  ): Promise<LocalIncome | null> {
+    const collection = await this.getEntityCollection<LocalIncome>("income");
     const income = collection[id];
 
     if (!income) return null;
@@ -239,84 +420,118 @@ export class LocalStorageManager {
       ...updates,
       version: income.version + 1,
       updatedAt: Date.now(),
-      syncStatus: 'pending'
+      syncStatus: "pending",
     };
 
     collection[id] = updated;
-    await this.setEntityCollection('income', collection);
+    await this.setEntityCollection("income", collection);
+
+    // Enqueue mutation dynamically
+    await this.enqueue("UPDATE", "income", updated);
 
     return updated;
   }
 
   async deleteIncome(id: string): Promise<boolean> {
-    const collection = await this.getEntityCollection<LocalIncome>('income');
+    const collection = await this.getEntityCollection<LocalIncome>("income");
 
     if (!collection[id]) return false;
 
+    const original = collection[id];
     delete collection[id];
-    await this.setEntityCollection('income', collection);
+    await this.setEntityCollection("income", collection);
+
+    // Enqueue mutation dynamically
+    await this.enqueue("DELETE", "income", { id, original });
 
     return true;
   }
 
   // Category operations
-  async saveCategory(category: Omit<LocalCategory, 'id' | 'localId' | 'syncStatus' | 'version' | 'createdAt' | 'updatedAt'>): Promise<LocalCategory> {
-    const collection = await this.getEntityCollection<LocalCategory>('categories');
+  async saveCategory(
+    category: Omit<
+      LocalCategory,
+      "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
+    >,
+  ): Promise<LocalCategory> {
+    const collection =
+      await this.getEntityCollection<LocalCategory>("categories");
 
     const localCategory: LocalCategory = {
       ...category,
-      id: category.cloudId || `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id:
+        category.cloudId ||
+        `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      syncStatus: 'pending',
+      syncStatus: "pending",
       version: 1,
       createdAt: Date.now(),
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
     };
 
     collection[localCategory.id] = localCategory;
-    await this.setEntityCollection('categories', collection);
+    await this.setEntityCollection("categories", collection);
+
+    // Enqueue mutation dynamically
+    await this.enqueue("CREATE", "categories", localCategory);
 
     return localCategory;
   }
 
-  async getCategories(type?: 'expense' | 'income'): Promise<LocalCategory[]> {
-    const collection = await this.getEntityCollection<LocalCategory>('categories');
+  async getCategories(type?: "expense" | "income"): Promise<LocalCategory[]> {
+    const collection =
+      await this.getEntityCollection<LocalCategory>("categories");
     let categories = Object.values(collection);
 
     if (type) {
-      categories = categories.filter(cat => cat.type === type);
+      categories = categories.filter((cat) => cat.type === type);
     }
 
     return categories.sort((a, b) => a.name.localeCompare(b.name));
   }
 
   // Card operations
-  async saveCard(card: Omit<LocalCard, 'id' | 'localId' | 'syncStatus' | 'version' | 'createdAt' | 'updatedAt'>): Promise<LocalCard> {
-    const collection = await this.getEntityCollection<LocalCard>('cards');
+  async saveCard(
+    card: Omit<
+      LocalCard,
+      "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
+    >,
+  ): Promise<LocalCard> {
+    const collection = await this.getEntityCollection<LocalCard>("cards");
 
     const localCard: LocalCard = {
       ...card,
-      id: card.cloudId || `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id:
+        card.cloudId ||
+        `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      syncStatus: 'pending',
+      syncStatus: "pending",
       version: 1,
       createdAt: Date.now(),
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
     };
 
     collection[localCard.id] = localCard;
-    await this.setEntityCollection('cards', collection);
+    await this.setEntityCollection("cards", collection);
+
+    // Enqueue mutation dynamically
+    await this.enqueue("CREATE", "cards", localCard);
 
     return localCard;
   }
 
   async getCards(): Promise<LocalCard[]> {
-    const collection = await this.getEntityCollection<LocalCard>('cards');
-    return Object.values(collection).sort((a, b) => a.name.localeCompare(b.name));
+    const collection = await this.getEntityCollection<LocalCard>("cards");
+    return Object.values(collection).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
   }
 
-  async updateCard(id: string, updates: Partial<LocalCard>): Promise<LocalCard | null> {
-    const collection = await this.getEntityCollection<LocalCard>('cards');
+  async updateCard(
+    id: string,
+    updates: Partial<LocalCard>,
+  ): Promise<LocalCard | null> {
+    const collection = await this.getEntityCollection<LocalCard>("cards");
     const card = collection[id];
 
     if (!card) return null;
@@ -326,53 +541,78 @@ export class LocalStorageManager {
       ...updates,
       version: card.version + 1,
       updatedAt: Date.now(),
-      syncStatus: 'pending'
+      syncStatus: "pending",
     };
 
     collection[id] = updated;
-    await this.setEntityCollection('cards', collection);
+    await this.setEntityCollection("cards", collection);
+
+    // Enqueue mutation dynamically
+    await this.enqueue("UPDATE", "cards", updated);
 
     return updated;
   }
 
   async deleteCard(id: string): Promise<boolean> {
-    const collection = await this.getEntityCollection<LocalCard>('cards');
+    const collection = await this.getEntityCollection<LocalCard>("cards");
 
     if (!collection[id]) return false;
 
+    const original = collection[id];
     delete collection[id];
-    await this.setEntityCollection('cards', collection);
+    await this.setEntityCollection("cards", collection);
+
+    // Enqueue mutation dynamically
+    await this.enqueue("DELETE", "cards", { id, original });
 
     return true;
   }
 
   // For Values operations
-  async saveForValue(forValue: Omit<LocalForValue, 'id' | 'localId' | 'syncStatus' | 'version' | 'createdAt' | 'updatedAt'>): Promise<LocalForValue> {
-    const collection = await this.getEntityCollection<LocalForValue>('forValues');
+  async saveForValue(
+    forValue: Omit<
+      LocalForValue,
+      "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
+    >,
+  ): Promise<LocalForValue> {
+    const collection =
+      await this.getEntityCollection<LocalForValue>("forValues");
 
     const localForValue: LocalForValue = {
       ...forValue,
-      id: forValue.cloudId || `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id:
+        forValue.cloudId ||
+        `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      syncStatus: 'pending',
+      syncStatus: "pending",
       version: 1,
       createdAt: Date.now(),
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
     };
 
     collection[localForValue.id] = localForValue;
-    await this.setEntityCollection('forValues', collection);
+    await this.setEntityCollection("forValues", collection);
+
+    // Enqueue mutation dynamically
+    await this.enqueue("CREATE", "forValues", localForValue);
 
     return localForValue;
   }
 
   async getForValues(): Promise<LocalForValue[]> {
-    const collection = await this.getEntityCollection<LocalForValue>('forValues');
-    return Object.values(collection).sort((a, b) => a.value.localeCompare(b.value));
+    const collection =
+      await this.getEntityCollection<LocalForValue>("forValues");
+    return Object.values(collection).sort((a, b) =>
+      a.value.localeCompare(b.value),
+    );
   }
 
-  async updateForValue(id: string, updates: Partial<LocalForValue>): Promise<LocalForValue | null> {
-    const collection = await this.getEntityCollection<LocalForValue>('forValues');
+  async updateForValue(
+    id: string,
+    updates: Partial<LocalForValue>,
+  ): Promise<LocalForValue | null> {
+    const collection =
+      await this.getEntityCollection<LocalForValue>("forValues");
     const forValue = collection[id];
 
     if (!forValue) return null;
@@ -382,54 +622,80 @@ export class LocalStorageManager {
       ...updates,
       version: forValue.version + 1,
       updatedAt: Date.now(),
-      syncStatus: 'pending'
+      syncStatus: "pending",
     };
 
     collection[id] = updated;
-    await this.setEntityCollection('forValues', collection);
+    await this.setEntityCollection("forValues", collection);
+
+    // Enqueue mutation dynamically
+    await this.enqueue("UPDATE", "forValues", updated);
 
     return updated;
   }
 
   async deleteForValue(id: string): Promise<boolean> {
-    const collection = await this.getEntityCollection<LocalForValue>('forValues');
+    const collection =
+      await this.getEntityCollection<LocalForValue>("forValues");
 
     if (!collection[id]) return false;
 
+    const original = collection[id];
     delete collection[id];
-    await this.setEntityCollection('forValues', collection);
+    await this.setEntityCollection("forValues", collection);
+
+    // Enqueue mutation dynamically
+    await this.enqueue("DELETE", "forValues", { id, original });
 
     return true;
   }
 
   // Income Categories operations (separate from regular categories)
-  async saveIncomeCategory(category: Omit<LocalCategory, 'id' | 'localId' | 'syncStatus' | 'version' | 'createdAt' | 'updatedAt'>): Promise<LocalCategory> {
-    const collection = await this.getEntityCollection<LocalCategory>('incomeCategories');
+  async saveIncomeCategory(
+    category: Omit<
+      LocalCategory,
+      "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
+    >,
+  ): Promise<LocalCategory> {
+    const collection =
+      await this.getEntityCollection<LocalCategory>("incomeCategories");
 
     const localCategory: LocalCategory = {
       ...category,
-      type: 'income', // Ensure it's marked as income category
-      id: category.cloudId || `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type: "income", // Ensure it's marked as income category
+      id:
+        category.cloudId ||
+        `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      syncStatus: 'pending',
+      syncStatus: "pending",
       version: 1,
       createdAt: Date.now(),
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
     };
 
     collection[localCategory.id] = localCategory;
-    await this.setEntityCollection('incomeCategories', collection);
+    await this.setEntityCollection("incomeCategories", collection);
+
+    // Enqueue mutation dynamically
+    await this.enqueue("CREATE", "incomeCategories", localCategory);
 
     return localCategory;
   }
 
   async getIncomeCategories(): Promise<LocalCategory[]> {
-    const collection = await this.getEntityCollection<LocalCategory>('incomeCategories');
-    return Object.values(collection).sort((a, b) => a.name.localeCompare(b.name));
+    const collection =
+      await this.getEntityCollection<LocalCategory>("incomeCategories");
+    return Object.values(collection).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
   }
 
-  async updateIncomeCategory(id: string, updates: Partial<LocalCategory>): Promise<LocalCategory | null> {
-    const collection = await this.getEntityCollection<LocalCategory>('incomeCategories');
+  async updateIncomeCategory(
+    id: string,
+    updates: Partial<LocalCategory>,
+  ): Promise<LocalCategory | null> {
+    const collection =
+      await this.getEntityCollection<LocalCategory>("incomeCategories");
     const category = collection[id];
 
     if (!category) return null;
@@ -437,32 +703,44 @@ export class LocalStorageManager {
     const updated: LocalCategory = {
       ...category,
       ...updates,
-      type: 'income', // Ensure it remains an income category
+      type: "income", // Ensure it remains an income category
       version: category.version + 1,
       updatedAt: Date.now(),
-      syncStatus: 'pending'
+      syncStatus: "pending",
     };
 
     collection[id] = updated;
-    await this.setEntityCollection('incomeCategories', collection);
+    await this.setEntityCollection("incomeCategories", collection);
+
+    // Enqueue mutation dynamically
+    await this.enqueue("UPDATE", "incomeCategories", updated);
 
     return updated;
   }
 
   async deleteIncomeCategory(id: string): Promise<boolean> {
-    const collection = await this.getEntityCollection<LocalCategory>('incomeCategories');
+    const collection =
+      await this.getEntityCollection<LocalCategory>("incomeCategories");
 
     if (!collection[id]) return false;
 
+    const original = collection[id];
     delete collection[id];
-    await this.setEntityCollection('incomeCategories', collection);
+    await this.setEntityCollection("incomeCategories", collection);
+
+    // Enqueue mutation dynamically
+    await this.enqueue("DELETE", "incomeCategories", { id, original });
 
     return true;
   }
 
   // Enhanced category operations with update/delete
-  async updateCategory(id: string, updates: Partial<LocalCategory>): Promise<LocalCategory | null> {
-    const collection = await this.getEntityCollection<LocalCategory>('categories');
+  async updateCategory(
+    id: string,
+    updates: Partial<LocalCategory>,
+  ): Promise<LocalCategory | null> {
+    const collection =
+      await this.getEntityCollection<LocalCategory>("categories");
     const category = collection[id];
 
     if (!category) return null;
@@ -472,79 +750,98 @@ export class LocalStorageManager {
       ...updates,
       version: category.version + 1,
       updatedAt: Date.now(),
-      syncStatus: 'pending'
+      syncStatus: "pending",
     };
 
     collection[id] = updated;
-    await this.setEntityCollection('categories', collection);
+    await this.setEntityCollection("categories", collection);
+
+    // Enqueue mutation dynamically
+    await this.enqueue("UPDATE", "categories", updated);
 
     return updated;
   }
 
   async deleteCategory(id: string): Promise<boolean> {
-    const collection = await this.getEntityCollection<LocalCategory>('categories');
+    const collection =
+      await this.getEntityCollection<LocalCategory>("categories");
 
     if (!collection[id]) return false;
 
+    const original = collection[id];
     delete collection[id];
-    await this.setEntityCollection('categories', collection);
+    await this.setEntityCollection("categories", collection);
+
+    // Enqueue mutation dynamically
+    await this.enqueue("DELETE", "categories", { id, original });
 
     return true;
   }
 
   // Data validation and corruption recovery
-  async validateEntity<T extends LocalEntity>(entity: T, entityType: EntityType): Promise<{ isValid: boolean; errors: string[] }> {
+  async validateEntity<T extends LocalEntity>(
+    entity: T,
+    entityType: EntityType,
+  ): Promise<{ isValid: boolean; errors: string[] }> {
     const errors: string[] = [];
 
     // Basic validation
-    if (!entity.id) errors.push('Missing id');
-    if (!entity.localId) errors.push('Missing localId');
-    if (!entity.syncStatus) errors.push('Missing syncStatus');
-    if (typeof entity.version !== 'number' || entity.version < 1) errors.push('Invalid version');
-    if (!entity.createdAt || !entity.updatedAt) errors.push('Missing timestamps');
+    if (!entity.id) errors.push("Missing id");
+    if (!entity.localId) errors.push("Missing localId");
+    if (!entity.syncStatus) errors.push("Missing syncStatus");
+    if (typeof entity.version !== "number" || entity.version < 1)
+      errors.push("Invalid version");
+    if (!entity.createdAt || !entity.updatedAt)
+      errors.push("Missing timestamps");
 
     // Entity-specific validation
     switch (entityType) {
-      case 'expenses':
+      case "expenses":
         const expense = entity as unknown as LocalExpense;
-        if (typeof expense.amount !== 'number' || expense.amount <= 0) errors.push('Invalid amount');
-        if (!expense.title?.trim()) errors.push('Missing title');
-        if (!Array.isArray(expense.category)) errors.push('Invalid category format');
-        if (!Array.isArray(expense.for)) errors.push('Invalid for format');
-        if (!expense.date || expense.date <= 0) errors.push('Invalid date');
+        if (typeof expense.amount !== "number" || expense.amount <= 0)
+          errors.push("Invalid amount");
+        if (!expense.title?.trim()) errors.push("Missing title");
+        if (!Array.isArray(expense.category))
+          errors.push("Invalid category format");
+        if (!Array.isArray(expense.for)) errors.push("Invalid for format");
+        if (!expense.date || expense.date <= 0) errors.push("Invalid date");
         break;
 
-      case 'income':
+      case "income":
         const income = entity as unknown as LocalIncome;
-        if (typeof income.amount !== 'number' || income.amount <= 0) errors.push('Invalid amount');
-        if (!income.cardId?.trim()) errors.push('Missing cardId');
-        if (!income.source?.trim()) errors.push('Missing source');
-        if (!income.category?.trim()) errors.push('Missing category');
-        if (!income.date || income.date <= 0) errors.push('Invalid date');
+        if (typeof income.amount !== "number" || income.amount <= 0)
+          errors.push("Invalid amount");
+        if (!income.cardId?.trim()) errors.push("Missing cardId");
+        if (!income.source?.trim()) errors.push("Missing source");
+        if (!income.category?.trim()) errors.push("Missing category");
+        if (!income.date || income.date <= 0) errors.push("Invalid date");
         break;
 
-      case 'categories':
-      case 'incomeCategories':
+      case "categories":
+      case "incomeCategories":
         const category = entity as unknown as LocalCategory;
-        if (!category.name?.trim()) errors.push('Missing name');
-        if (!['expense', 'income'].includes(category.type)) errors.push('Invalid type');
+        if (!category.name?.trim()) errors.push("Missing name");
+        if (!["expense", "income"].includes(category.type))
+          errors.push("Invalid type");
         break;
 
-      case 'cards':
+      case "cards":
         const card = entity as unknown as LocalCard;
-        if (!card.name?.trim()) errors.push('Missing name');
+        if (!card.name?.trim()) errors.push("Missing name");
         break;
 
-      case 'forValues':
+      case "forValues":
         const forValue = entity as unknown as LocalForValue;
-        if (!forValue.value?.trim()) errors.push('Missing value');
+        if (!forValue.value?.trim()) errors.push("Missing value");
         break;
     }
 
     return { isValid: errors.length === 0, errors };
   }
 
-  async validateCollection<T extends LocalEntity>(entityType: EntityType): Promise<{ isValid: boolean; corruptedIds: string[]; errors: string[] }> {
+  async validateCollection<T extends LocalEntity>(
+    entityType: EntityType,
+  ): Promise<{ isValid: boolean; corruptedIds: string[]; errors: string[] }> {
     const collection = await this.getEntityCollection<T>(entityType);
     const corruptedIds: string[] = [];
     const allErrors: string[] = [];
@@ -553,18 +850,21 @@ export class LocalStorageManager {
       const validation = await this.validateEntity(entity, entityType);
       if (!validation.isValid) {
         corruptedIds.push(id);
-        allErrors.push(`Entity ${id}: ${validation.errors.join(', ')}`);
+        allErrors.push(`Entity ${id}: ${validation.errors.join(", ")}`);
       }
     }
 
     return {
       isValid: corruptedIds.length === 0,
       corruptedIds,
-      errors: allErrors
+      errors: allErrors,
     };
   }
 
-  async repairCorruptedData(entityType: EntityType, strategy: 'remove' | 'repair' = 'repair'): Promise<{ repairedCount: number; removedCount: number }> {
+  async repairCorruptedData(
+    entityType: EntityType,
+    strategy: "remove" | "repair" = "repair",
+  ): Promise<{ repairedCount: number; removedCount: number }> {
     const validation = await this.validateCollection(entityType);
     let repairedCount = 0;
     let removedCount = 0;
@@ -575,7 +875,7 @@ export class LocalStorageManager {
       for (const corruptedId of validation.corruptedIds) {
         const entity = collection[corruptedId];
 
-        if (strategy === 'remove') {
+        if (strategy === "remove") {
           delete collection[corruptedId];
           removedCount++;
         } else {
@@ -597,53 +897,60 @@ export class LocalStorageManager {
     return { repairedCount, removedCount };
   }
 
-  private attemptEntityRepair<T extends LocalEntity>(entity: any, entityType: EntityType): T | null {
+  private attemptEntityRepair<T extends LocalEntity>(
+    entity: any,
+    entityType: EntityType,
+  ): T | null {
     try {
       // Basic repair attempts
-      if (!entity.id) entity.id = `repaired_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      if (!entity.localId) entity.localId = `repaired_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      if (!entity.syncStatus) entity.syncStatus = 'pending';
-      if (typeof entity.version !== 'number') entity.version = 1;
+      if (!entity.id)
+        entity.id = `repaired_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      if (!entity.localId)
+        entity.localId = `repaired_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      if (!entity.syncStatus) entity.syncStatus = "pending";
+      if (typeof entity.version !== "number") entity.version = 1;
       if (!entity.createdAt) entity.createdAt = Date.now();
       if (!entity.updatedAt) entity.updatedAt = Date.now();
 
       // Entity-specific repairs
       switch (entityType) {
-        case 'expenses':
-          if (typeof entity.amount !== 'number') entity.amount = 0;
-          if (!entity.title) entity.title = 'Recovered Expense';
+        case "expenses":
+          if (typeof entity.amount !== "number") entity.amount = 0;
+          if (!entity.title) entity.title = "Recovered Expense";
           if (!Array.isArray(entity.category)) entity.category = [];
           if (!Array.isArray(entity.for)) entity.for = [];
           if (!entity.date) entity.date = Date.now();
           break;
 
-        case 'income':
-          if (typeof entity.amount !== 'number') entity.amount = 0;
-          if (!entity.cardId) entity.cardId = 'unknown';
-          if (!entity.source) entity.source = 'Recovered Income';
-          if (!entity.category) entity.category = 'other';
+        case "income":
+          if (typeof entity.amount !== "number") entity.amount = 0;
+          if (!entity.cardId) entity.cardId = "unknown";
+          if (!entity.source) entity.source = "Recovered Income";
+          if (!entity.category) entity.category = "other";
           if (!entity.date) entity.date = Date.now();
           break;
 
-        case 'categories':
-        case 'incomeCategories':
-          if (!entity.name) entity.name = 'Recovered Category';
-          if (!entity.type) entity.type = entityType === 'incomeCategories' ? 'income' : 'expense';
+        case "categories":
+        case "incomeCategories":
+          if (!entity.name) entity.name = "Recovered Category";
+          if (!entity.type)
+            entity.type =
+              entityType === "incomeCategories" ? "income" : "expense";
           break;
 
-        case 'cards':
-          if (!entity.name) entity.name = 'Recovered Card';
+        case "cards":
+          if (!entity.name) entity.name = "Recovered Card";
           break;
 
-        case 'forValues':
-          if (!entity.value) entity.value = 'Recovered Value';
+        case "forValues":
+          if (!entity.value) entity.value = "Recovered Value";
           break;
       }
 
       // Validate the repaired entity - use async validation properly
       return entity as T;
     } catch (error) {
-      console.error('Failed to repair entity:', error);
+      console.error("Failed to repair entity:", error);
       return null;
     }
   }
@@ -658,12 +965,20 @@ export class LocalStorageManager {
     const incomeCategories = await this.getIncomeCategories();
 
     const dataString = JSON.stringify({
-      expenses: expenses.map(e => ({ ...e, syncStatus: undefined, lastSyncedAt: undefined })),
-      income: income.map(i => ({ ...i, syncStatus: undefined, lastSyncedAt: undefined })),
+      expenses: expenses.map((e) => ({
+        ...e,
+        syncStatus: undefined,
+        lastSyncedAt: undefined,
+      })),
+      income: income.map((i) => ({
+        ...i,
+        syncStatus: undefined,
+        lastSyncedAt: undefined,
+      })),
       categories,
       cards,
       forValues,
-      incomeCategories
+      incomeCategories,
     });
 
     return this.simpleHash(dataString);
@@ -673,16 +988,21 @@ export class LocalStorageManager {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32-bit integer
     }
     return hash.toString(36);
   }
 
   // Storage quota management and cleanup utilities
-  async getStorageInfo(): Promise<{ used: number; available: number; quota: number; usagePercentage: number }> {
+  async getStorageInfo(): Promise<{
+    used: number;
+    available: number;
+    quota: number;
+    usagePercentage: number;
+  }> {
     try {
-      if ('storage' in navigator && 'estimate' in navigator.storage) {
+      if ("storage" in navigator && "estimate" in navigator.storage) {
         const estimate = await navigator.storage.estimate();
         const quota = estimate.quota || 0;
         const used = estimate.usage || 0;
@@ -692,7 +1012,7 @@ export class LocalStorageManager {
         return { used, available, quota, usagePercentage };
       }
     } catch (error) {
-      console.warn('Storage estimation not available:', error);
+      console.warn("Storage estimation not available:", error);
     }
 
     // Fallback estimation
@@ -710,21 +1030,30 @@ export class LocalStorageManager {
       used: estimatedSize,
       available: 50 * 1024 * 1024 - estimatedSize, // Assume 50MB default quota
       quota: 50 * 1024 * 1024,
-      usagePercentage: (estimatedSize / (50 * 1024 * 1024)) * 100
+      usagePercentage: (estimatedSize / (50 * 1024 * 1024)) * 100,
     };
   }
 
-  async cleanupOldData(options: {
-    maxAge?: number; // milliseconds
-    keepSyncedOnly?: boolean;
-    maxRecords?: number;
-    entityTypes?: EntityType[];
-  } = {}): Promise<{ cleanedCount: number; freedSpace: number }> {
+  async cleanupOldData(
+    options: {
+      maxAge?: number; // milliseconds
+      keepSyncedOnly?: boolean;
+      maxRecords?: number;
+      entityTypes?: EntityType[];
+    } = {},
+  ): Promise<{ cleanedCount: number; freedSpace: number }> {
     const {
       maxAge = 90 * 24 * 60 * 60 * 1000, // 90 days default
       keepSyncedOnly = false,
       maxRecords = 10000,
-      entityTypes = ['expenses', 'income', 'categories', 'cards', 'forValues', 'incomeCategories']
+      entityTypes = [
+        "expenses",
+        "income",
+        "categories",
+        "cards",
+        "forValues",
+        "incomeCategories",
+      ],
     } = options;
 
     let cleanedCount = 0;
@@ -739,12 +1068,12 @@ export class LocalStorageManager {
       // Sort by updatedAt, keep most recent
       const sortedEntities = entities.sort((a, b) => b.updatedAt - a.updatedAt);
 
-      let entitiesToKeep = sortedEntities.filter(entity => {
+      let entitiesToKeep = sortedEntities.filter((entity) => {
         // Keep if within age limit
         if (entity.updatedAt > cutoffTime) return true;
 
         // Keep if synced and keepSyncedOnly is true
-        if (keepSyncedOnly && entity.syncStatus === 'synced') return true;
+        if (keepSyncedOnly && entity.syncStatus === "synced") return true;
 
         return false;
       });
@@ -755,10 +1084,13 @@ export class LocalStorageManager {
       }
 
       // Rebuild collection
-      const newCollection = entitiesToKeep.reduce((acc, entity) => {
-        acc[entity.id] = entity;
-        return acc;
-      }, {} as { [id: string]: any });
+      const newCollection = entitiesToKeep.reduce(
+        (acc, entity) => {
+          acc[entity.id] = entity;
+          return acc;
+        },
+        {} as { [id: string]: any },
+      );
 
       const removedCount = entities.length - entitiesToKeep.length;
       cleanedCount += removedCount;
@@ -773,13 +1105,13 @@ export class LocalStorageManager {
     // Clean up old pending operations
     const syncState = await this.getSyncState();
     if (syncState && syncState.pendingOperations) {
-      const oldOperations = syncState.pendingOperations.filter(op =>
-        op.timestamp < cutoffTime && op.status === 'completed'
+      const oldOperations = syncState.pendingOperations.filter(
+        (op) => op.timestamp < cutoffTime && op.status === "completed",
       );
 
       if (oldOperations.length > 0) {
-        const newOperations = syncState.pendingOperations.filter(op =>
-          !(op.timestamp < cutoffTime && op.status === 'completed')
+        const newOperations = syncState.pendingOperations.filter(
+          (op) => !(op.timestamp < cutoffTime && op.status === "completed"),
         );
 
         await this.updateSyncState({ pendingOperations: newOperations });
@@ -809,8 +1141,11 @@ export class LocalStorageManager {
 
       return { success: true };
     } catch (error) {
-      console.error('Storage compaction failed:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      console.error("Storage compaction failed:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
     }
   }
 
@@ -818,7 +1153,12 @@ export class LocalStorageManager {
     isHealthy: boolean;
     issues: string[];
     recommendations: string[];
-    storageInfo: { used: number; available: number; quota: number; usagePercentage: number };
+    storageInfo: {
+      used: number;
+      available: number;
+      quota: number;
+      usagePercentage: number;
+    };
   }> {
     const issues: string[] = [];
     const recommendations: string[] = [];
@@ -826,43 +1166,55 @@ export class LocalStorageManager {
     // Check storage usage
     const storageInfo = await this.getStorageInfo();
     if (storageInfo.usagePercentage > 90) {
-      issues.push('Storage usage is critically high (>90%)');
-      recommendations.push('Run cleanup to remove old data');
+      issues.push("Storage usage is critically high (>90%)");
+      recommendations.push("Run cleanup to remove old data");
     } else if (storageInfo.usagePercentage > 75) {
-      issues.push('Storage usage is high (>75%)');
-      recommendations.push('Consider cleaning up old data');
+      issues.push("Storage usage is high (>75%)");
+      recommendations.push("Consider cleaning up old data");
     }
 
     // Check for corrupted data
-    const entityTypes: EntityType[] = ['expenses', 'income', 'categories', 'cards', 'forValues', 'incomeCategories'];
+    const entityTypes: EntityType[] = [
+      "expenses",
+      "income",
+      "categories",
+      "cards",
+      "forValues",
+      "incomeCategories",
+    ];
     for (const entityType of entityTypes) {
       const validation = await this.validateCollection(entityType);
       if (!validation.isValid) {
-        issues.push(`Corrupted data found in ${entityType}: ${validation.corruptedIds.length} items`);
+        issues.push(
+          `Corrupted data found in ${entityType}: ${validation.corruptedIds.length} items`,
+        );
         recommendations.push(`Repair corrupted ${entityType} data`);
       }
     }
 
     // Check pending operations
     const pendingOps = await this.getPendingOperations();
-    const failedOps = pendingOps.filter(op => op.status === 'failed');
+    const failedOps = pendingOps.filter((op) => op.status === "failed");
     if (failedOps.length > 10) {
       issues.push(`High number of failed operations: ${failedOps.length}`);
-      recommendations.push('Review and retry failed operations');
+      recommendations.push("Review and retry failed operations");
     }
 
     // Check sync state
     const syncState = await this.getSyncState();
-    if (syncState && Date.now() - syncState.lastSync > 7 * 24 * 60 * 60 * 1000) {
-      issues.push('Data has not been synced for over 7 days');
-      recommendations.push('Perform a manual sync');
+    if (
+      syncState &&
+      Date.now() - syncState.lastSync > 7 * 24 * 60 * 60 * 1000
+    ) {
+      issues.push("Data has not been synced for over 7 days");
+      recommendations.push("Perform a manual sync");
     }
 
     return {
       isHealthy: issues.length === 0,
       issues,
       recommendations,
-      storageInfo
+      storageInfo,
     };
   }
 
@@ -878,21 +1230,30 @@ export class LocalStorageManager {
     const syncState = await this.getSyncState();
 
     const dataExport: LocalDataExport = {
-      version: '2.0.0',
+      version: "2.0.0",
       exportedAt: Date.now(),
-      deviceId: metadata?.deviceId || 'unknown',
-      userId: metadata?.userId || 'unknown',
+      deviceId: metadata?.deviceId || "unknown",
+      userId: metadata?.userId || "unknown",
       data: {
-        expenses: expenses.reduce((acc, exp) => ({ ...acc, [exp.id]: exp }), {}),
+        expenses: expenses.reduce(
+          (acc, exp) => ({ ...acc, [exp.id]: exp }),
+          {},
+        ),
         income: income.reduce((acc, inc) => ({ ...acc, [inc.id]: inc }), {}),
-        categories: categories.reduce((acc, cat) => ({ ...acc, [cat.id]: cat }), {}),
+        categories: categories.reduce(
+          (acc, cat) => ({ ...acc, [cat.id]: cat }),
+          {},
+        ),
         cards: cards.reduce((acc, card) => ({ ...acc, [card.id]: card }), {}),
         forValues: forValues.reduce((acc, fv) => ({ ...acc, [fv.id]: fv }), {}),
-        incomeCategories: incomeCategories.reduce((acc, cat) => ({ ...acc, [cat.id]: cat }), {}),
-        syncState: syncState || {} as SyncState,
-        metadata: metadata || {} as LocalMetadata
+        incomeCategories: incomeCategories.reduce(
+          (acc, cat) => ({ ...acc, [cat.id]: cat }),
+          {},
+        ),
+        syncState: syncState || ({} as SyncState),
+        metadata: metadata || ({} as LocalMetadata),
       },
-      checksum: await this.getDataHash()
+      checksum: await this.getDataHash(),
     };
 
     return dataExport;
@@ -903,39 +1264,45 @@ export class LocalStorageManager {
       // Validate checksum
       const currentHash = await this.getDataHash();
       if (dataExport.checksum === currentHash) {
-        console.log('Data is identical, skipping import');
+        console.log("Data is identical, skipping import");
         return;
       }
 
       // Import data
       if (dataExport.data.expenses) {
-        await this.setEntityCollection('expenses', dataExport.data.expenses);
+        await this.setEntityCollection("expenses", dataExport.data.expenses);
       }
       if (dataExport.data.income) {
-        await this.setEntityCollection('income', dataExport.data.income);
+        await this.setEntityCollection("income", dataExport.data.income);
       }
       if (dataExport.data.categories) {
-        await this.setEntityCollection('categories', dataExport.data.categories);
+        await this.setEntityCollection(
+          "categories",
+          dataExport.data.categories,
+        );
       }
       if (dataExport.data.cards) {
-        await this.setEntityCollection('cards', dataExport.data.cards);
+        await this.setEntityCollection("cards", dataExport.data.cards);
       }
       if (dataExport.data.forValues) {
-        await this.setEntityCollection('forValues', dataExport.data.forValues);
+        await this.setEntityCollection("forValues", dataExport.data.forValues);
       }
       if (dataExport.data.incomeCategories) {
-        await this.setEntityCollection('incomeCategories', dataExport.data.incomeCategories);
+        await this.setEntityCollection(
+          "incomeCategories",
+          dataExport.data.incomeCategories,
+        );
       }
       if (dataExport.data.syncState) {
-        await this.storage.setItem('syncState', dataExport.data.syncState);
+        await this.storage.setItem("syncState", dataExport.data.syncState);
       }
       if (dataExport.data.metadata) {
-        await this.storage.setItem('metadata', dataExport.data.metadata);
+        await this.storage.setItem("metadata", dataExport.data.metadata);
       }
 
-      console.log('Data import completed successfully');
+      console.log("Data import completed successfully");
     } catch (error) {
-      console.error('Failed to import data:', error);
+      console.error("Failed to import data:", error);
       throw error;
     }
   }
@@ -944,7 +1311,9 @@ export class LocalStorageManager {
   private transactionQueue: Array<() => Promise<void>> = [];
   private isProcessingTransaction = false;
 
-  async executeTransaction<T>(operations: Array<() => Promise<T>>): Promise<T[]> {
+  async executeTransaction<T>(
+    operations: Array<() => Promise<T>>,
+  ): Promise<T[]> {
     return new Promise((resolve, reject) => {
       this.transactionQueue.push(async () => {
         try {
@@ -1007,56 +1376,103 @@ export class LocalStorageManager {
   }
 
   // Batch operations for efficiency
-  async batchCreateExpenses(expenses: Array<Omit<LocalExpense, 'id' | 'localId' | 'syncStatus' | 'version' | 'createdAt' | 'updatedAt'>>): Promise<LocalExpense[]> {
+  async batchCreateExpenses(
+    expenses: Array<
+      Omit<
+        LocalExpense,
+        "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
+      >
+    >,
+  ): Promise<LocalExpense[]> {
     return await this.executeTransaction(
-      expenses.map(expense => () => this.saveExpense(expense))
+      expenses.map((expense) => () => this.saveExpense(expense)),
     );
   }
 
-  async batchUpdateExpenses(updates: Array<{ id: string; updates: Partial<LocalExpense> }>): Promise<(LocalExpense | null)[]> {
+  async batchUpdateExpenses(
+    updates: Array<{ id: string; updates: Partial<LocalExpense> }>,
+  ): Promise<(LocalExpense | null)[]> {
     return await this.executeTransaction(
-      updates.map(({ id, updates: updateData }) => () => this.updateExpense(id, updateData))
+      updates.map(
+        ({ id, updates: updateData }) =>
+          () =>
+            this.updateExpense(id, updateData),
+      ),
     );
   }
 
   async batchDeleteExpenses(ids: string[]): Promise<boolean[]> {
     return await this.executeTransaction(
-      ids.map(id => () => this.deleteExpense(id))
+      ids.map((id) => () => this.deleteExpense(id)),
     );
   }
 
-  async batchCreateIncome(incomes: Array<Omit<LocalIncome, 'id' | 'localId' | 'syncStatus' | 'version' | 'createdAt' | 'updatedAt'>>): Promise<LocalIncome[]> {
+  async batchCreateIncome(
+    incomes: Array<
+      Omit<
+        LocalIncome,
+        "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
+      >
+    >,
+  ): Promise<LocalIncome[]> {
     return await this.executeTransaction(
-      incomes.map(income => () => this.saveIncome(income))
+      incomes.map((income) => () => this.saveIncome(income)),
     );
   }
 
-  async batchUpdateIncome(updates: Array<{ id: string; updates: Partial<LocalIncome> }>): Promise<(LocalIncome | null)[]> {
+  async batchUpdateIncome(
+    updates: Array<{ id: string; updates: Partial<LocalIncome> }>,
+  ): Promise<(LocalIncome | null)[]> {
     return await this.executeTransaction(
-      updates.map(({ id, updates: updateData }) => () => this.updateIncome(id, updateData))
+      updates.map(
+        ({ id, updates: updateData }) =>
+          () =>
+            this.updateIncome(id, updateData),
+      ),
     );
   }
 
   async batchDeleteIncome(ids: string[]): Promise<boolean[]> {
     return await this.executeTransaction(
-      ids.map(id => () => this.deleteIncome(id))
+      ids.map((id) => () => this.deleteIncome(id)),
     );
   }
 
   // Atomic multi-entity operations
   async createExpenseWithDependencies(
-    expense: Omit<LocalExpense, 'id' | 'localId' | 'syncStatus' | 'version' | 'createdAt' | 'updatedAt'>,
-    newCategories?: Array<Omit<LocalCategory, 'id' | 'localId' | 'syncStatus' | 'version' | 'createdAt' | 'updatedAt'>>,
-    newForValues?: Array<Omit<LocalForValue, 'id' | 'localId' | 'syncStatus' | 'version' | 'createdAt' | 'updatedAt'>>
-  ): Promise<{ expense: LocalExpense; categories: LocalCategory[]; forValues: LocalForValue[] }> {
+    expense: Omit<
+      LocalExpense,
+      "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
+    >,
+    newCategories?: Array<
+      Omit<
+        LocalCategory,
+        "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
+      >
+    >,
+    newForValues?: Array<
+      Omit<
+        LocalForValue,
+        "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
+      >
+    >,
+  ): Promise<{
+    expense: LocalExpense;
+    categories: LocalCategory[];
+    forValues: LocalForValue[];
+  }> {
     const operations: Array<() => Promise<any>> = [];
 
     // Create categories first
-    const categoryOps = (newCategories || []).map(cat => () => this.saveCategory(cat));
+    const categoryOps = (newCategories || []).map(
+      (cat) => () => this.saveCategory(cat),
+    );
     operations.push(...categoryOps);
 
     // Create for values
-    const forValueOps = (newForValues || []).map(fv => () => this.saveForValue(fv));
+    const forValueOps = (newForValues || []).map(
+      (fv) => () => this.saveForValue(fv),
+    );
     operations.push(...forValueOps);
 
     // Create expense last
@@ -1069,14 +1485,23 @@ export class LocalStorageManager {
 
     return {
       categories: results.slice(0, categoriesCount) as LocalCategory[],
-      forValues: results.slice(categoriesCount, categoriesCount + forValuesCount) as LocalForValue[],
-      expense: results[results.length - 1] as LocalExpense
+      forValues: results.slice(
+        categoriesCount,
+        categoriesCount + forValuesCount,
+      ) as LocalForValue[],
+      expense: results[results.length - 1] as LocalExpense,
     };
   }
 
   async createIncomeWithDependencies(
-    income: Omit<LocalIncome, 'id' | 'localId' | 'syncStatus' | 'version' | 'createdAt' | 'updatedAt'>,
-    newCategory?: Omit<LocalCategory, 'id' | 'localId' | 'syncStatus' | 'version' | 'createdAt' | 'updatedAt'>
+    income: Omit<
+      LocalIncome,
+      "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
+    >,
+    newCategory?: Omit<
+      LocalCategory,
+      "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
+    >,
   ): Promise<{ income: LocalIncome; category?: LocalCategory }> {
     const operations: Array<() => Promise<any>> = [];
 
@@ -1091,8 +1516,8 @@ export class LocalStorageManager {
     const results = await this.executeTransaction(operations);
 
     return {
-      category: newCategory ? results[0] as LocalCategory : undefined,
-      income: results[results.length - 1] as LocalIncome
+      category: newCategory ? (results[0] as LocalCategory) : undefined,
+      income: results[results.length - 1] as LocalIncome,
     };
   }
 
@@ -1106,30 +1531,39 @@ export class LocalStorageManager {
     return await this.storage.keys();
   }
 
-  private applyFilters<T extends LocalEntity>(data: T[], filters: DataFilters): T[] {
+  private applyFilters<T extends LocalEntity>(
+    data: T[],
+    filters: DataFilters,
+  ): T[] {
     let filtered = data;
 
     if (filters.startDate && filters.endDate) {
-      filtered = filtered.filter(item => {
+      filtered = filtered.filter((item) => {
         const itemDate = (item as any).date;
         return itemDate >= filters.startDate! && itemDate <= filters.endDate!;
       });
     }
 
     if (filters.syncStatus) {
-      filtered = filtered.filter(item => filters.syncStatus!.includes(item.syncStatus));
+      filtered = filtered.filter((item) =>
+        filters.syncStatus!.includes(item.syncStatus),
+      );
     }
 
     if (filters.category && (filtered[0] as any)?.category) {
-      filtered = filtered.filter(item => {
+      filtered = filtered.filter((item) => {
         const itemCategories = (item as any).category;
-        return Array.isArray(itemCategories) &&
-          itemCategories.some(cat => filters.category!.includes(cat));
+        return (
+          Array.isArray(itemCategories) &&
+          itemCategories.some((cat) => filters.category!.includes(cat))
+        );
       });
     }
 
     if (filters.cardId) {
-      filtered = filtered.filter(item => (item as any).cardId === filters.cardId);
+      filtered = filtered.filter(
+        (item) => (item as any).cardId === filters.cardId,
+      );
     }
 
     if (filters.offset) {
@@ -1148,7 +1582,9 @@ export class LocalStorageManager {
     const syncState = await this.getSyncState();
     if (syncState) {
       syncState.pendingOperations.push(operation);
-      await this.updateSyncState({ pendingOperations: syncState.pendingOperations });
+      await this.updateSyncState({
+        pendingOperations: syncState.pendingOperations,
+      });
     }
   }
 
@@ -1157,11 +1593,14 @@ export class LocalStorageManager {
     return syncState?.pendingOperations || [];
   }
 
-  async updatePendingOperation(operationId: string, updates: Partial<PendingOperation>): Promise<void> {
+  async updatePendingOperation(
+    operationId: string,
+    updates: Partial<PendingOperation>,
+  ): Promise<void> {
     const syncState = await this.getSyncState();
     if (syncState) {
-      const operations = syncState.pendingOperations.map(op =>
-        op.id === operationId ? { ...op, ...updates } : op
+      const operations = syncState.pendingOperations.map((op) =>
+        op.id === operationId ? { ...op, ...updates } : op,
       );
       await this.updateSyncState({ pendingOperations: operations });
     }
@@ -1170,7 +1609,9 @@ export class LocalStorageManager {
   async removePendingOperation(operationId: string): Promise<void> {
     const syncState = await this.getSyncState();
     if (syncState) {
-      const operations = syncState.pendingOperations.filter(op => op.id !== operationId);
+      const operations = syncState.pendingOperations.filter(
+        (op) => op.id !== operationId,
+      );
       await this.updateSyncState({ pendingOperations: operations });
     }
   }
@@ -1182,7 +1623,14 @@ export class LocalStorageManager {
   }
 
   async getTotalRecordCount(): Promise<number> {
-    const entityTypes: EntityType[] = ['expenses', 'income', 'categories', 'cards', 'forValues', 'incomeCategories'];
+    const entityTypes: EntityType[] = [
+      "expenses",
+      "income",
+      "categories",
+      "cards",
+      "forValues",
+      "incomeCategories",
+    ];
     let total = 0;
 
     for (const entityType of entityTypes) {
@@ -1192,7 +1640,10 @@ export class LocalStorageManager {
     return total;
   }
 
-  async getEntityById<T extends LocalEntity>(entityType: EntityType, id: string): Promise<T | null> {
+  async getEntityById<T extends LocalEntity>(
+    entityType: EntityType,
+    id: string,
+  ): Promise<T | null> {
     const collection = await this.getEntityCollection<T>(entityType);
     return collection[id] || null;
   }
@@ -1200,7 +1651,7 @@ export class LocalStorageManager {
   async searchEntities<T extends LocalEntity>(
     entityType: EntityType,
     searchTerm: string,
-    fields: string[] = []
+    fields: string[] = [],
   ): Promise<T[]> {
     const collection = await this.getEntityCollection<T>(entityType);
     const entities = Object.values(collection);
@@ -1209,18 +1660,26 @@ export class LocalStorageManager {
 
     const searchLower = searchTerm.toLowerCase();
 
-    return entities.filter(entity => {
+    return entities.filter((entity) => {
       // If no specific fields provided, search common fields
       if (fields.length === 0) {
-        const searchableFields = ['name', 'title', 'value', 'source', 'category'];
-        return searchableFields.some(field => {
+        const searchableFields = [
+          "name",
+          "title",
+          "value",
+          "source",
+          "category",
+        ];
+        return searchableFields.some((field) => {
           const fieldValue = (entity as any)[field];
-          if (typeof fieldValue === 'string') {
+          if (typeof fieldValue === "string") {
             return fieldValue.toLowerCase().includes(searchLower);
           }
           if (Array.isArray(fieldValue)) {
-            return fieldValue.some(item =>
-              typeof item === 'string' && item.toLowerCase().includes(searchLower)
+            return fieldValue.some(
+              (item) =>
+                typeof item === "string" &&
+                item.toLowerCase().includes(searchLower),
             );
           }
           return false;
@@ -1228,20 +1687,20 @@ export class LocalStorageManager {
       }
 
       // Search specific fields
-      return fields.some(field => {
+      return fields.some((field) => {
         const fieldValue = (entity as any)[field];
-        if (typeof fieldValue === 'string') {
+        if (typeof fieldValue === "string") {
           return fieldValue.toLowerCase().includes(searchLower);
         }
         if (Array.isArray(fieldValue)) {
-          return fieldValue.some(item =>
-            typeof item === 'string' && item.toLowerCase().includes(searchLower)
+          return fieldValue.some(
+            (item) =>
+              typeof item === "string" &&
+              item.toLowerCase().includes(searchLower),
           );
         }
         return false;
       });
     });
   }
-
-
 }

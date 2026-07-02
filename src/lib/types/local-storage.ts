@@ -3,11 +3,38 @@
  * Defines interfaces for local storage with cloud sync capabilities
  */
 
-export type SyncStatus = 'pending' | 'synced' | 'conflict' | 'failed' | 'syncing';
-export type ConflictType = 'missing_cloud' | 'corrupted_local' | 'divergent_data' | 'schema_mismatch';
-export type ConflictSeverity = 'low' | 'medium' | 'high' | 'critical';
-export type OperationType = 'create' | 'update' | 'delete';
-export type EntityType = 'expenses' | 'income' | 'categories' | 'cards' | 'forValues' | 'incomeCategories';
+export type SyncStatus =
+  | "pending"
+  | "synced"
+  | "conflict"
+  | "failed"
+  | "syncing";
+export type ConflictType =
+  | "missing_cloud"
+  | "corrupted_local"
+  | "divergent_data"
+  | "schema_mismatch";
+export type ConflictSeverity = "low" | "medium" | "high" | "critical";
+export type OperationType = "create" | "update" | "delete";
+export type EntityType =
+  | "expenses"
+  | "income"
+  | "categories"
+  | "cards"
+  | "forValues"
+  | "incomeCategories"
+  | string;
+
+export type MutationAction = "CREATE" | "UPDATE" | "DELETE";
+
+// Unified mutation queue item for Offline-First syncing
+export interface PendingMutation {
+  id: string; // Unique identifier (UUID or timestamp)
+  action: MutationAction; // CREATE, UPDATE, or DELETE
+  storeName: string; // Target collection/table name (dynamically handles expenses, loans, etc.)
+  payload: any; // Actual data or modified fields
+  timestamp: number; // Timestamp of when the user made the change locally
+}
 
 // Base interface for all local entities
 export interface LocalEntity {
@@ -44,7 +71,7 @@ export interface LocalIncome extends LocalEntity {
 // Local storage schema for categories
 export interface LocalCategory extends LocalEntity {
   name: string;
-  type: 'expense' | 'income';
+  type: "expense" | "income";
 }
 
 // Local storage schema for cards
@@ -66,7 +93,7 @@ export interface PendingOperation {
   data: any;
   timestamp: number;
   retryCount: number;
-  status: 'pending' | 'syncing' | 'failed' | 'completed';
+  status: "pending" | "syncing" | "failed" | "completed";
   error?: string;
   maxRetries: number;
 }
@@ -77,7 +104,7 @@ export interface ConflictResolution {
   entityType: EntityType;
   entityId: string;
   resolvedAt: number;
-  strategy: 'local_wins' | 'cloud_wins' | 'merge' | 'user_choice';
+  strategy: "local_wins" | "cloud_wins" | "merge" | "user_choice";
   note?: string;
 }
 
@@ -128,7 +155,7 @@ export interface ConflictDetectionResult {
   hasConflicts: boolean;
   conflictType: ConflictType;
   conflictItems: ConflictItem[];
-  recommendedAction: 'upload_local' | 'download_cloud' | 'manual_merge';
+  recommendedAction: "upload_local" | "download_cloud" | "manual_merge";
   severity: ConflictSeverity;
   dataStats: {
     localRecords: number;
@@ -184,12 +211,12 @@ export interface LocalDataExport {
 // Merge rules for conflict resolution
 export interface MergeRule {
   field: string;
-  strategy: 'local_wins' | 'cloud_wins' | 'latest_timestamp' | 'user_choice';
+  strategy: "local_wins" | "cloud_wins" | "latest_timestamp" | "user_choice";
   priority: number;
 }
 
 export interface ConflictResolutionStrategy {
-  strategy: 'local_wins' | 'cloud_wins' | 'merge' | 'user_choice';
+  strategy: "local_wins" | "cloud_wins" | "merge" | "user_choice";
   applyToAll: boolean;
   preserveDeleted: boolean;
   mergeRules: MergeRule[];
