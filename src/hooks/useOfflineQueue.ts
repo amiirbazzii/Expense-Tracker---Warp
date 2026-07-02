@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useOfflineQueueManager, useQueueOperations } from './useOfflineQueueManager';
-import { OperationType, EntityType } from '../lib/types/local-storage';
+import { useState, useEffect, useCallback } from "react";
+// Phase 1 cleanup: legacy secondary queue manager import removed.
+import { OperationType, EntityType } from "../lib/types/local-storage";
 
 export type OfflineItem<T> = {
   id: string;
   data: T;
-  status: 'pending' | 'failed';
+  status: "pending" | "failed";
   createdAt: number;
 };
 
@@ -17,7 +17,7 @@ export function useOfflineQueue<T>(queueName: string) {
   const [queue, setQueue] = useState<OfflineItem<T>[]>([]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const storedQueue = localStorage.getItem(queueName);
       if (storedQueue) {
         setQueue(JSON.parse(storedQueue));
@@ -26,7 +26,7 @@ export function useOfflineQueue<T>(queueName: string) {
   }, [queueName]);
 
   const updateLocalStorage = (newQueue: OfflineItem<T>[]) => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       localStorage.setItem(queueName, JSON.stringify(newQueue));
     }
   };
@@ -35,10 +35,10 @@ export function useOfflineQueue<T>(queueName: string) {
     const newItem: OfflineItem<T> = {
       id: `offline-${Date.now()}`,
       data: itemData,
-      status: 'pending',
+      status: "pending",
       createdAt: Date.now(),
     };
-    setQueue(prevQueue => {
+    setQueue((prevQueue) => {
       const newQueue = [...prevQueue, newItem];
       updateLocalStorage(newQueue);
       return newQueue;
@@ -47,17 +47,17 @@ export function useOfflineQueue<T>(queueName: string) {
   };
 
   const removeFromQueue = (itemId: string) => {
-    setQueue(prevQueue => {
-      const newQueue = prevQueue.filter(item => item.id !== itemId);
+    setQueue((prevQueue) => {
+      const newQueue = prevQueue.filter((item) => item.id !== itemId);
       updateLocalStorage(newQueue);
       return newQueue;
     });
   };
 
-  const updateItemStatus = (itemId: string, status: 'pending' | 'failed') => {
-    setQueue(prevQueue => {
-      const newQueue = prevQueue.map(item => 
-        item.id === itemId ? { ...item, status } : item
+  const updateItemStatus = (itemId: string, status: "pending" | "failed") => {
+    setQueue((prevQueue) => {
+      const newQueue = prevQueue.map((item) =>
+        item.id === itemId ? { ...item, status } : item,
       );
       updateLocalStorage(newQueue);
       return newQueue;
@@ -86,49 +86,61 @@ export function useEnhancedOfflineQueue() {
       maxQueueSize: 1000,
       batchSize: 10,
       processingTimeout: 30000,
-      deduplicationWindow: 5000
+      deduplicationWindow: 5000,
     },
-    autoStart: true
+    autoStart: true,
   });
 
   const queueOperations = useQueueOperations();
 
   // Helper functions for common operations
-  const addExpenseOperation = useCallback(async (
-    type: OperationType,
-    expenseId: string,
-    expenseData: any
-  ) => {
-    const operation = queueOperations.createExpenseOperation(type, expenseId, expenseData);
-    return await queueManager.addOperation(operation);
-  }, [queueManager, queueOperations]);
+  const addExpenseOperation = useCallback(
+    async (type: OperationType, expenseId: string, expenseData: any) => {
+      const operation = queueOperations.createExpenseOperation(
+        type,
+        expenseId,
+        expenseData,
+      );
+      return await queueManager.addOperation(operation);
+    },
+    [queueManager, queueOperations],
+  );
 
-  const addIncomeOperation = useCallback(async (
-    type: OperationType,
-    incomeId: string,
-    incomeData: any
-  ) => {
-    const operation = queueOperations.createIncomeOperation(type, incomeId, incomeData);
-    return await queueManager.addOperation(operation);
-  }, [queueManager, queueOperations]);
+  const addIncomeOperation = useCallback(
+    async (type: OperationType, incomeId: string, incomeData: any) => {
+      const operation = queueOperations.createIncomeOperation(
+        type,
+        incomeId,
+        incomeData,
+      );
+      return await queueManager.addOperation(operation);
+    },
+    [queueManager, queueOperations],
+  );
 
-  const addCardOperation = useCallback(async (
-    type: OperationType,
-    cardId: string,
-    cardData: any
-  ) => {
-    const operation = queueOperations.createCardOperation(type, cardId, cardData);
-    return await queueManager.addOperation(operation);
-  }, [queueManager, queueOperations]);
+  const addCardOperation = useCallback(
+    async (type: OperationType, cardId: string, cardData: any) => {
+      const operation = queueOperations.createCardOperation(
+        type,
+        cardId,
+        cardData,
+      );
+      return await queueManager.addOperation(operation);
+    },
+    [queueManager, queueOperations],
+  );
 
-  const addCategoryOperation = useCallback(async (
-    type: OperationType,
-    categoryId: string,
-    categoryData: any
-  ) => {
-    const operation = queueOperations.createCategoryOperation(type, categoryId, categoryData);
-    return await queueManager.addOperation(operation);
-  }, [queueManager, queueOperations]);
+  const addCategoryOperation = useCallback(
+    async (type: OperationType, categoryId: string, categoryData: any) => {
+      const operation = queueOperations.createCategoryOperation(
+        type,
+        categoryId,
+        categoryData,
+      );
+      return await queueManager.addOperation(operation);
+    },
+    [queueManager, queueOperations],
+  );
 
   return {
     ...queueManager,
@@ -136,6 +148,6 @@ export function useEnhancedOfflineQueue() {
     addIncomeOperation,
     addCardOperation,
     addCategoryOperation,
-    queueOperations
+    queueOperations,
   };
 }
