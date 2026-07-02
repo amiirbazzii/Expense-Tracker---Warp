@@ -17,7 +17,6 @@ import {
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LanguageWrapper } from "@/components/LanguageWrapper";
 import { InstallPrompt } from "@/components/InstallPrompt";
-// import { OfflineCacheHelper } from "@/components/OfflineCacheHelper"; // Uncomment to help users cache pages
 
 const geistMono = localFont({
   src: "./fonts/GeistMonoVF.woff",
