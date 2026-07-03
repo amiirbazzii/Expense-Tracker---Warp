@@ -24,6 +24,7 @@ import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/Button";
 import { InputContainer } from "@/components/InputContainer";
 import { useOfflineFirstData } from "@/hooks/useOfflineFirstData";
+import { useOfflineFirst } from "@/providers/OfflineFirstProvider";
 import { DropdownMenu } from "@/components/DropdownMenu";
 
 export default function CardsPage() {
@@ -42,6 +43,7 @@ export default function CardsPage() {
   const addCardMutation = useMutation(api.cardsAndIncome.addCard);
   const deleteCardMutation = useMutation(api.cardsAndIncome.deleteCard);
   const transferFundsMutation = useMutation(api.cardsAndIncome.transferFunds);
+  const { localStorageManager } = useOfflineFirst();
   const cardBalancesQuery = useQuery(
     api.cardsAndIncome.getCardBalances,
     token ? { token } : "skip",
@@ -59,6 +61,11 @@ export default function CardsPage() {
 
     setIsSubmitting(true);
     try {
+      // Write locally first
+      if (localStorageManager) {
+        await localStorageManager.saveCard({ name: cardName.trim() });
+      }
+
       await addCardMutation({ token: token!, name: cardName.trim() });
       toast.success("Your card has been added.");
       setCardName("");
@@ -71,6 +78,11 @@ export default function CardsPage() {
 
   const deleteCard = async (cardId: string) => {
     try {
+      // Write locally first
+      if (localStorageManager) {
+        await localStorageManager.deleteCard(cardId);
+      }
+
       await deleteCardMutation({ token: token!, cardId: cardId as any });
       toast.success("The card has been deleted.");
     } catch (error: any) {
@@ -97,6 +109,36 @@ export default function CardsPage() {
 
     setIsTransferring(true);
     try {
+      // Write locally first (local-first pattern)
+      if (localStorageManager) {
+        // Get card names for the transaction titles
+        const fromCardName =
+          cardBalances?.find((cb: any) => cb._id === fromCard)?.name ||
+          "Source";
+        const toCardName =
+          cardBalances?.find((cb: any) => cb._id === toCard)?.name ||
+          "Destination";
+
+        // 1. Save the expense (deduction from source card)
+        await localStorageManager.saveExpense({
+          amount: transferAmount,
+          title: `Transfer to ${toCardName}`,
+          category: ["Transfer"],
+          for: [],
+          date: Date.now(),
+          cardId: fromCard,
+        });
+
+        // 2. Save the income (addition to destination card)
+        await localStorageManager.saveIncome({
+          amount: transferAmount,
+          source: `Transfer from ${fromCardName}`,
+          category: "Transfer",
+          date: Date.now(),
+          cardId: toCard,
+        });
+      }
+
       await transferFundsMutation({
         token: token!,
         fromCardId: fromCard as any,

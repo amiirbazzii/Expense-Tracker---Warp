@@ -14,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useOfflineFirstData } from "@/hooks/useOfflineFirstData";
+import { useOfflineFirst } from "@/providers/OfflineFirstProvider";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Id } from "../../../../convex/_generated/dataModel";
@@ -75,6 +76,8 @@ export function PayInstallmentSheet({
     categoriesQuery !== undefined ? categoriesQuery : offlineCategories;
   const forValues =
     forValuesQuery !== undefined ? forValuesQuery : offlineForValues;
+
+  const { localStorageManager } = useOfflineFirst();
 
   const createExpenseMutation = useMutation(api.expenses.createExpense);
   const createCategoryMutation = useMutation(api.expenses.createCategory);
@@ -158,19 +161,58 @@ export function PayInstallmentSheet({
 
     setIsSubmitting(true);
     try {
-      // 1. Create the expense
-      await createExpenseMutation({
-        token,
-        amount: parsedAmount,
-        title: title || loan.name,
-        category,
-        for: paidFor,
-        date: date.getTime(),
-        cardId: cardId as Id<"cards">,
-      });
+      // 0. Write expense + loan update locally first (local-first pattern)
+      if (localStorageManager) {
+        // Save the expense locally — auto-enqueues expenses:CREATE
+        await localStorageManager.saveExpense({
+          amount: parsedAmount,
+          title: title || loan.name,
+          category,
+          for: paidFor,
+          date: date.getTime(),
+          cardId,
+        });
 
-      // 2. Increment paid installments
-      await payInstallmentMutation({ token, loanId: loan._id });
+        // Ensure the loan exists locally before updating it.
+        // If it doesn't exist yet (e.g. created only on Convex), seed it.
+        const existing = await localStorageManager.getEntityById(
+          "loans",
+          loan._id,
+        );
+        if (!existing) {
+          // Seed the local loan record without enqueuing any mutation.
+          // The loan already exists on Convex — we only need a local copy.
+          await localStorageManager.seedEntity("loans", {
+            ...loan,
+            id: loan._id,
+            _id: loan._id,
+          });
+        }
+
+        // Update paidInstallments in the local loan collection.
+        // This enqueues a loans:UPDATE mutation that the sync engine will
+        // dispatch to api.loans.updateLoan (patches the existing loan).
+        await localStorageManager.updateEntity("loans", loan._id, {
+          paidInstallments: loan.paidInstallments + 1,
+        });
+      }
+
+      // 1. Create the expense on Convex (only when online — offline is handled
+      //    by the local write above and the sync engine will replay the queue).
+      if (navigator.onLine) {
+        await createExpenseMutation({
+          token,
+          amount: parsedAmount,
+          title: title || loan.name,
+          category,
+          for: paidFor,
+          date: date.getTime(),
+          cardId: cardId as Id<"cards">,
+        });
+
+        // 2. Increment paid installments on Convex
+        await payInstallmentMutation({ token, loanId: loan._id });
+      }
 
       toast.success("Installment paid successfully!");
       onPaid();

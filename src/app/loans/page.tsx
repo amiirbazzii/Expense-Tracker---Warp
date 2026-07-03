@@ -18,6 +18,7 @@ import { LoanForm } from "@/features/loans/components/LoanForm";
 import { LoanSummaryCards } from "@/features/loans/components/LoanSummaryCards";
 import { PayInstallmentSheet } from "@/features/loans/components/PayInstallmentSheet";
 import { useLoanData } from "@/features/loans/hooks/useLoanData";
+import { useOfflineFirst } from "@/providers/OfflineFirstProvider";
 import { Loan } from "@/features/loans/types";
 
 export default function LoansPage() {
@@ -38,6 +39,7 @@ export default function LoansPage() {
     deleteLoan,
     payInstallment,
   } = useLoanData();
+  const { localStorageManager } = useOfflineFirst();
 
   // UI state
   const [showForm, setShowForm] = useState(false);
@@ -127,6 +129,10 @@ export default function LoansPage() {
   const handleDeleteLoan = async (loan: Loan) => {
     if (confirm(`Are you sure you want to delete "${loan.name}"?`)) {
       try {
+        // Write locally first
+        if (localStorageManager) {
+          await localStorageManager.deleteEntity("loans", loan._id);
+        }
         await deleteLoan(loan._id);
         toast.success("Loan deleted successfully!");
       } catch (err: any) {
@@ -146,9 +152,21 @@ export default function LoansPage() {
     startYear: number;
   }) => {
     if (editingLoan) {
+      // Write locally first
+      if (localStorageManager) {
+        await localStorageManager.saveEntity("loans", {
+          ...data,
+          id: editingLoan._id,
+          _id: editingLoan._id,
+        });
+      }
       await updateLoan(editingLoan._id, data);
       toast.success("Loan updated successfully!");
     } else {
+      // Write locally first
+      if (localStorageManager) {
+        await localStorageManager.saveEntity("loans", data);
+      }
       await createLoan(data);
       toast.success("Loan created successfully!");
     }

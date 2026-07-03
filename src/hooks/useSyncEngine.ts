@@ -41,6 +41,10 @@ function useMutations() {
     "cards:DELETE": useMutation(api.cardsAndIncome.deleteCard),
     // For Values
     "forValues:CREATE": useMutation(api.expenses.createForValue),
+    // Loans
+    "loans:CREATE": useMutation(api.loans.createLoan),
+    "loans:UPDATE": useMutation(api.loans.updateLoan),
+    "loans:DELETE": useMutation(api.loans.deleteLoan),
   } as Record<string, ReturnType<typeof useMutation>>;
 }
 
@@ -98,6 +102,13 @@ function buildConvexArgs(
 
     case "forValues":
       return { value: payload.value };
+
+    case "loans":
+      if (action === "DELETE") {
+        return { loanId: payload.id };
+      }
+      // UPDATE — Convex expects loanId + fields to patch
+      return { loanId: payload.id, ...base };
 
     default:
       return base;

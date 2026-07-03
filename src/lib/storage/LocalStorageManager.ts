@@ -6,6 +6,7 @@ import {
   LocalCategory,
   LocalCard,
   LocalForValue,
+  LocalLoan,
   LocalEntity,
   DataFilters,
   EntityType,
@@ -193,6 +194,36 @@ export class LocalStorageManager {
   // ==========================================
   // Generic Dynamic CRUD Operations
   // ==========================================
+
+  /**
+   * Seed an entity into a local collection without enqueuing any mutation.
+   * Used when the entity already exists on the server and we only need a
+   * local copy for offline reads / subsequent updates.
+   */
+  async seedEntity<T extends LocalEntity>(
+    entityType: string,
+    data: any,
+  ): Promise<T> {
+    const collection = await this.getEntityCollection<T>(entityType);
+
+    const id = data.id || data.cloudId || data._id;
+    if (!id) throw new Error("seedEntity requires an id, cloudId, or _id");
+
+    const localEntity: T = {
+      ...data,
+      id,
+      localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      syncStatus: "synced",
+      version: 1,
+      createdAt: data.createdAt || Date.now(),
+      updatedAt: Date.now(),
+    } as unknown as T;
+
+    collection[id] = localEntity;
+    await this.setEntityCollection(entityType, collection);
+    // No enqueue — this is a silent seed
+    return localEntity;
+  }
 
   async saveEntity<T extends LocalEntity>(
     entityType: string,

@@ -84,6 +84,19 @@ export interface LocalForValue extends LocalEntity {
   value: string;
 }
 
+// Local storage schema for loans
+export interface LocalLoan extends LocalEntity {
+  name: string;
+  totalAmount: number;
+  totalInstallments: number;
+  paidInstallments: number;
+  installmentAmount: number;
+  monthlyPaymentDay: number;
+  startMonth: number;
+  startYear: number;
+  userId: string;
+}
+
 // Pending operation in offline queue
 export interface PendingOperation {
   id: string;
