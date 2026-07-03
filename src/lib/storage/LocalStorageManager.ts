@@ -170,6 +170,26 @@ export class LocalStorageManager {
     return true;
   }
 
+  /**
+   * Mark an entity as synced after a successful Convex mutation.
+   * Updates syncStatus, optionally sets the cloudId, and clears lastSyncedAt
+   * without enqueuing a new mutation.
+   */
+  async markEntityAsSynced(
+    entityType: string,
+    id: string,
+    cloudId?: string,
+  ): Promise<void> {
+    const collection = await this.getEntityCollection<any>(entityType);
+    const entity = collection[id];
+    if (!entity) return;
+    entity.syncStatus = "synced";
+    if (cloudId) entity.cloudId = cloudId;
+    entity.lastSyncedAt = Date.now();
+    collection[id] = entity;
+    await this.setEntityCollection(entityType, collection);
+  }
+
   // ==========================================
   // Generic Dynamic CRUD Operations
   // ==========================================

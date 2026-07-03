@@ -17,6 +17,7 @@ import {
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LanguageWrapper } from "@/components/LanguageWrapper";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { SyncEngine } from "@/components/SyncEngine";
 
 const geistMono = localFont({
   src: "./fonts/GeistMonoVF.woff",
@@ -45,7 +46,7 @@ const iranSansX = localFont({
 
 const poppins = Poppins({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"], // Reduced weights
+  weight: ["400", "500", "600", "700"],
   variable: "--font-poppins",
   display: "swap",
   preload: true,
@@ -131,6 +132,7 @@ export default function RootLayout({
           <ConvexProvider>
             <AuthProvider>
               <OfflineFirstWrapper>
+                <SyncEngine />
                 <SettingsProvider>
                   <LanguageWrapper>
                     {children}
