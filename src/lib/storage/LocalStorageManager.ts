@@ -335,8 +335,12 @@ export class LocalStorageManager {
       LocalExpense,
       "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
     >,
+    options?: { skipEnqueue?: boolean },
   ): Promise<LocalExpense> {
     const collection = await this.getEntityCollection<LocalExpense>("expenses");
+
+    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : false;
+    const skipEnqueue = options?.skipEnqueue ?? isOnline;
 
     const localExpense: LocalExpense = {
       ...expense,
@@ -344,7 +348,7 @@ export class LocalStorageManager {
         expense.cloudId ||
         `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      syncStatus: "pending",
+      syncStatus: skipEnqueue ? "synced" : "pending",
       version: 1,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -353,8 +357,10 @@ export class LocalStorageManager {
     collection[localExpense.id] = localExpense;
     await this.setEntityCollection("expenses", collection);
 
-    // Enqueue mutation dynamically
-    await this.enqueue("CREATE", "expenses", localExpense);
+    // Only enqueue when the change needs to be synced later
+    if (!skipEnqueue) {
+      await this.enqueue("CREATE", "expenses", localExpense);
+    }
 
     return localExpense;
   }
@@ -378,40 +384,52 @@ export class LocalStorageManager {
   async updateExpense(
     id: string,
     updates: Partial<LocalExpense>,
+    options?: { skipEnqueue?: boolean },
   ): Promise<LocalExpense | null> {
     const collection = await this.getEntityCollection<LocalExpense>("expenses");
     const expense = collection[id];
 
     if (!expense) return null;
 
+    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : false;
+    const skipEnqueue = options?.skipEnqueue ?? isOnline;
+
     const updated: LocalExpense = {
       ...expense,
       ...updates,
       version: expense.version + 1,
       updatedAt: Date.now(),
-      syncStatus: "pending",
+      syncStatus: skipEnqueue ? "synced" : "pending",
     };
 
     collection[id] = updated;
     await this.setEntityCollection("expenses", collection);
 
-    // Enqueue mutation dynamically
-    await this.enqueue("UPDATE", "expenses", updated);
+    if (!skipEnqueue) {
+      await this.enqueue("UPDATE", "expenses", updated);
+    }
 
     return updated;
   }
 
-  async deleteExpense(id: string): Promise<boolean> {
+  async deleteExpense(
+    id: string,
+    options?: { skipEnqueue?: boolean },
+  ): Promise<boolean> {
     const collection = await this.getEntityCollection<LocalExpense>("expenses");
 
     if (!collection[id]) return false;
+
+    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : false;
+    const skipEnqueue = options?.skipEnqueue ?? isOnline;
 
     const original = collection[id];
     delete collection[id];
     await this.setEntityCollection("expenses", collection);
 
-    // Enqueue mutation dynamically
-    await this.enqueue("DELETE", "expenses", { id, original });
+    if (!skipEnqueue) {
+      await this.enqueue("DELETE", "expenses", { id, original });
+    }
 
     return true;
   }
@@ -422,8 +440,12 @@ export class LocalStorageManager {
       LocalIncome,
       "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
     >,
+    options?: { skipEnqueue?: boolean },
   ): Promise<LocalIncome> {
     const collection = await this.getEntityCollection<LocalIncome>("income");
+
+    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : false;
+    const skipEnqueue = options?.skipEnqueue ?? isOnline;
 
     const localIncome: LocalIncome = {
       ...income,
@@ -431,7 +453,7 @@ export class LocalStorageManager {
         income.cloudId ||
         `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      syncStatus: "pending",
+      syncStatus: skipEnqueue ? "synced" : "pending",
       version: 1,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -440,8 +462,9 @@ export class LocalStorageManager {
     collection[localIncome.id] = localIncome;
     await this.setEntityCollection("income", collection);
 
-    // Enqueue mutation dynamically
-    await this.enqueue("CREATE", "income", localIncome);
+    if (!skipEnqueue) {
+      await this.enqueue("CREATE", "income", localIncome);
+    }
 
     return localIncome;
   }
@@ -460,40 +483,52 @@ export class LocalStorageManager {
   async updateIncome(
     id: string,
     updates: Partial<LocalIncome>,
+    options?: { skipEnqueue?: boolean },
   ): Promise<LocalIncome | null> {
     const collection = await this.getEntityCollection<LocalIncome>("income");
     const income = collection[id];
 
     if (!income) return null;
 
+    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : false;
+    const skipEnqueue = options?.skipEnqueue ?? isOnline;
+
     const updated: LocalIncome = {
       ...income,
       ...updates,
       version: income.version + 1,
       updatedAt: Date.now(),
-      syncStatus: "pending",
+      syncStatus: skipEnqueue ? "synced" : "pending",
     };
 
     collection[id] = updated;
     await this.setEntityCollection("income", collection);
 
-    // Enqueue mutation dynamically
-    await this.enqueue("UPDATE", "income", updated);
+    if (!skipEnqueue) {
+      await this.enqueue("UPDATE", "income", updated);
+    }
 
     return updated;
   }
 
-  async deleteIncome(id: string): Promise<boolean> {
+  async deleteIncome(
+    id: string,
+    options?: { skipEnqueue?: boolean },
+  ): Promise<boolean> {
     const collection = await this.getEntityCollection<LocalIncome>("income");
 
     if (!collection[id]) return false;
+
+    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : false;
+    const skipEnqueue = options?.skipEnqueue ?? isOnline;
 
     const original = collection[id];
     delete collection[id];
     await this.setEntityCollection("income", collection);
 
-    // Enqueue mutation dynamically
-    await this.enqueue("DELETE", "income", { id, original });
+    if (!skipEnqueue) {
+      await this.enqueue("DELETE", "income", { id, original });
+    }
 
     return true;
   }
@@ -504,9 +539,13 @@ export class LocalStorageManager {
       LocalCategory,
       "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
     >,
+    options?: { skipEnqueue?: boolean },
   ): Promise<LocalCategory> {
     const collection =
       await this.getEntityCollection<LocalCategory>("categories");
+
+    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : false;
+    const skipEnqueue = options?.skipEnqueue ?? isOnline;
 
     const localCategory: LocalCategory = {
       ...category,
@@ -514,7 +553,7 @@ export class LocalStorageManager {
         category.cloudId ||
         `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      syncStatus: "pending",
+      syncStatus: skipEnqueue ? "synced" : "pending",
       version: 1,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -523,8 +562,9 @@ export class LocalStorageManager {
     collection[localCategory.id] = localCategory;
     await this.setEntityCollection("categories", collection);
 
-    // Enqueue mutation dynamically
-    await this.enqueue("CREATE", "categories", localCategory);
+    if (!skipEnqueue) {
+      await this.enqueue("CREATE", "categories", localCategory);
+    }
 
     return localCategory;
   }
@@ -547,8 +587,12 @@ export class LocalStorageManager {
       LocalCard,
       "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
     >,
+    options?: { skipEnqueue?: boolean },
   ): Promise<LocalCard> {
     const collection = await this.getEntityCollection<LocalCard>("cards");
+
+    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : false;
+    const skipEnqueue = options?.skipEnqueue ?? isOnline;
 
     const localCard: LocalCard = {
       ...card,
@@ -556,7 +600,7 @@ export class LocalStorageManager {
         card.cloudId ||
         `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      syncStatus: "pending",
+      syncStatus: skipEnqueue ? "synced" : "pending",
       version: 1,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -565,8 +609,9 @@ export class LocalStorageManager {
     collection[localCard.id] = localCard;
     await this.setEntityCollection("cards", collection);
 
-    // Enqueue mutation dynamically
-    await this.enqueue("CREATE", "cards", localCard);
+    if (!skipEnqueue) {
+      await this.enqueue("CREATE", "cards", localCard);
+    }
 
     return localCard;
   }
@@ -625,9 +670,13 @@ export class LocalStorageManager {
       LocalForValue,
       "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
     >,
+    options?: { skipEnqueue?: boolean },
   ): Promise<LocalForValue> {
     const collection =
       await this.getEntityCollection<LocalForValue>("forValues");
+
+    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : false;
+    const skipEnqueue = options?.skipEnqueue ?? isOnline;
 
     const localForValue: LocalForValue = {
       ...forValue,
@@ -635,7 +684,7 @@ export class LocalStorageManager {
         forValue.cloudId ||
         `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      syncStatus: "pending",
+      syncStatus: skipEnqueue ? "synced" : "pending",
       version: 1,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -644,8 +693,9 @@ export class LocalStorageManager {
     collection[localForValue.id] = localForValue;
     await this.setEntityCollection("forValues", collection);
 
-    // Enqueue mutation dynamically
-    await this.enqueue("CREATE", "forValues", localForValue);
+    if (!skipEnqueue) {
+      await this.enqueue("CREATE", "forValues", localForValue);
+    }
 
     return localForValue;
   }
@@ -707,18 +757,22 @@ export class LocalStorageManager {
       LocalCategory,
       "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
     >,
+    options?: { skipEnqueue?: boolean },
   ): Promise<LocalCategory> {
     const collection =
       await this.getEntityCollection<LocalCategory>("incomeCategories");
 
+    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : false;
+    const skipEnqueue = options?.skipEnqueue ?? isOnline;
+
     const localCategory: LocalCategory = {
       ...category,
-      type: "income", // Ensure it's marked as income category
+      type: "income",
       id:
         category.cloudId ||
         `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      syncStatus: "pending",
+      syncStatus: skipEnqueue ? "synced" : "pending",
       version: 1,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -727,8 +781,9 @@ export class LocalStorageManager {
     collection[localCategory.id] = localCategory;
     await this.setEntityCollection("incomeCategories", collection);
 
-    // Enqueue mutation dynamically
-    await this.enqueue("CREATE", "incomeCategories", localCategory);
+    if (!skipEnqueue) {
+      await this.enqueue("CREATE", "incomeCategories", localCategory);
+    }
 
     return localCategory;
   }
