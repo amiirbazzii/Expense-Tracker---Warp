@@ -4,6 +4,22 @@
  */
 
 export type SyncStatus = 'pending' | 'synced' | 'conflict' | 'failed' | 'syncing';
+
+/**
+ * Lean pending mutation for the offline-first FIFO queue.
+ * Each enqueued mutation receives a UUIDv4 idempotency key via crypto.randomUUID().
+ * Flat, single-device — no versioning or multi-device properties.
+ */
+export interface PendingMutation {
+  /** UUIDv4 idempotency key generated via crypto.randomUUID() */
+  id: string;
+  /** Convex mutation route, e.g. "api.expenses.createExpense" */
+  action: string;
+  /** Clean payload to send to the mutation */
+  payload: any;
+  /** FIFO ordering timestamp */
+  timestamp: number;
+}
 export type ConflictType = 'missing_cloud' | 'corrupted_local' | 'divergent_data' | 'schema_mismatch';
 export type ConflictSeverity = 'low' | 'medium' | 'high' | 'critical';
 export type OperationType = 'create' | 'update' | 'delete';
