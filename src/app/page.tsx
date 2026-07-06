@@ -20,7 +20,6 @@ function LoadingSkeleton() {
 export default function Home() {
   const { user, loading, token } = useAuth();
   const router = useRouter();
-  const [isOnline, setIsOnline] = useState(true);
   const [redirecting, setRedirecting] = useState(false);
   const [timeoutReached, setTimeoutReached] = useState(false);
 
@@ -29,24 +28,9 @@ export default function Home() {
     const timeoutId = setTimeout(() => {
       console.warn('Home: Loading timeout reached, forcing redirect');
       setTimeoutReached(true);
-    }, 5000); // 5 second timeout (reduced from 8)
+    }, 5000);
 
     return () => clearTimeout(timeoutId);
-  }, []);
-
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-    
-    setIsOnline(navigator.onLine);
-
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-    };
   }, []);
 
   useEffect(() => {
@@ -60,12 +44,12 @@ export default function Home() {
 
     if ((!loading || timeoutReached) && !redirecting) {
       setRedirecting(true);
-      
-      console.log('Home: Redirecting - user:', !!user, 'token:', !!token, 'online:', isOnline);
-      
+
+      console.log('Home: Redirecting - user:', !!user, 'token:', !!token);
+
       // Use requestIdleCallback for non-critical redirects
       const redirect = () => {
-        if (user || (token && !isOnline)) {
+        if (user || token) {
           console.log('Home: Redirecting to add transaction page');
           router.replace("/add");
         } else {
@@ -82,7 +66,7 @@ export default function Home() {
         setTimeout(redirect, 100);
       }
     }
-  }, [user, loading, token, isOnline, router, redirecting, timeoutReached]);
+  }, [user, loading, token, router, redirecting, timeoutReached]);
 
   return <LoadingSkeleton />;
 }

@@ -37,9 +37,15 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     });
 
     // Auto-redirect to home page after a short delay
+    // Use history.pushState to avoid a hard reload that would fail offline
     if (this.props.redirectToHome !== false) {
       this.redirectTimer = setTimeout(() => {
-        window.location.href = '/';
+        try {
+          window.history.pushState({}, '', '/');
+          window.dispatchEvent(new PopStateEvent('popstate'));
+        } catch {
+          // Last resort – only triggers if the history API itself is broken
+        }
       }, 1000); // 1 second delay
     }
   }

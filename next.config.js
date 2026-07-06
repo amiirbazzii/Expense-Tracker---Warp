@@ -94,19 +94,22 @@ const withPWA = require('next-pwa')({
         ]
       },
     },
-    // App pages - Network first so pages get cached on visit, served from cache offline
+    // App pages - StaleWhileRevalidate so cached shell is served instantly
+    // offline; Next.js client-side router handles the actual page rendering.
     {
       urlPattern: ({ request, url }) => {
         const pathname = new URL(url).pathname;
-        // Cache main app pages for offline access
-        const appPages = ['/dashboard', '/add', '/cards', '/settings', '/onboarding'];
+        // All main app pages – must be visited at least once online to be cached
+        const appPages = [
+          '/dashboard', '/add', '/cards', '/settings', '/onboarding',
+          '/loans', '/expenses', '/income',
+        ];
         return request.destination === 'document' &&
           appPages.some(page => pathname.startsWith(page));
       },
-      handler: 'NetworkFirst',
+      handler: 'StaleWhileRevalidate',
       options: {
         cacheName: 'app-pages',
-        networkTimeoutSeconds: 5,
         expiration: {
           maxEntries: 30,
           maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
@@ -116,17 +119,16 @@ const withPWA = require('next-pwa')({
         },
       },
     },
-    // Root and auth pages - Network first for offline access
+    // Root and auth pages - StaleWhileRevalidate for instant offline access
     {
       urlPattern: ({ request, url }) => {
         const pathname = new URL(url).pathname;
         return request.destination === 'document' &&
           (pathname === '/' || pathname === '/login' || pathname === '/register');
       },
-      handler: 'NetworkFirst',
+      handler: 'StaleWhileRevalidate',
       options: {
         cacheName: 'auth-pages',
-        networkTimeoutSeconds: 5,
         expiration: {
           maxEntries: 10,
           maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
@@ -136,13 +138,12 @@ const withPWA = require('next-pwa')({
         },
       },
     },
-    // Other navigation requests - Network first for offline support
+    // Other navigation requests - StaleWhileRevalidate for instant offline support
     {
       urlPattern: ({ request }) => request.destination === 'document',
-      handler: 'NetworkFirst',
+      handler: 'StaleWhileRevalidate',
       options: {
         cacheName: 'pages',
-        networkTimeoutSeconds: 5,
         expiration: {
           maxEntries: 50,
           maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
