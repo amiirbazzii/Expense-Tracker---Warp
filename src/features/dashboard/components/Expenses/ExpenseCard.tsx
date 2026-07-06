@@ -2,11 +2,8 @@ import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect } from 'react';
 import { ExpenseActionMenu } from './ExpenseActionMenu';
-import { useMutation } from "convex/react";
-import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
-import { useAuth } from "@/contexts/AuthContext";
 
 export interface Expense {
   _id: Id<"expenses">;
@@ -27,9 +24,8 @@ interface ExpenseCardProps {
 export function ExpenseCard({ expense, onEdit, onDelete }: ExpenseCardProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
-  const { token } = useAuth();
-  const deleteExpenseMutation = useMutation(api.expenses.deleteExpense);
   
+
 
     useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

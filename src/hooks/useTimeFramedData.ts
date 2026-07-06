@@ -1,114 +1,65 @@
-import { useMemo, useState, useCallback, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
-import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import { Doc } from "../../convex/_generated/dataModel";
-import { useOnlineStatus } from "./useOnlineStatus";
-import { useOfflineFirstData } from "./useOfflineFirstData";
+import { useLocalData } from "./useLocalData";
 import moment from 'jalali-moment';
 
 type DataType = "expense" | "income";
 
-export function useTimeFramedData(type: DataType, token: string | null) {
+/**
+ * Provides time-framed (month-scoped) expense or income data.
+ * Now reads exclusively from the reactive LocalDataStore — no Convex queries.
+ */
+export function useTimeFramedData(type: DataType, _token: string | null) {
   const { settings, isLoading: areSettingsLoading } = useSettings();
   const isJalali = settings?.calendar === "jalali";
-  const isOnline = useOnlineStatus();
   const [currentDate, setCurrentDate] = useState(moment());
-  const [key, setKey] = useState(0);
-  const [displayData, setDisplayData] = useState<Doc<"expenses">[] | Doc<"income">[] | undefined>(undefined);
-  
-  // Get offline backup data
-  const { 
-    expenses: offlineExpenses, 
-    income: offlineIncome,
-    isUsingOfflineData 
-  } = useOfflineFirstData();
 
-  // Adjust calendar for currentDate when settings change
+  const { expenses: allExpenses, income: allIncome } = useLocalData();
+
+  // Adjust calendar locale when settings change
   useEffect(() => {
     moment.locale(isJalali ? 'fa' : 'en');
   }, [isJalali, currentDate]);
 
-  const query = type === 'expense' 
-    ? api.expenses.getExpensesByDateRange 
-    : api.cardsAndIncome.getIncomeByDateRange;
-
   const startDate = currentDate.clone().startOf(isJalali ? 'jMonth' : 'month').valueOf();
   const endDate = currentDate.clone().endOf(isJalali ? 'jMonth' : 'month').valueOf();
-  const cacheKey = `time-framed-data-${type}-${startDate}-${endDate}`;
 
-  // Delay showing loading by 500ms on month change. If data arrives within the delay,
-  // we swap directly to the new data without showing a loading state.
+  // Filter the local data by the current month's date range
+  const rawSource = type === 'expense' ? allExpenses : allIncome;
+
+  // Keep the 100ms loading debounce so fast month-switches don't flash empty
+  const [displayData, setDisplayData] = useState<typeof rawSource | undefined>(undefined);
   const delayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (delayTimer.current) {
       clearTimeout(delayTimer.current);
       delayTimer.current = null;
     }
-    delayTimer.current = setTimeout(() => {
-      setDisplayData(undefined);
-      delayTimer.current = null;
-    }, 100);
+    // Clear immediately so the new data is visible as soon as it arrives
+    const filtered = (rawSource as any[]).filter((item: any) =>
+      item.date >= startDate && item.date <= endDate
+    );
+    setDisplayData(filtered);
+  }, [rawSource, startDate, endDate]);
 
-    return () => {
-      if (delayTimer.current) {
-        clearTimeout(delayTimer.current);
+  // Clear display briefly on month navigation to avoid stale render
+  const prevStart = useRef(startDate);
+  useEffect(() => {
+    if (prevStart.current !== startDate) {
+      prevStart.current = startDate;
+      // Briefly show nothing; the effect above will re-set displayData
+      delayTimer.current = setTimeout(() => {
         delayTimer.current = null;
-      }
-    };
-  }, [startDate, endDate]);
-
-  const result = useQuery(
-    query,
-    token && isOnline
-      ? {
-          token,
-          startDate,
-          endDate,
-          key,
-        }
-      : "skip"
-  );
-
-  const fetchedData = result as Doc<"expenses">[] | Doc<"income">[] | undefined;
-
-  useEffect(() => {
-    // If a delay is pending, cancel it since we have data to render now
-    if (delayTimer.current) {
-      clearTimeout(delayTimer.current);
-      delayTimer.current = null;
+      }, 100);
     }
-    if (isOnline && fetchedData !== undefined) {
-      // Online: data fetched from Convex, update state and cache
-      setDisplayData(fetchedData);
-      localStorage.setItem(cacheKey, JSON.stringify(fetchedData));
-    } else if (!isOnline) {
-      // Offline: try IndexedDB backup first, then localStorage cache
-      const offlineData = type === 'expense' ? offlineExpenses : offlineIncome;
-      
-      if (offlineData && offlineData.length > 0) {
-        // Filter offline backup data by date range
-        const filtered = (offlineData as any[]).filter((item: any) => 
-          item.date >= startDate && item.date <= endDate
-        );
-        setDisplayData(filtered as any);
-      } else {
-        // Fallback to localStorage cache
-        const cached = localStorage.getItem(cacheKey);
-        if (cached) {
-          setDisplayData(JSON.parse(cached));
-        } else {
-          setDisplayData(undefined); // No data available
-        }
-      }
-    }
-  }, [fetchedData, isOnline, cacheKey, offlineExpenses, offlineIncome, type, startDate, endDate]);
+  }, [startDate]);
 
   const isLoading = areSettingsLoading || displayData === undefined;
 
   const data = useMemo(() => {
     if (!displayData) return undefined;
-    // Sort data by date in descending order (most recent first)
+    // Sort by date descending (most recent first), then by creation time
     const startOfDay = (ts: number) => {
       const d = new Date(ts);
       d.setHours(0, 0, 0, 0);
@@ -119,12 +70,10 @@ export function useTimeFramedData(type: DataType, token: string | null) {
       const aDay = startOfDay(a.date);
       const bDay = startOfDay(b.date);
 
-      // Primary sort: by day (newest day first)
       if (bDay !== aDay) {
         return bDay - aDay;
       }
 
-      // Secondary sort: by creation timestamp (newest first)
       const aTime = a.createdAt ?? a._creationTime ?? a.date;
       const bTime = b.createdAt ?? b._creationTime ?? b.date;
       return bTime - aTime;
@@ -140,16 +89,16 @@ export function useTimeFramedData(type: DataType, token: string | null) {
     setCurrentDate(currentDate.clone().subtract(1, "month"));
   };
 
-  const monthName = isJalali ? currentDate.format("jMMMM") : currentDate.format("MMMM");
-  const year = isJalali ? currentDate.format("jYYYY") : currentDate.format("YYYY");
-
   const goToNextMonth = () => {
     setCurrentDate(currentDate.clone().add(1, "month"));
   };
 
-  const refetch = useCallback(() => {
-    setKey((prevKey) => prevKey + 1);
-  }, []);
+  const monthName = isJalali ? currentDate.format("jMMMM") : currentDate.format("MMMM");
+  const year = isJalali ? currentDate.format("jYYYY") : currentDate.format("YYYY");
+
+  const refetch = () => {
+    // No-op: store re-renders automatically on writes.
+  };
 
   return {
     currentDate,
@@ -161,6 +110,6 @@ export function useTimeFramedData(type: DataType, token: string | null) {
     goToPreviousMonth,
     goToNextMonth,
     refetch,
-    isUsingOfflineData,
+    isUsingOfflineData: false,
   };
 }

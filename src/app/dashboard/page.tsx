@@ -7,8 +7,6 @@ import { BottomNav } from "@/components/BottomNav";
 import AppHeader from "@/components/AppHeader";
 import { WifiOff, ChevronDown } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
 
 // Import components
 import { DateFilterHeader } from "@/components/DateFilterHeader";
@@ -42,12 +40,7 @@ export default function DashboardPage() {
   const { token } = useAuth();
   const { settings } = useSettings();
   const router = useRouter();
-  const cardsQuery = useQuery(
-    api.cardsAndIncome.getCardBalances,
-    token ? { token } : "skip",
-  );
-  const { cards: offlineCards } = useOfflineFirstData();
-  const cards = cardsQuery !== undefined ? cardsQuery : offlineCards;
+  const { cards } = useOfflineFirstData();
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [navigating, setNavigating] = useState(false);
 

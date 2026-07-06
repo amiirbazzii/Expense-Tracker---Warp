@@ -10,10 +10,8 @@ import { SmartSelectInput } from "@/components/SmartSelectInput";
 import InputContainer from "@/components/InputContainer";
 import { Type, CreditCard, Tag, User } from "lucide-react";
 import { Loan } from "../types";
-import { useAuth } from "@/contexts/AuthContext";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../../convex/_generated/api";
-import { useOfflineFirstData } from "@/hooks/useOfflineFirstData";
+import { useLocalData } from "@/hooks/useLocalData";
+import { localDataStore } from "@/lib/store";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Id } from "../../../../convex/_generated/dataModel";
@@ -38,48 +36,14 @@ export function PayInstallmentSheet({
   loan,
   onPaid,
 }: PayInstallmentSheetProps) {
-  const { token } = useAuth();
+  // All reference data from the reactive local store
+  const { categories, forValues, cards: localCards } = useLocalData();
 
-  // Cards, categories, forValues from Convex
-  const cardsQuery = useQuery(
-    api.cardsAndIncome.getMyCards,
-    token ? { token } : "skip",
-  );
-  const categoriesQuery = useQuery(
-    api.expenses.getCategories,
-    token ? { token } : "skip",
-  );
-  const forValuesQuery = useQuery(
-    api.expenses.getForValues,
-    token ? { token } : "skip",
-  );
-
-  const {
-    cards: offlineCards,
-    categories: offlineCategories,
-    forValues: offlineForValues,
-  } = useOfflineFirstData();
-
-  const cards =
-    cardsQuery !== undefined
-      ? cardsQuery
-      : (offlineCards as any[])?.map((c: any) => ({
-          _id: c.cardId,
-          name: c.cardName,
-          userId: "",
-          createdAt: 0,
-          _creationTime: 0,
-        }));
-
-  const categories =
-    categoriesQuery !== undefined ? categoriesQuery : offlineCategories;
-  const forValues =
-    forValuesQuery !== undefined ? forValuesQuery : offlineForValues;
-
-  const createExpenseMutation = useMutation(api.expenses.createExpense);
-  const createCategoryMutation = useMutation(api.expenses.createCategory);
-  const createForValueMutation = useMutation(api.expenses.createForValue);
-  const payInstallmentMutation = useMutation(api.loans.payInstallment);
+  // Map local card docs to the shape the <select> expects
+  const cards = localCards.map((card) => ({
+    _id: card.cardId,
+    name: card.cardName,
+  }));
 
   // Form state
   const [amount, setAmount] = useState("");
@@ -114,9 +78,8 @@ export function PayInstallmentSheet({
   };
 
   const handleCreateCategory = async (name: string) => {
-    if (!token) return;
     try {
-      await createCategoryMutation({ token, name });
+      await localDataStore.addCategory(name);
     } catch {
       toast.error("Failed to create category.");
     }
@@ -130,9 +93,8 @@ export function PayInstallmentSheet({
   };
 
   const handleCreateForValue = async (value: string) => {
-    if (!token) return;
     try {
-      await createForValueMutation({ token, value });
+      await localDataStore.addForValue(value);
     } catch {
       toast.error("Failed to add 'for' value.");
     }
@@ -140,7 +102,7 @@ export function PayInstallmentSheet({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!loan || !token) return;
+    if (!loan) return;
 
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
@@ -158,9 +120,8 @@ export function PayInstallmentSheet({
 
     setIsSubmitting(true);
     try {
-      // 1. Create the expense
-      await createExpenseMutation({
-        token,
+      // 1. Create the expense locally
+      await localDataStore.addExpense({
         amount: parsedAmount,
         title: title || loan.name,
         category,
@@ -169,8 +130,8 @@ export function PayInstallmentSheet({
         cardId: cardId as Id<"cards">,
       });
 
-      // 2. Increment paid installments
-      await payInstallmentMutation({ token, loanId: loan._id });
+      // 2. Increment paid installments locally
+      await localDataStore.payInstallment(loan._id);
 
       toast.success("Installment paid successfully!");
       onPaid();

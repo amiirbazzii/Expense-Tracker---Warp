@@ -3,8 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import AppHeader from "@/components/AppHeader";
@@ -23,7 +21,8 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/Button";
 import { InputContainer } from "@/components/InputContainer";
-import { useOfflineFirstData } from "@/hooks/useOfflineFirstData";
+import { useLocalData } from "@/hooks/useLocalData";
+import { localDataStore } from "@/lib/store";
 import { DropdownMenu } from "@/components/DropdownMenu";
 
 export default function CardsPage() {
@@ -39,27 +38,15 @@ export default function CardsPage() {
   const [openMenuCardId, setOpenMenuCardId] = useState<string | null>(null);
   const openMenuRef = useRef<HTMLDivElement | null>(null);
 
-  const addCardMutation = useMutation(api.cardsAndIncome.addCard);
-  const deleteCardMutation = useMutation(api.cardsAndIncome.deleteCard);
-  const transferFundsMutation = useMutation(api.cardsAndIncome.transferFunds);
-  const cardBalancesQuery = useQuery(
-    api.cardsAndIncome.getCardBalances,
-    token ? { token } : "skip",
-  );
-
-  // Get offline backup data
-  const { cards: offlineCards, isUsingOfflineData } = useOfflineFirstData();
-
-  // Use online data if available, otherwise use offline backup
-  const cardBalances =
-    cardBalancesQuery !== undefined ? cardBalancesQuery : offlineCards;
+  // All data from the reactive local store
+  const { cards: cardBalances } = useLocalData();
 
   const addCard = async () => {
     if (!cardName.trim()) return;
 
     setIsSubmitting(true);
     try {
-      await addCardMutation({ token: token!, name: cardName.trim() });
+      await localDataStore.addCard(cardName.trim());
       toast.success("Your card has been added.");
       setCardName("");
     } catch (error) {
@@ -71,7 +58,7 @@ export default function CardsPage() {
 
   const deleteCard = async (cardId: string) => {
     try {
-      await deleteCardMutation({ token: token!, cardId: cardId as any });
+      await localDataStore.deleteCard(cardId);
       toast.success("The card has been deleted.");
     } catch (error: any) {
       toast.error(error.message || "There was an error deleting the card.");
@@ -97,11 +84,23 @@ export default function CardsPage() {
 
     setIsTransferring(true);
     try {
-      await transferFundsMutation({
-        token: token!,
-        fromCardId: fromCard as any,
-        toCardId: toCard as any,
+      // A transfer is represented locally as an expense on the source card
+      // and an income on the destination card (matches the Convex behavior).
+      const now = Date.now();
+      await localDataStore.addExpense({
         amount: transferAmount,
+        title: "Card Transfer",
+        category: ["Card Transfer"],
+        for: ["Card Transfer"],
+        date: now,
+        cardId: fromCard,
+      });
+      await localDataStore.addIncome({
+        amount: transferAmount,
+        source: "Card Transfer",
+        category: "Card Transfer",
+        date: now,
+        cardId: toCard,
       });
       toast.success("Transfer successful.");
       setFromCard("");
@@ -151,36 +150,6 @@ export default function CardsPage() {
         <AppHeader title="Manage Cards" />
 
         <div className="max-w-md mx-auto p-4 pt-[92px] pb-20">
-          {/* Offline Mode Indicator */}
-          {isUsingOfflineData && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg"
-            >
-              <div className="flex items-center space-x-2 text-sm text-orange-700 font-medium">
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414"
-                  />
-                </svg>
-                <span>Viewing Offline Backup Data</span>
-              </div>
-              <div className="text-xs text-orange-600 mt-1">
-                Showing cards from your last backup. Changes require internet
-                connection.
-              </div>
-            </motion.div>
-          )}
-
           {/* Add Card Form */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -215,19 +184,13 @@ export default function CardsPage() {
               </InputContainer>
               <Button
                 type="submit"
-                disabled={
-                  !cardName.trim() || isSubmitting || isUsingOfflineData
-                }
+                disabled={!cardName.trim() || isSubmitting}
                 loading={isSubmitting}
                 buttonType="icon"
                 icon={<Plus size={20} />}
                 className="min-h-[44px]"
                 aria-label="Add card"
-                title={
-                  isUsingOfflineData
-                    ? "Requires internet connection"
-                    : "Add card"
-                }
+                title="Add card"
               />
             </form>
           </motion.div>
@@ -286,18 +249,13 @@ export default function CardsPage() {
                   !fromCard ||
                   !toCard ||
                   !amount ||
-                  isTransferring ||
-                  isUsingOfflineData
+                  isTransferring
                 }
                 loading={isTransferring}
                 className="w-full min-h-[44px]"
-                title={
-                  isUsingOfflineData
-                    ? "Requires internet connection"
-                    : "Transfer funds"
-                }
+                title="Transfer funds"
               >
-                {isUsingOfflineData ? "Transfer (Offline)" : "Transfer"}
+                Transfer
               </Button>
             </div>
           </motion.div>
@@ -391,10 +349,6 @@ export default function CardsPage() {
                     >
                       <button
                         onClick={() => {
-                          if (isUsingOfflineData) {
-                            toast.error("Requires internet connection");
-                            return;
-                          }
                           deleteCard(card.cardId);
                           setOpenMenuCardId(null);
                         }}

@@ -3,14 +3,13 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { HeaderRow } from "@/components/HeaderRow";
 import { CreditCard, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/Button";
+import { localDataStore } from "@/lib/store";
 
 export default function OnboardingPage() {
   const { token } = useAuth();
@@ -18,8 +17,6 @@ export default function OnboardingPage() {
   const [cardName, setCardName] = useState("");
   const [cards, setCards] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const addCardMutation = useMutation(api.cardsAndIncome.addCard);
 
   const addCard = () => {
     if (cardName.trim()) {
@@ -43,9 +40,9 @@ export default function OnboardingPage() {
     setIsSubmitting(true);
 
     try {
-      // Create all cards
+      // Create all cards locally
       for (const cardName of cards) {
-        await addCardMutation({ token: token!, name: cardName });
+        await localDataStore.addCard(cardName);
       }
 
       toast.success("Your cards have been added successfully!");

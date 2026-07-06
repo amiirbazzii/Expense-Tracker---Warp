@@ -3,9 +3,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "../../../../../convex/_generated/api";
-import { useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Calendar, DollarSign, CreditCard, Briefcase, Tag } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
@@ -17,6 +14,8 @@ import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import { Button } from "@/components/Button";
 import InputContainer from "@/components/InputContainer";
+import { useLocalData } from "@/hooks/useLocalData";
+import { localDataStore } from "@/lib/store";
 
 interface IncomeFormData {
   amount: string;
@@ -30,9 +29,27 @@ interface IncomeFormData {
 export default function EditIncomePage() {
   const { id } = useParams();
   const router = useRouter();
-  const { token } = useAuth();
 
   const incomeId = id as Id<"income">;
+
+  // All reference data from the reactive local store
+  const { income, cards: localCards } = useLocalData();
+
+  // Find the income record being edited from local data
+  const incomeRecord = incomeId
+    ? income.find((i) => i._id === incomeId)
+    : undefined;
+
+  // Map local card docs to the shape the <select> expects
+  const cards = localCards.map((card) => ({
+    _id: card.cardId,
+    name: card.cardName,
+  }));
+
+  // Derive unique income categories from local income data
+  const incomeCategories = Array.from(
+    new Set(income.map((i) => i.category).filter(Boolean)),
+  );
 
   const [formData, setFormData] = useState<IncomeFormData>({
     amount: "",
@@ -45,24 +62,19 @@ export default function EditIncomePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const updateIncomeMutation = useMutation(api.cardsAndIncome.updateIncome);
-  const income = useQuery(api.cardsAndIncome.getIncomeById, token ? { token, incomeId } : "skip");
-  const cards = useQuery(api.cardsAndIncome.getMyCards, token ? { token } : "skip");
-  const incomeCategories = useQuery(api.cardsAndIncome.getUniqueIncomeCategories, token ? { token } : "skip");
-
   useEffect(() => {
-    if (income) {
+    if (incomeRecord) {
       setFormData({
-        amount: income.amount.toString(),
-        source: income.source,
-        category: [income.category],
-        date: format(new Date(income.date), "yyyy-MM-dd"),
-        cardId: income.cardId,
-        notes: income.notes || "",
+        amount: incomeRecord.amount.toString(),
+        source: incomeRecord.source,
+        category: [incomeRecord.category],
+        date: format(new Date(incomeRecord.date), "yyyy-MM-dd"),
+        cardId: incomeRecord.cardId,
+        notes: incomeRecord.notes || "",
       });
       setIsLoading(false);
     }
-  }, [income]);
+  }, [incomeRecord]);
 
   const fetchCategorySuggestions = async (query: string): Promise<string[]> => {
     if (!incomeCategories) return [];
@@ -92,9 +104,7 @@ export default function EditIncomePage() {
     setIsSubmitting(true);
 
     try {
-      await updateIncomeMutation({
-        token: token!,
-        incomeId,
+      await localDataStore.updateIncome(incomeId, {
         amount,
         source: formData.source,
         category: formData.category[0],

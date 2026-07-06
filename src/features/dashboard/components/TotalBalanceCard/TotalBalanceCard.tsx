@@ -1,29 +1,26 @@
 "use client";
 
-import { useQuery } from "convex/react";
 import { useState } from "react";
-import { api } from "../../../../../convex/_generated/api";
-import { useAuth } from "@/contexts/AuthContext";
 import { CreditCard, ChevronRight } from "lucide-react";
 import { useSettings } from "@/contexts/SettingsContext";
 import { formatCurrency } from "@/lib/formatters";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/Button";
 import { Chip } from "@/components/Chip";
+import { useLocalData } from "@/hooks/useLocalData";
 
 interface TotalBalanceCardProps {
   className?: string;
 }
 
 export function TotalBalanceCard({ className }: TotalBalanceCardProps) {
-  const { token } = useAuth();
   const { settings } = useSettings();
   const router = useRouter();
-  const cardBalances = useQuery(api.cardsAndIncome.getCardBalances, token ? { token } : "skip");
+  const { cards: cardBalances, isLoading } = useLocalData();
   const [isNavigating, setIsNavigating] = useState(false);
 
-  const totalBalance = cardBalances?.reduce((sum, card) => sum + card.balance, 0);
-  const cardsCount = cardBalances?.length;
+  const totalBalance = isLoading ? undefined : cardBalances?.reduce((sum, card) => sum + card.balance, 0);
+  const cardsCount = isLoading ? undefined : cardBalances?.length;
   const cardsLabel = cardsCount === undefined ? '…' : (cardsCount < 10 ? String(cardsCount) : '+9');
 
   const content = (

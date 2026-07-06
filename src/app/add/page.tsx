@@ -3,8 +3,6 @@
 import { useState, useEffect, useMemo, Suspense } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { BottomNav } from "@/components/BottomNav";
@@ -34,9 +32,8 @@ import { CurrencyInput } from "@/components/CurrencyInput";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import InputContainer from "@/components/InputContainer";
-import { useOnlineStatus } from "@/hooks/useOnlineStatus";
-import { useOfflineQueue } from "@/hooks/useOfflineQueue";
-import { useOfflineFirstData } from "@/hooks/useOfflineFirstData";
+import { useLocalData } from "@/hooks/useLocalData";
+import { localDataStore } from "@/lib/store";
 
 type ExpenseCreationData = {
   amount: number;
@@ -77,7 +74,6 @@ function AddTransactionContent() {
   const { token } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isOnline = useOnlineStatus();
 
   // Tab State
   const tabParam = searchParams.get("tab");
@@ -117,8 +113,6 @@ function AddTransactionContent() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSyncingExpenses, setIsSyncingExpenses] = useState(false);
-  const [isSyncingIncome, setIsSyncingIncome] = useState(false);
   const [pendingExpenseDeletions, setPendingExpenseDeletions] = useState<
     string[]
   >([]);
@@ -131,91 +125,33 @@ function AddTransactionContent() {
     null,
   );
 
-  // Offline Queues
+  // ── All data from the reactive local store ──────────────────────────────
   const {
-    queue: offlineExpenses,
-    addToQueue: addExpenseToOfflineQueue,
-    removeFromQueue: removeExpenseFromOfflineQueue,
-    updateItemStatus: updateExpenseOfflineStatus,
-  } = useOfflineQueue<ExpenseCreationData>("offline-expenses");
-
-  const {
-    queue: offlineIncome,
-    addToQueue: addIncomeToOfflineQueue,
-    removeFromQueue: removeIncomeFromOfflineQueue,
-    updateItemStatus: updateIncomeOfflineStatus,
-  } = useOfflineQueue<any>("offline-income");
-
-  // Convex Mutations
-  const createExpenseMutation = useMutation(api.expenses.createExpense);
-  const createCategoryMutation = useMutation(api.expenses.createCategory);
-  const createForValueMutation = useMutation(api.expenses.createForValue);
-  const deleteExpenseMutation = useMutation(api.expenses.deleteExpense);
-  const createIncomeMutation = useMutation(api.cardsAndIncome.createIncome);
-  const deleteIncomeMutation = useMutation(api.cardsAndIncome.deleteIncome);
-
-  // Convex Queries
-  const cardsQuery = useQuery(
-    api.cardsAndIncome.getMyCards,
-    token ? { token } : "skip",
-  );
-  const categoriesQuery = useQuery(
-    api.expenses.getCategories,
-    token ? { token } : "skip",
-  );
-  const forValuesQuery = useQuery(
-    api.expenses.getForValues,
-    token ? { token } : "skip",
-  );
-  const allIncomeCategoriesQuery = useQuery(
-    api.cardsAndIncome.getUniqueIncomeCategories,
-    token ? { token } : "skip",
-  );
-
-  // Offline First Backup Data
-  const {
-    categories: offlineCategories,
-    forValues: offlineForValues,
-    cards: offlineCards,
+    categories,
+    forValues,
+    cards: localCards,
     income: offlineIncomeData,
-    isLoading: isOfflineDataLoading,
-  } = useOfflineFirstData();
+  } = useLocalData();
 
-  // Unified Data Combinations
-  const cards =
-    cardsQuery !== undefined
-      ? cardsQuery
-      : (offlineCards as any[])?.map((card: any) => ({
-          _id: card.cardId,
-          name: card.cardName,
-          userId: "",
-          createdAt: 0,
-          _creationTime: 0,
-        }));
+  // Map local card docs to the shape components expect (Convex raw card shape)
+  const cards = localCards.map((card) => ({
+    _id: card.cardId,
+    name: card.cardName,
+    userId: "",
+    createdAt: 0,
+    _creationTime: 0,
+  }));
 
-  const categories =
-    categoriesQuery !== undefined ? categoriesQuery : offlineCategories;
-  const forValues =
-    forValuesQuery !== undefined ? forValuesQuery : offlineForValues;
-
-  // Extract offline income categories
-  const offlineIncomeCategoryNames =
-    offlineIncomeData && Array.isArray(offlineIncomeData)
-      ? Array.from(
-          new Set(
-            offlineIncomeData
-              .map((inc: any) => inc.category)
-              .filter((cat: any) => cat && typeof cat === "string"),
-          ),
-        )
-      : [];
-
-  const allIncomeCategories =
-    allIncomeCategoriesQuery !== undefined
-      ? allIncomeCategoriesQuery
-      : offlineIncomeCategoryNames;
-
-  const isCardsLoading = cardsQuery === undefined && isOfflineDataLoading;
+  // Extract unique income category names from local income data
+  const allIncomeCategories = Array.isArray(offlineIncomeData)
+    ? Array.from(
+        new Set(
+          offlineIncomeData
+            .map((inc) => inc.category)
+            .filter((cat) => cat && typeof cat === "string"),
+        ),
+      )
+    : [];
 
   // Time Framed Data Hooks
   const {
@@ -240,150 +176,6 @@ function AddTransactionContent() {
     refetch: refetchIncome,
     isUsingOfflineData: isUsingOfflineIncomeData,
   } = useTimeFramedData("income", token);
-
-  // Sync offline expenses when online
-  useEffect(() => {
-    if (isOnline && offlineExpenses.length > 0 && !isSyncingExpenses && token) {
-      const syncOfflineExpenses = async () => {
-        setIsSyncingExpenses(true);
-        const itemsToSync = offlineExpenses.filter(
-          (item) => item.status === "pending",
-        );
-
-        if (itemsToSync.length === 0) {
-          setIsSyncingExpenses(false);
-          return;
-        }
-
-        toast.info(`Syncing ${itemsToSync.length} offline expense(s)...`);
-
-        try {
-          const syncPromises = itemsToSync.map(async (item) => {
-            try {
-              await createExpenseMutation({ token, ...item.data });
-              removeExpenseFromOfflineQueue(item.id);
-            } catch (error) {
-              console.error(`Failed to sync expense ${item.id}:`, error);
-
-              if (error && typeof error === "object" && "message" in error) {
-                const errorMessage = (error as any).message || "";
-                if (
-                  errorMessage.includes("Authentication required") ||
-                  errorMessage.includes("authentication")
-                ) {
-                  toast.error(
-                    "Your session has expired during sync. Please log in again.",
-                  );
-                  router.push("/login");
-                  return;
-                }
-              }
-              updateExpenseOfflineStatus(item.id, "failed");
-            }
-          });
-
-          await Promise.all(syncPromises);
-          toast.success("Expense sync process completed.");
-          refetchExpenses();
-        } finally {
-          setIsSyncingExpenses(false);
-        }
-      };
-      syncOfflineExpenses();
-    }
-  }, [
-    isOnline,
-    offlineExpenses,
-    isSyncingExpenses,
-    token,
-    createExpenseMutation,
-    removeExpenseFromOfflineQueue,
-    updateExpenseOfflineStatus,
-    refetchExpenses,
-    router,
-  ]);
-
-  // Sync offline income when online
-  useEffect(() => {
-    if (isOnline && offlineIncome.length > 0 && !isSyncingIncome && token) {
-      const syncOfflineIncome = async () => {
-        setIsSyncingIncome(true);
-        const itemsToSync = offlineIncome.filter(
-          (item) => item.status === "pending",
-        );
-
-        if (itemsToSync.length === 0) {
-          setIsSyncingIncome(false);
-          return;
-        }
-
-        toast.info(`Syncing ${itemsToSync.length} offline income record(s)...`);
-
-        try {
-          const syncPromises = itemsToSync.map(async (item) => {
-            try {
-              await createIncomeMutation({ token, ...item.data });
-              removeIncomeFromOfflineQueue(item.id);
-            } catch (error) {
-              console.error(`Failed to sync income ${item.id}:`, error);
-              updateIncomeOfflineStatus(item.id, "failed");
-            }
-          });
-
-          await Promise.all(syncPromises);
-          toast.success("Income sync process completed.");
-          refetchIncome();
-        } finally {
-          setIsSyncingIncome(false);
-        }
-      };
-      syncOfflineIncome();
-    }
-  }, [
-    isOnline,
-    offlineIncome,
-    isSyncingIncome,
-    token,
-    createIncomeMutation,
-    removeIncomeFromOfflineQueue,
-    updateIncomeOfflineStatus,
-    refetchIncome,
-  ]);
-
-  // Retry sync methods
-  const handleRetrySyncExpense = async (itemId: string) => {
-    const itemToRetry = offlineExpenses.find((item) => item.id === itemId);
-    if (!itemToRetry || !token) return;
-
-    toast.info(`Retrying to sync expense: ${itemToRetry.data.title}`);
-    try {
-      await createExpenseMutation({ token, ...itemToRetry.data });
-      removeExpenseFromOfflineQueue(itemToRetry.id);
-      toast.success("Expense synced successfully!");
-      refetchExpenses();
-    } catch (error) {
-      console.error("Failed to sync expense:", error);
-      updateExpenseOfflineStatus(itemToRetry.id, "failed");
-      toast.error("Sync failed again. Please check your connection.");
-    }
-  };
-
-  const handleRetrySyncIncome = async (itemId: string) => {
-    const itemToRetry = offlineIncome.find((item) => item.id === itemId);
-    if (!itemToRetry || !token) return;
-
-    toast.info(`Retrying to sync income: ${itemToRetry.data.source}`);
-    try {
-      await createIncomeMutation({ token, ...itemToRetry.data });
-      removeIncomeFromOfflineQueue(itemToRetry.id);
-      toast.success("Income synced successfully!");
-      refetchIncome();
-    } catch (error) {
-      console.error("Failed to sync income:", error);
-      updateIncomeOfflineStatus(itemToRetry.id, "failed");
-      toast.error("Sync failed again. Please check your connection.");
-    }
-  };
 
   // Auto-select first card
   useEffect(() => {
@@ -439,16 +231,8 @@ function AddTransactionContent() {
     };
 
     try {
-      if (isOnline) {
-        await createExpenseMutation({ token: token!, ...expenseData });
-        toast.success("Your expense has been added.");
-        refetchExpenses();
-      } else {
-        addExpenseToOfflineQueue(expenseData);
-        toast.success(
-          "You are offline. Expense saved locally and will be synced later.",
-        );
-      }
+      await localDataStore.addExpense(expenseData);
+      toast.success("Your expense has been added.");
 
       setExpenseForm({
         amount: "",
@@ -460,18 +244,6 @@ function AddTransactionContent() {
       });
     } catch (error: unknown) {
       console.error("Error creating expense:", error);
-
-      if (error && typeof error === "object" && "message" in error) {
-        const errorMessage = (error as any).message || "";
-        if (
-          errorMessage.includes("Authentication required") ||
-          errorMessage.includes("authentication")
-        ) {
-          toast.error("Your session has expired. Please log in again.");
-          router.push("/login");
-          return;
-        }
-      }
       toast.error("Could not add your expense. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -513,16 +285,8 @@ function AddTransactionContent() {
     };
 
     try {
-      if (isOnline) {
-        await createIncomeMutation({ token: token!, ...incomeData });
-        toast.success("Your income has been added.");
-        refetchIncome();
-      } else {
-        addIncomeToOfflineQueue(incomeData);
-        toast.success(
-          "You are offline. Income saved locally and will be synced later.",
-        );
-      }
+      await localDataStore.addIncome(incomeData);
+      toast.success("Your income has been added.");
 
       setIncomeForm({
         amount: "",
@@ -552,12 +316,8 @@ function AddTransactionContent() {
   };
 
   const handleCreateCategory = async (name: string): Promise<void> => {
-    if (!token) {
-      toast.error("Authentication required");
-      return;
-    }
     try {
-      await createCategoryMutation({ token, name });
+      await localDataStore.addCategory(name);
     } catch (error) {
       toast.error("Failed to create category.");
       console.error(error);
@@ -572,12 +332,8 @@ function AddTransactionContent() {
   };
 
   const handleCreateForValue = async (value: string): Promise<void> => {
-    if (!token) {
-      toast.error("Authentication required");
-      return;
-    }
     try {
-      await createForValueMutation({ token, value });
+      await localDataStore.addForValue(value);
     } catch (error) {
       toast.error("Failed to add 'for' value.");
       console.error(error);
@@ -603,39 +359,15 @@ function AddTransactionContent() {
       {} as Record<string, string>,
     ) || {};
 
-  // Expense Lists Mapping
-  const mappedOfflineExpenses = offlineExpenses.map((item) => ({
-    ...item.data,
-    _id: item.id,
-    _creationTime: item.createdAt,
-    userId: "",
-    status: item.status,
-  }));
-
-  const combinedExpenses = [...(expenses || []), ...mappedOfflineExpenses]
+  // Expense list — filtered against pending deletions (undo window)
+  const combinedExpenses = (expenses || [])
     .filter((expense) => !pendingExpenseDeletions.includes(expense._id))
     .sort((a, b) => b.date - a.date);
 
-  // Income Lists Mapping
-  const mappedOfflineIncome = offlineIncome.map((item) => ({
-    ...item.data,
-    _id: item.id,
-    _creationTime: item.createdAt,
-    userId: "",
-    status: item.status,
-  }));
-
-  const combinedIncome = [...(incomes || []), ...mappedOfflineIncome]
+  // Income list — filtered against pending deletions (undo window)
+  const combinedIncome = (incomes || [])
     .filter((income) => !pendingIncomeDeletions.includes(income._id))
     .sort((a, b) => b.date - a.date);
-
-  if (cards === undefined && isOnline) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-lg text-black">Loading cards...</div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -844,11 +576,7 @@ function AddTransactionContent() {
                           },
                           onAutoClose: async () => {
                             try {
-                              await deleteExpenseMutation({
-                                token: token!,
-                                expenseId: expenseId as any,
-                              });
-                              refetchExpenses();
+                              await localDataStore.deleteExpense(expenseId);
                             } catch (error) {
                               console.error("Failed to delete expense:", error);
                               toast.error("Failed to delete expense.");
@@ -860,8 +588,6 @@ function AddTransactionContent() {
                           duration: 5000,
                         });
                       }}
-                      status={(expense as any).status}
-                      onRetry={handleRetrySyncExpense}
                       onEdit={(id) => setEditingExpenseId(id as Id<"expenses">)}
                     />
                   ))}
@@ -1043,8 +769,6 @@ function AddTransactionContent() {
                       key={incomeRecord._id}
                       income={incomeRecord as any}
                       cardName={cardMap[incomeRecord.cardId] || "Unknown Card"}
-                      status={(incomeRecord as any).status}
-                      onRetry={handleRetrySyncIncome}
                       onDelete={(incomeId: Id<"income">) => {
                         setPendingIncomeDeletions((prev) => [
                           ...prev,
@@ -1063,11 +787,7 @@ function AddTransactionContent() {
                           },
                           onAutoClose: async () => {
                             try {
-                              await deleteIncomeMutation({
-                                token: token!,
-                                incomeId: incomeId as any,
-                              });
-                              refetchIncome();
+                              await localDataStore.deleteIncome(incomeId);
                             } catch (error) {
                               console.error("Failed to delete income:", error);
                               toast.error("Failed to delete income.");

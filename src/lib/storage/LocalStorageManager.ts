@@ -6,6 +6,7 @@ import {
   LocalCategory,
   LocalCard,
   LocalForValue,
+  LocalLoan,
   LocalEntity,
   DataFilters,
   EntityType,
@@ -398,6 +399,62 @@ export class LocalStorageManager {
 
     delete collection[id];
     await this.setEntityCollection('forValues', collection);
+
+    return true;
+  }
+
+  // Loan operations
+  async saveLoan(loan: Omit<LocalLoan, 'id' | 'localId' | 'syncStatus' | 'version' | 'createdAt' | 'updatedAt'>): Promise<LocalLoan> {
+    const collection = await this.getEntityCollection<LocalLoan>('loans');
+
+    const localLoan: LocalLoan = {
+      ...loan,
+      id: loan.cloudId || `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      syncStatus: 'pending',
+      version: 1,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+
+    collection[localLoan.id] = localLoan;
+    await this.setEntityCollection('loans', collection);
+
+    return localLoan;
+  }
+
+  async getLoans(): Promise<LocalLoan[]> {
+    const collection = await this.getEntityCollection<LocalLoan>('loans');
+    return Object.values(collection).sort((a, b) => b.createdAt - a.createdAt);
+  }
+
+  async updateLoan(id: string, updates: Partial<LocalLoan>): Promise<LocalLoan | null> {
+    const collection = await this.getEntityCollection<LocalLoan>('loans');
+    const loan = collection[id];
+
+    if (!loan) return null;
+
+    const updated: LocalLoan = {
+      ...loan,
+      ...updates,
+      version: loan.version + 1,
+      updatedAt: Date.now(),
+      syncStatus: 'pending'
+    };
+
+    collection[id] = updated;
+    await this.setEntityCollection('loans', collection);
+
+    return updated;
+  }
+
+  async deleteLoan(id: string): Promise<boolean> {
+    const collection = await this.getEntityCollection<LocalLoan>('loans');
+
+    if (!collection[id]) return false;
+
+    delete collection[id];
+    await this.setEntityCollection('loans', collection);
 
     return true;
   }
