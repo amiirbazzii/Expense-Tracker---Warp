@@ -117,7 +117,7 @@ export class LocalStorageManager {
   }
 
   // Generic entity operations
-  private async getEntityCollection<T extends LocalEntity>(entityType: EntityType): Promise<{ [id: string]: T }> {
+  async getEntityCollection<T extends LocalEntity>(entityType: EntityType): Promise<{ [id: string]: T }> {
     const collection = await this.storage.getItem(entityType);
     return (collection as { [id: string]: T }) || {};
   }
@@ -129,6 +129,47 @@ export class LocalStorageManager {
 
   private async updateLastModified(): Promise<void> {
     await this.updateSyncState({ lastModified: Date.now() });
+  }
+
+  /**
+   * Insert a hydrated server document into a collection.
+   * Used by HydrationService to seed IndexedDB with Convex data.
+   */
+  async insertEntity(entityType: EntityType, id: string, fields: Record<string, any>): Promise<void> {
+    const collection = await this.getEntityCollection(entityType);
+    if (collection[id]) return; // Already exists — don't overwrite
+
+    collection[id] = {
+      ...fields,
+      id,
+      localId: `hydrated_${id}`,
+      syncStatus: 'synced',
+      version: 1,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    } as any;
+
+    await this.setEntityCollection(entityType, collection);
+  }
+
+  /**
+   * Update an existing entity with server data (only if no pending mutation).
+   * Used by HydrationService to refresh synced entities.
+   */
+  async updateEntity(entityType: EntityType, id: string, fields: Record<string, any>): Promise<void> {
+    const collection = await this.getEntityCollection(entityType);
+    const existing = collection[id];
+    if (!existing) return;
+
+    collection[id] = {
+      ...existing,
+      ...fields,
+      id,
+      syncStatus: 'synced',
+      updatedAt: Date.now(),
+    } as any;
+
+    await this.setEntityCollection(entityType, collection);
   }
 
   // Expense operations

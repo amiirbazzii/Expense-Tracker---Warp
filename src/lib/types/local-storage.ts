@@ -23,7 +23,7 @@ export interface PendingMutation {
 export type ConflictType = 'missing_cloud' | 'corrupted_local' | 'divergent_data' | 'schema_mismatch';
 export type ConflictSeverity = 'low' | 'medium' | 'high' | 'critical';
 export type OperationType = 'create' | 'update' | 'delete';
-export type EntityType = 'expenses' | 'income' | 'categories' | 'cards' | 'forValues' | 'incomeCategories';
+export type EntityType = 'expenses' | 'income' | 'categories' | 'cards' | 'forValues' | 'incomeCategories' | 'loans';
 
 // Base interface for all local entities
 export interface LocalEntity {

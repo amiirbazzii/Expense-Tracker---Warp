@@ -183,6 +183,23 @@ export const getUniqueIncomeCategories = query({
   },
 });
 
+export const getIncomeCategories = query({
+  args: {
+    token: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken(ctx, args.token);
+    if (!user) {
+      return [];
+    }
+
+    return await ctx.db
+      .query("incomeCategories")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+  },
+});
+
 export const getIncomeById = query({
   args: {
     token: v.string(),

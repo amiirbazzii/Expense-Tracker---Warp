@@ -4,6 +4,8 @@ import { ReactNode, useEffect, useRef } from 'react';
 import { OfflineFirstProvider } from './OfflineFirstProvider';
 import { useAuth } from '@/contexts/AuthContext';
 import { syncEngine } from '@/lib/sync/SyncEngine';
+import { hydrationService } from '@/lib/sync/HydrationService';
+import { localDataStore } from '@/lib/store';
 
 interface OfflineFirstWrapperProps {
   children: ReactNode;
@@ -11,7 +13,6 @@ interface OfflineFirstWrapperProps {
 
 export function OfflineFirstWrapper({ children }: OfflineFirstWrapperProps) {
   const { user, token } = useAuth();
-  // Track whether the engine is currently running so we only stop it once.
   const engineRunning = useRef(false);
 
   useEffect(() => {
@@ -21,18 +22,27 @@ export function OfflineFirstWrapper({ children }: OfflineFirstWrapperProps) {
       return;
     }
 
-    if (token) {
-      // User is authenticated — start (or keep) the sync engine running.
+    if (token && user) {
+      // User is authenticated — start sync engine.
       syncEngine.start(convexUrl, token);
       engineRunning.current = true;
+
+      // Initialize the local store and hydrate from Convex
+      localDataStore.init(user._id).then(() => {
+        const client = syncEngine.getClient();
+        if (client && navigator.onLine) {
+          hydrationService.hydrate(client, token);
+        }
+      });
     } else if (engineRunning.current) {
-      // Token was cleared (logout) — wipe local data and stop the engine.
+      // Token cleared (logout) — wipe data, stop engine, reset hydration.
       engineRunning.current = false;
+      hydrationService.reset();
       syncEngine.clearAndStop().catch((err) => {
         console.error('[OfflineFirstWrapper] Error during clearAndStop:', err);
       });
     }
-  }, [token]);
+  }, [token, user]);
 
   return (
     <OfflineFirstProvider userId={user?._id}>

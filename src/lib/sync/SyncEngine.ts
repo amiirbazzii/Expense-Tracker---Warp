@@ -91,6 +91,11 @@ export class SyncEngine {
     console.log("[SyncEngine] Offline — pausing sync");
   };
 
+  /** Return the active ConvexClient instance, or null if the engine isn't running. */
+  getClient(): ConvexClient | null {
+    return this.client;
+  }
+
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   /**
