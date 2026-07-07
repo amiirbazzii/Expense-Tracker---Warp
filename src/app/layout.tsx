@@ -16,6 +16,7 @@ import {
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LanguageWrapper } from "@/components/LanguageWrapper";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { PwaRegistration } from "@/components/PwaRegistration";
 
 const geistMono = localFont({
   src: "./fonts/GeistMonoVF.woff",
@@ -135,6 +136,7 @@ export default function RootLayout({
                     {children}
                     <div id="modal-root"></div>
                     <InstallPrompt />
+                    <PwaRegistration />
                     <LazyToaster position="top-center" />
                   </LanguageWrapper>
                 </SettingsProvider>
