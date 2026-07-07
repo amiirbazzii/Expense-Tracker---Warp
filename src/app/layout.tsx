@@ -12,7 +12,6 @@ import {
   LazyAnalytics,
   LazySpeedInsights,
   LazyToaster,
-  LazyEnhancedNetworkStatusIndicator,
 } from "@/components/LazyComponents";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LanguageWrapper } from "@/components/LanguageWrapper";
@@ -135,7 +134,6 @@ export default function RootLayout({
                   <LanguageWrapper>
                     {children}
                     <div id="modal-root"></div>
-                    <LazyEnhancedNetworkStatusIndicator />
                     <InstallPrompt />
                     <LazyToaster position="top-center" />
                   </LanguageWrapper>

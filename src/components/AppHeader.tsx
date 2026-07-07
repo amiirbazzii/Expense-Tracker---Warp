@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { HeaderRow } from "@/components/HeaderRow";
 import { ArrowLeft } from "lucide-react";
+import { syncEngine } from "@/lib/sync/SyncEngine";
 
 const MAIN_PAGES: Record<string, string> = {
   "/dashboard": "Report",
@@ -24,7 +25,13 @@ function deriveTitleFromPath(pathname: string): string {
   return first.replace(/[-_]/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
 }
 
-export function AppHeader({ title: overrideTitle, right }: { title?: string; right?: React.ReactNode }) {
+export function AppHeader({
+  title: overrideTitle,
+  right,
+}: {
+  title?: string;
+  right?: React.ReactNode;
+}) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -34,7 +41,38 @@ export function AppHeader({ title: overrideTitle, right }: { title?: string; rig
   const [usePngFallback, setUsePngFallback] = useState(false);
 
   if (isMain) {
-    // Main pages: logo + page name
+    // Main pages: logo + page name + sync status dot
+    const SyncDot = () => {
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      const [synced, setSynced] = useState(false);
+
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      useEffect(() => {
+        let active = true;
+        const check = async () => {
+          if (!active) return;
+          const [pending, draining] = await Promise.all([
+            syncEngine.getPendingCount(),
+            syncEngine.getIsDraining(),
+          ]);
+          const online = syncEngine.getIsOnline();
+          setSynced(online && !draining && pending === 0);
+        };
+        check();
+        const id = setInterval(check, 1500);
+        return () => { active = false; clearInterval(id); };
+      }, []);
+
+      return (
+        <span
+          className={`block w-2 h-2 rounded-full transition-opacity duration-500 ${
+            synced ? "opacity-100 bg-[#10B981]" : "opacity-0"
+          }`}
+          title={synced ? "Synced" : undefined}
+        />
+      );
+    };
+
     return (
       <HeaderRow
         left={
@@ -65,14 +103,14 @@ export function AppHeader({ title: overrideTitle, right }: { title?: string; rig
                 />
               </div>
             )}
-            <h1 className="text-xl font-bold text-gray-900">{title}</h1>
+            <h1 className="text-xl font-bold text-gray-900 pr-2">{title}</h1>
+            <SyncDot />
           </div>
         }
         right={right}
       />
     );
   }
-
 
   // Internal pages: back icon + page name
   return (

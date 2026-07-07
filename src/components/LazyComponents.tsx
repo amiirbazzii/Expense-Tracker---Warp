@@ -18,8 +18,3 @@ export const LazyToaster = dynamic(() => import('sonner').then(mod => ({ default
   loading: () => null,
   ssr: false,
 });
-
-export const LazyEnhancedNetworkStatusIndicator = dynamic(() => import('@/components/EnhancedNetworkStatusIndicator').then(mod => ({ default: mod.EnhancedNetworkStatusIndicator })), {
-  loading: () => null,
-  ssr: false,
-});

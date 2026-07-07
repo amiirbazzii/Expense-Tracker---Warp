@@ -24,24 +24,24 @@ body {
   .text-balance {
     text-wrap: balance;
   }
-  
+
   /* Hide scrollbars for horizontal scrolling */
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
     scroll-behavior: smooth;
   }
-  
+
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
     width: 0;
     height: 0;
   }
-  
+
   .scrollbar-hide::-webkit-scrollbar-track {
     display: none;
   }
-  
+
   .scrollbar-hide::-webkit-scrollbar-thumb {
     display: none;
   }
@@ -87,7 +87,8 @@ body {
   }
 
   /* English content in Persian context */
-  [lang="fa"] .english-text, [dir="rtl"] .english-text {
+  [lang="fa"] .english-text,
+  [dir="rtl"] .english-text {
     font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
     direction: ltr;
     text-align: left;
@@ -95,7 +96,8 @@ body {
   }
 
   /* Persian content in English context */
-  [lang="en"] .persian-text, [dir="ltr"] .persian-text {
+  [lang="en"] .persian-text,
+  [dir="ltr"] .persian-text {
     font-family: var(--font-iran-sans), Tahoma, Arial, sans-serif;
     direction: ltr;
     text-align: left;
@@ -118,11 +120,10 @@ body {
   }
 
   /* Apply Persian font to any text containing Persian characters */
-  html :is(
-    h1, h2, h3, h4, h5, h6,
-    p, span, div, label,
-    button, a, li, td, th
-  ):not(input):not(textarea):not(select) {
+  html
+    :is(h1, h2, h3, h4, h5, h6, p, span, div, label, button, a, li, td, th):not(
+      input
+    ):not(textarea):not(select) {
     /* This will be handled by JavaScript font detection */
   }
 
@@ -176,6 +177,21 @@ body {
   }
 }
 
+/* Sync status dot pulse — fades between amber and transparent */
+@keyframes pulse-sync {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.animate-pulse-sync {
+  animation: pulse-sync 1.5s ease-in-out infinite;
+}
+
 .animate-slide-up {
   animation: slide-up 0.3s ease-out;
 }
@@ -190,7 +206,11 @@ body {
 
 /* Mobile-friendly touch targets */
 @media (hover: none) and (pointer: coarse) {
-  button, a, input, select, textarea {
+  button,
+  a,
+  input,
+  select,
+  textarea {
     min-height: 44px;
     min-width: 44px;
   }

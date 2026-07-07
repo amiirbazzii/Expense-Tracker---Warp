@@ -288,24 +288,6 @@ export default function DashboardPage() {
         )}
 
         <div className="max-w-md mx-auto p-4 pt-[92px] pb-20">
-          {/* Offline Mode Indicator */}
-          {effIsUsingOfflineData && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg"
-            >
-              <div className="flex items-center space-x-2 text-sm text-orange-700 font-medium">
-                <WifiOff size={16} />
-                <span>Viewing Offline Backup Data</span>
-              </div>
-              <div className="text-xs text-orange-600 mt-1">
-                Showing data from your last backup. Connect to internet to see
-                latest updates.
-              </div>
-            </motion.div>
-          )}
-
           {/* Card Balances */}
           <TotalBalanceCard className="mb-6 rounded-2xl" />
 

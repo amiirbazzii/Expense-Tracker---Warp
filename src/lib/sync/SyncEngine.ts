@@ -96,6 +96,11 @@ export class SyncEngine {
     return this.client;
   }
 
+  /** Return the engine's own online state (mirrors window online/offline events). */
+  getIsOnline(): boolean {
+    return this.isOnline;
+  }
+
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   /**
@@ -222,6 +227,18 @@ export class SyncEngine {
 
     // 3. Stop timers and listeners.
     this.stop();
+  }
+
+  // ── Public status helpers ────────────────────────────────────────────
+
+  /** Returns the number of mutations waiting in the queue. */
+  async getPendingCount(): Promise<number> {
+    return this.queue.size();
+  }
+
+  /** Returns whether the engine is currently draining the queue. */
+  getIsDraining(): boolean {
+    return this.isDraining;
   }
 
   // ── FIFO drain ────────────────────────────────────────────────────────────
