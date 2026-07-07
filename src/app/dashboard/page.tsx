@@ -7,12 +7,9 @@ import { BottomNav } from "@/components/BottomNav";
 import AppHeader from "@/components/AppHeader";
 import { WifiOff, ChevronDown } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
 
 // Import components
 import { DateFilterHeader } from "@/components/DateFilterHeader";
-import { FullScreenLoader } from "@/components/FullScreenLoader";
 import { CardFilter } from "../../features/dashboard/components/CardFilter";
 import { Chip } from "@/components/Chip";
 
@@ -42,12 +39,7 @@ export default function DashboardPage() {
   const { token } = useAuth();
   const { settings } = useSettings();
   const router = useRouter();
-  const cardsQuery = useQuery(
-    api.cardsAndIncome.getCardBalances,
-    token ? { token } : "skip",
-  );
-  const { cards: offlineCards } = useOfflineFirstData();
-  const cards = cardsQuery !== undefined ? cardsQuery : offlineCards;
+  const { cards } = useOfflineFirstData();
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [navigating, setNavigating] = useState(false);
 
@@ -290,29 +282,8 @@ export default function DashboardPage() {
     <>
       <div className="min-h-screen bg-white">
         <AppHeader />
-        {(navigating || effIsLoading) && (
-          <FullScreenLoader message="Loading month..." />
-        )}
 
         <div className="max-w-md mx-auto p-4 pt-[92px] pb-20">
-          {/* Offline Mode Indicator */}
-          {effIsUsingOfflineData && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg"
-            >
-              <div className="flex items-center space-x-2 text-sm text-orange-700 font-medium">
-                <WifiOff size={16} />
-                <span>Viewing Offline Backup Data</span>
-              </div>
-              <div className="text-xs text-orange-600 mt-1">
-                Showing data from your last backup. Connect to internet to see
-                latest updates.
-              </div>
-            </motion.div>
-          )}
-
           {/* Card Balances */}
           <TotalBalanceCard className="mb-6 rounded-2xl" />
 

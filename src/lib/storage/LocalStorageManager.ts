@@ -310,7 +310,7 @@ export class LocalStorageManager {
   }
 
   // Generic entity operations
-  private async getEntityCollection<T extends LocalEntity>(
+  async getEntityCollection<T extends LocalEntity>(
     entityType: EntityType,
   ): Promise<{ [id: string]: T }> {
     const collection = await this.storage.getItem(entityType);
@@ -329,6 +329,55 @@ export class LocalStorageManager {
     await this.updateSyncState({ lastModified: Date.now() });
   }
 
+  /**
+   * Insert a hydrated server document into a collection.
+   * Used by HydrationService to seed IndexedDB with Convex data.
+   */
+  async insertEntity(
+    entityType: EntityType,
+    id: string,
+    fields: Record<string, any>,
+  ): Promise<void> {
+    const collection = await this.getEntityCollection(entityType);
+    if (collection[id]) return; // Already exists — don't overwrite
+
+    collection[id] = {
+      ...fields,
+      id,
+      localId: `hydrated_${id}`,
+      syncStatus: "synced",
+      version: 1,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    } as any;
+
+    await this.setEntityCollection(entityType, collection);
+  }
+
+  /**
+   * Update an existing entity with server data (only if no pending mutation).
+   * Used by HydrationService to refresh synced entities.
+   */
+  async updateEntity(
+    entityType: EntityType,
+    id: string,
+    fields: Record<string, any>,
+  ): Promise<void> {
+    const collection = await this.getEntityCollection(entityType);
+    const existing = collection[id];
+    if (!existing) return;
+
+    collection[id] = {
+      ...existing,
+      ...fields,
+      id,
+      syncStatus: "synced",
+      updatedAt: Date.now(),
+    } as any;
+
+    await this.setEntityCollection(entityType, collection);
+  }
+
   // Expense operations
   async saveExpense(
     expense: Omit<
@@ -339,7 +388,8 @@ export class LocalStorageManager {
   ): Promise<LocalExpense> {
     const collection = await this.getEntityCollection<LocalExpense>("expenses");
 
-    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : false;
+    const isOnline =
+      typeof navigator !== "undefined" ? navigator.onLine : false;
     const skipEnqueue = options?.skipEnqueue ?? isOnline;
 
     const localExpense: LocalExpense = {
@@ -391,7 +441,8 @@ export class LocalStorageManager {
 
     if (!expense) return null;
 
-    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : false;
+    const isOnline =
+      typeof navigator !== "undefined" ? navigator.onLine : false;
     const skipEnqueue = options?.skipEnqueue ?? isOnline;
 
     const updated: LocalExpense = {
@@ -420,7 +471,8 @@ export class LocalStorageManager {
 
     if (!collection[id]) return false;
 
-    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : false;
+    const isOnline =
+      typeof navigator !== "undefined" ? navigator.onLine : false;
     const skipEnqueue = options?.skipEnqueue ?? isOnline;
 
     const original = collection[id];
@@ -444,7 +496,8 @@ export class LocalStorageManager {
   ): Promise<LocalIncome> {
     const collection = await this.getEntityCollection<LocalIncome>("income");
 
-    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : false;
+    const isOnline =
+      typeof navigator !== "undefined" ? navigator.onLine : false;
     const skipEnqueue = options?.skipEnqueue ?? isOnline;
 
     const localIncome: LocalIncome = {
@@ -490,7 +543,8 @@ export class LocalStorageManager {
 
     if (!income) return null;
 
-    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : false;
+    const isOnline =
+      typeof navigator !== "undefined" ? navigator.onLine : false;
     const skipEnqueue = options?.skipEnqueue ?? isOnline;
 
     const updated: LocalIncome = {
@@ -519,7 +573,8 @@ export class LocalStorageManager {
 
     if (!collection[id]) return false;
 
-    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : false;
+    const isOnline =
+      typeof navigator !== "undefined" ? navigator.onLine : false;
     const skipEnqueue = options?.skipEnqueue ?? isOnline;
 
     const original = collection[id];
@@ -544,7 +599,8 @@ export class LocalStorageManager {
     const collection =
       await this.getEntityCollection<LocalCategory>("categories");
 
-    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : false;
+    const isOnline =
+      typeof navigator !== "undefined" ? navigator.onLine : false;
     const skipEnqueue = options?.skipEnqueue ?? isOnline;
 
     const localCategory: LocalCategory = {
@@ -591,7 +647,8 @@ export class LocalStorageManager {
   ): Promise<LocalCard> {
     const collection = await this.getEntityCollection<LocalCard>("cards");
 
-    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : false;
+    const isOnline =
+      typeof navigator !== "undefined" ? navigator.onLine : false;
     const skipEnqueue = options?.skipEnqueue ?? isOnline;
 
     const localCard: LocalCard = {
@@ -675,7 +732,8 @@ export class LocalStorageManager {
     const collection =
       await this.getEntityCollection<LocalForValue>("forValues");
 
-    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : false;
+    const isOnline =
+      typeof navigator !== "undefined" ? navigator.onLine : false;
     const skipEnqueue = options?.skipEnqueue ?? isOnline;
 
     const localForValue: LocalForValue = {
@@ -751,6 +809,72 @@ export class LocalStorageManager {
     return true;
   }
 
+  // Loan operations
+  async saveLoan(
+    loan: Omit<
+      LocalLoan,
+      "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
+    >,
+  ): Promise<LocalLoan> {
+    const collection = await this.getEntityCollection<LocalLoan>("loans");
+
+    const localLoan: LocalLoan = {
+      ...loan,
+      id:
+        loan.cloudId ||
+        `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      syncStatus: "pending",
+      version: 1,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    collection[localLoan.id] = localLoan;
+    await this.setEntityCollection("loans", collection);
+
+    return localLoan;
+  }
+
+  async getLoans(): Promise<LocalLoan[]> {
+    const collection = await this.getEntityCollection<LocalLoan>("loans");
+    return Object.values(collection).sort((a, b) => b.createdAt - a.createdAt);
+  }
+
+  async updateLoan(
+    id: string,
+    updates: Partial<LocalLoan>,
+  ): Promise<LocalLoan | null> {
+    const collection = await this.getEntityCollection<LocalLoan>("loans");
+    const loan = collection[id];
+
+    if (!loan) return null;
+
+    const updated: LocalLoan = {
+      ...loan,
+      ...updates,
+      version: loan.version + 1,
+      updatedAt: Date.now(),
+      syncStatus: "pending",
+    };
+
+    collection[id] = updated;
+    await this.setEntityCollection("loans", collection);
+
+    return updated;
+  }
+
+  async deleteLoan(id: string): Promise<boolean> {
+    const collection = await this.getEntityCollection<LocalLoan>("loans");
+
+    if (!collection[id]) return false;
+
+    delete collection[id];
+    await this.setEntityCollection("loans", collection);
+
+    return true;
+  }
+
   // Income Categories operations (separate from regular categories)
   async saveIncomeCategory(
     category: Omit<
@@ -762,7 +886,8 @@ export class LocalStorageManager {
     const collection =
       await this.getEntityCollection<LocalCategory>("incomeCategories");
 
-    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : false;
+    const isOnline =
+      typeof navigator !== "undefined" ? navigator.onLine : false;
     const skipEnqueue = options?.skipEnqueue ?? isOnline;
 
     const localCategory: LocalCategory = {

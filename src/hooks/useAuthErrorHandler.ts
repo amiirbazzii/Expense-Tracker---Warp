@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 /**
  * Hook to handle authentication errors and automatically logout users
@@ -8,6 +9,7 @@ import { toast } from 'sonner';
  */
 export function useAuthErrorHandler() {
   const { token, logout } = useAuth();
+  const router = useRouter();
 
   const handleAuthError = async (error: any) => {
     // Check if the error is an authentication error
@@ -24,8 +26,8 @@ export function useAuthErrorHandler() {
         console.error('Error during logout:', logoutError);
       }
       
-      // Force redirect to login page
-      window.location.href = '/login';
+      // Client-side redirect — keeps the SPA alive and works offline
+      router.push('/login');
       return true; // Indicates the error was handled
     }
     

@@ -1,20 +1,23 @@
 /** @type {import('next').NextConfig} */
 
-const withPWA = require('next-pwa')({
-  dest: 'public',
+const CACHE_VERSION = "v2";
+
+const withPWA = require("next-pwa")({
+  dest: "public",
   register: true,
   skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development',
-  sw: 'sw.js',
-  importScripts: ['/background-sync-sw.js'],
+  clientsClaim: true,
+  disable: process.env.NODE_ENV === "development",
+  sw: "sw.js",
+  importScripts: ["/background-sync-sw.js"],
   buildExcludes: [/app-build-manifest\.json$/, /middleware-manifest\.json$/],
-  publicExcludes: ['!robots.txt', '!sitemap.xml'],
-  // Enable offline support - cache the start URL
-  dynamicStartUrl: true,
-  dynamicStartUrlRedirect: '/dashboard',
-  // Use fallbacks for offline pages that haven't been cached yet
+  publicExcludes: ["!robots.txt", "!sitemap.xml", "!background-sync-sw.js"],
+  // Critical: cache the start URL so the shell loads instantly offline
+  // We handle this ourselves via the root-pages StaleWhileRevalidate route below
+  dynamicStartUrl: false,
+  dynamicStartUrlRedirect: "/dashboard",
   fallbacks: {
-    document: '/offline.html',
+    document: "/",
   },
   // Aggressive caching for offline-first experience
   cacheOnFrontEndNav: true,
@@ -23,9 +26,9 @@ const withPWA = require('next-pwa')({
     // Next.js static chunks - Cache first for offline support
     {
       urlPattern: /^\/_next\/static\/.*/,
-      handler: 'CacheFirst',
+      handler: "CacheFirst",
       options: {
-        cacheName: 'next-static-chunks',
+        cacheName: `next-static-chunks-${CACHE_VERSION}`,
         expiration: {
           maxEntries: 200,
           maxAgeSeconds: 365 * 24 * 60 * 60, // 1 year
@@ -38,9 +41,9 @@ const withPWA = require('next-pwa')({
     // Image caching with long expiration
     {
       urlPattern: /\.(?:png|jpg|jpeg|svg|gif|ico|webp|avif)$/,
-      handler: 'CacheFirst',
+      handler: "CacheFirst",
       options: {
-        cacheName: 'images',
+        cacheName: `images-${CACHE_VERSION}`,
         expiration: {
           maxEntries: 60,
           maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
@@ -50,9 +53,9 @@ const withPWA = require('next-pwa')({
     // Static resources with cache first
     {
       urlPattern: /\.(?:js|css|woff|woff2|ttf|eot)$/,
-      handler: 'CacheFirst',
+      handler: "CacheFirst",
       options: {
-        cacheName: 'static-resources',
+        cacheName: `static-resources-${CACHE_VERSION}`,
         expiration: {
           maxEntries: 100,
           maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
@@ -62,14 +65,16 @@ const withPWA = require('next-pwa')({
     // API requests - Network first with offline fallback
     {
       urlPattern: ({ request, url }) => {
-        return request.method === 'POST' &&
-          (url.pathname.includes('/api/') ||
-            url.hostname.includes('convex') ||
-            url.pathname.includes('/_convex/'));
+        return (
+          request.method === "POST" &&
+          (url.pathname.includes("/api/") ||
+            url.hostname.includes("convex") ||
+            url.pathname.includes("/_convex/"))
+        );
       },
-      handler: 'NetworkFirst',
+      handler: "NetworkFirst",
       options: {
-        cacheName: 'api-cache',
+        cacheName: `api-cache-${CACHE_VERSION}`,
         networkTimeoutSeconds: 10,
         expiration: {
           maxEntries: 50,
@@ -87,26 +92,37 @@ const withPWA = require('next-pwa')({
             requestWillFetch: async ({ request }) => {
               // Add offline indicator to requests
               const url = new URL(request.url);
-              url.searchParams.set('offline-capable', 'true');
+              url.searchParams.set("offline-capable", "true");
               return new Request(url.toString(), request);
-            }
-          }
-        ]
+            },
+          },
+        ],
       },
     },
-    // App pages - Network first so pages get cached on visit, served from cache offline
+    // App pages - StaleWhileRevalidate so cached shell is served instantly
+    // offline; Next.js client-side router handles the actual page rendering.
     {
       urlPattern: ({ request, url }) => {
         const pathname = new URL(url).pathname;
-        // Cache main app pages for offline access
-        const appPages = ['/dashboard', '/add', '/cards', '/settings', '/onboarding'];
-        return request.destination === 'document' &&
-          appPages.some(page => pathname.startsWith(page));
+        // All main app pages – must be visited at least once online to be cached
+        const appPages = [
+          "/dashboard",
+          "/add",
+          "/cards",
+          "/settings",
+          "/onboarding",
+          "/loans",
+          "/expenses",
+          "/income",
+        ];
+        return (
+          request.destination === "document" &&
+          appPages.some((page) => pathname.startsWith(page))
+        );
       },
-      handler: 'NetworkFirst',
+      handler: "StaleWhileRevalidate",
       options: {
-        cacheName: 'app-pages',
-        networkTimeoutSeconds: 5,
+        cacheName: `app-pages-${CACHE_VERSION}`,
         expiration: {
           maxEntries: 30,
           maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
@@ -116,33 +132,36 @@ const withPWA = require('next-pwa')({
         },
       },
     },
-    // Root and auth pages - Network first for offline access
+    // Root page and auth pages - StaleWhileRevalidate for instant
+    // offline access. Root (/) is the critical entry point when bootstrapping.
     {
       urlPattern: ({ request, url }) => {
         const pathname = new URL(url).pathname;
-        return request.destination === 'document' &&
-          (pathname === '/' || pathname === '/login' || pathname === '/register');
+        return (
+          request.destination === "document" &&
+          (pathname === "/" ||
+            pathname === "/login" ||
+            pathname === "/register")
+        );
       },
-      handler: 'NetworkFirst',
+      handler: "StaleWhileRevalidate",
       options: {
-        cacheName: 'auth-pages',
-        networkTimeoutSeconds: 5,
+        cacheName: `root-pages-${CACHE_VERSION}`,
         expiration: {
           maxEntries: 10,
-          maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
+          maxAgeSeconds: 14 * 24 * 60 * 60, // 14 days
         },
         cacheableResponse: {
           statuses: [0, 200],
         },
       },
     },
-    // Other navigation requests - Network first for offline support
+    // Other navigation requests - StaleWhileRevalidate for instant offline support
     {
-      urlPattern: ({ request }) => request.destination === 'document',
-      handler: 'NetworkFirst',
+      urlPattern: ({ request }) => request.destination === "document",
+      handler: "StaleWhileRevalidate",
       options: {
-        cacheName: 'pages',
-        networkTimeoutSeconds: 5,
+        cacheName: `pages-${CACHE_VERSION}`,
         expiration: {
           maxEntries: 50,
           maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
@@ -156,32 +175,43 @@ const withPWA = require('next-pwa')({
     {
       urlPattern: ({ url }) => {
         const pathname = new URL(url).pathname;
-        return pathname.includes('/_vercel/');
+        return pathname.includes("/_vercel/");
       },
-      handler: 'NetworkOnly',
+      handler: "NetworkOnly",
       options: {
         plugins: [
           {
             handlerDidError: async () => {
               // Fail silently for analytics when offline
-              console.log('Vercel analytics unavailable offline');
-              return new Response('', { status: 200 });
-            }
-          }
-        ]
+              console.log("Vercel analytics unavailable offline");
+              return new Response("", { status: 200 });
+            },
+          },
+        ],
       },
     },
-    // General resources with cache-first strategy for offline support
+    // General resources with cache-first strategy for offline support.
+    // Excludes document requests (handled by dedicated page caches above)
+    // and API/Convex requests (handled by api-cache).
     {
-      urlPattern: ({ url }) => {
+      urlPattern: ({ request, url }) => {
         const pathname = new URL(url).pathname;
-        // Cache other resources but exclude problematic routes
-        const noCacheRoutes = ['/api/', '/_next/webpack-hmr', '/_vercel/'];
-        return !noCacheRoutes.some(route => pathname.includes(route));
+        // Skip documents (handled by page caches), API calls, and dev HMR
+        const noCache = [
+          "/api/",
+          "/_next/webpack-hmr",
+          "/_vercel/",
+          "/_next/static/",
+          "/_convex/",
+        ];
+        if (noCache.some((route) => pathname.includes(route))) return false;
+        if (request.destination === "document") return false;
+        if (request.destination === "manifest") return false;
+        return true;
       },
-      handler: 'CacheFirst',
+      handler: "CacheFirst",
       options: {
-        cacheName: 'general-cache',
+        cacheName: `general-cache-${CACHE_VERSION}`,
         expiration: {
           maxEntries: 100,
           maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
@@ -205,11 +235,11 @@ const nextConfig = {
   },
   // Performance optimizations
   experimental: {
-    optimizePackageImports: ['lucide-react', 'framer-motion'],
+    optimizePackageImports: ["lucide-react", "framer-motion"],
   },
   // Compress images
   images: {
-    formats: ['image/webp', 'image/avif'],
+    formats: ["image/webp", "image/avif"],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
@@ -226,17 +256,17 @@ const nextConfig = {
     config.optimization = {
       ...config.optimization,
       splitChunks: {
-        chunks: 'all',
+        chunks: "all",
         cacheGroups: {
           vendor: {
             test: /[\/]node_modules[\/]/,
-            name: 'vendors',
-            chunks: 'all',
+            name: "vendors",
+            chunks: "all",
           },
           common: {
-            name: 'common',
+            name: "common",
             minChunks: 2,
-            chunks: 'all',
+            chunks: "all",
             enforce: true,
           },
         },

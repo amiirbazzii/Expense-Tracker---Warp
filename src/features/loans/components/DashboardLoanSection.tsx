@@ -25,12 +25,6 @@ export function DashboardLoanSection({
   const { settings } = useSettings();
   const [isNavigating, setIsNavigating] = useState(false);
 
-  if (isLoading) {
-    return (
-      <div className="w-full h-24 animate-pulse bg-gray-100 rounded-xl mt-4" />
-    );
-  }
-
   const handlePress = () => {
     if (!isNavigating) {
       setIsNavigating(true);

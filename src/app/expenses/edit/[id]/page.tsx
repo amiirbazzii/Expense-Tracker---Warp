@@ -3,9 +3,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "../../../../../convex/_generated/api";
-import { useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { X, Calendar, DollarSign, User, CheckCircle, CreditCard, PencilLine, Tag } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
@@ -17,6 +14,8 @@ import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import { Button } from "@/components/Button";
 import InputContainer from "@/components/InputContainer";
+import { useLocalData } from "@/hooks/useLocalData";
+import { localDataStore } from "@/lib/store";
 
 const capitalizeWords = (str: string) => {
   return str
@@ -39,12 +38,21 @@ export default function EditExpensePage() {
   const { id } = useParams();
   const router = useRouter();
 
-  const { token } = useAuth();
-  const createCategoryMutation = useMutation(api.expenses.createCategory);
-  const createForValueMutation = useMutation(api.expenses.createForValue);
-  const categories = useQuery(api.expenses.getCategories, token ? { token } : "skip");
-  const forValues = useQuery(api.expenses.getForValues, token ? { token } : "skip");
-  const cards = useQuery(api.cardsAndIncome.getMyCards, token ? { token } : "skip");
+  // All reference data from the reactive local store
+  const { expenses, categories, forValues, cards: localCards } = useLocalData();
+
+  // Map local card docs to the shape the <select> expects
+  const cards = localCards.map((card) => ({
+    _id: card.cardId,
+    name: card.cardName,
+  }));
+
+  const expenseId = id as Id<"expenses">;
+
+  // Find the expense being edited from local data
+  const expense = expenseId
+    ? expenses.find((e) => e._id === expenseId)
+    : undefined;
 
   const fetchCategorySuggestions = async (query: string): Promise<string[]> => {
     if (!categories) return [];
@@ -61,12 +69,8 @@ export default function EditExpensePage() {
   };
 
   const handleCreateCategory = async (name: string): Promise<void> => {
-    if (!token) {
-      toast.error("Authentication required");
-      return;
-    }
     try {
-      await createCategoryMutation({ token, name });
+      await localDataStore.addCategory(name);
       toast.success(`The category "${name}" has been created.`);
     } catch (error) {
       toast.error("There was an error creating the category.");
@@ -75,21 +79,14 @@ export default function EditExpensePage() {
   };
 
   const handleCreateForValue = async (value: string): Promise<void> => {
-    if (!token) {
-      toast.error("Authentication required");
-      return;
-    }
     try {
-      await createForValueMutation({ token, value });
+      await localDataStore.addForValue(value);
       toast.success(`The value "${value}" has been created for the 'For' field.`);
     } catch (error) {
       toast.error("There was an error creating the value for the 'For' field.");
       console.error(error);
     }
   };
-
-  const params = useParams();
-  const expenseId = params.id as Id<"expenses">;
 
   const [formData, setFormData] = useState<ExpenseFormData>({
     amount: "",
@@ -102,11 +99,6 @@ export default function EditExpensePage() {
   const [categoryInput, setCategoryInput] = useState("");
   const [forInput, setForInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const updateExpenseMutation = useMutation(api.expenses.updateExpense);
-  const expense = useQuery(api.expenses.getExpenseById, token ? { token, expenseId } : "skip");
-
   // Load expense data into form when available
   useEffect(() => {
     if (expense) {
@@ -118,7 +110,6 @@ export default function EditExpensePage() {
         date: format(new Date(expense.date), "yyyy-MM-dd"),
         cardId: expense.cardId || "",
       });
-      setIsLoading(false);
     }
   }, [expense]);
 
@@ -139,15 +130,13 @@ export default function EditExpensePage() {
     setIsSubmitting(true);
 
     try {
-      await updateExpenseMutation({
-        token: token!,
-        expenseId,
+      await localDataStore.updateExpense(expenseId, {
         amount,
         title: formData.title,
         category: formData.category,
         for: formData.for,
         date: new Date(formData.date).getTime(),
-        cardId: formData.cardId ? (formData.cardId as any) : undefined,
+        cardId: formData.cardId || undefined,
       });
 
       toast.success("The expense has been successfully updated.");
@@ -253,16 +242,6 @@ export default function EditExpensePage() {
   const wouldCreateNew = formattedInput && 
     !formData.category.includes(formattedInput) &&
     !categories?.some(cat => cat.name === formattedInput);
-
-  if (isLoading) {
-    return (
-      <ProtectedRoute>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-lg">Loading...</div>
-        </div>
-      </ProtectedRoute>
-    );
-  }
 
   return (
     <ProtectedRoute>

@@ -21,6 +21,7 @@ export const addCard = mutation({
   args: {
     token: v.string(),
     name: v.string(),
+    __localId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await getUserByToken(ctx, args.token);
@@ -111,7 +112,9 @@ export const createIncome = mutation({
     // Add category to user's incomeCategories table if it doesn't already exist
     const existingCategory = await ctx.db
       .query("incomeCategories")
-      .withIndex("by_user_name", (q) => q.eq("userId", user._id).eq("name", args.category))
+      .withIndex("by_user_name", (q) =>
+        q.eq("userId", user._id).eq("name", args.category),
+      )
       .first();
 
     if (!existingCategory) {
@@ -154,8 +157,10 @@ export const getIncomeByDateRange = query({
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
 
-    return income.filter(incomeRecord => 
-      incomeRecord.date >= args.startDate && incomeRecord.date <= args.endDate
+    return income.filter(
+      (incomeRecord) =>
+        incomeRecord.date >= args.startDate &&
+        incomeRecord.date <= args.endDate,
     );
   },
 });
@@ -170,8 +175,28 @@ export const getUniqueIncomeCategories = query({
       return [];
     }
 
-    const categories = await ctx.db.query("incomeCategories").withIndex("by_user", q => q.eq("userId", user._id)).collect();
-    return categories.map(c => c.name);
+    const categories = await ctx.db
+      .query("incomeCategories")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+    return categories.map((c) => c.name);
+  },
+});
+
+export const getIncomeCategories = query({
+  args: {
+    token: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken(ctx, args.token);
+    if (!user) {
+      return [];
+    }
+
+    return await ctx.db
+      .query("incomeCategories")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
   },
 });
 
@@ -223,7 +248,9 @@ export const updateIncome = mutation({
     // Ensure the updated category exists in incomeCategories
     const existingCategory = await ctx.db
       .query("incomeCategories")
-      .withIndex("by_user_name", (q) => q.eq("userId", user._id).eq("name", args.category))
+      .withIndex("by_user_name", (q) =>
+        q.eq("userId", user._id).eq("name", args.category),
+      )
       .first();
 
     if (!existingCategory) {
@@ -252,7 +279,9 @@ export const deleteIncome = mutation({
     }
 
     if (income.userId !== user._id) {
-      throw new ConvexError("You are not authorized to delete this income record");
+      throw new ConvexError(
+        "You are not authorized to delete this income record",
+      );
     }
 
     await ctx.db.delete(args.incomeId);
@@ -286,13 +315,13 @@ export const getCardBalances = query({
       .collect();
 
     // Calculate balances for each card
-    const cardBalances = cards.map(card => {
+    const cardBalances = cards.map((card) => {
       const cardIncome = income
-        .filter(inc => inc.cardId === card._id)
+        .filter((inc) => inc.cardId === card._id)
         .reduce((sum, inc) => sum + inc.amount, 0);
 
       const cardExpenses = expenses
-        .filter(exp => exp.cardId === card._id)
+        .filter((exp) => exp.cardId === card._id)
         .reduce((sum, exp) => sum + exp.amount, 0);
 
       return {
@@ -329,7 +358,12 @@ export const transferFunds = mutation({
     const fromCard = await ctx.db.get(args.fromCardId);
     const toCard = await ctx.db.get(args.toCardId);
 
-    if (!fromCard || fromCard.userId !== user._id || !toCard || toCard.userId !== user._id) {
+    if (
+      !fromCard ||
+      fromCard.userId !== user._id ||
+      !toCard ||
+      toCard.userId !== user._id
+    ) {
       throw new ConvexError("One or both cards not found or not authorized.");
     }
 
@@ -380,4 +414,3 @@ export const transferFunds = mutation({
     return { success: true };
   },
 });
-

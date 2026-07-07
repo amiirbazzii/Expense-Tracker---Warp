@@ -12,12 +12,12 @@ import {
   LazyAnalytics,
   LazySpeedInsights,
   LazyToaster,
-  LazyEnhancedNetworkStatusIndicator,
 } from "@/components/LazyComponents";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LanguageWrapper } from "@/components/LanguageWrapper";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { SyncEngine } from "@/components/SyncEngine";
+import { PwaRegistration } from "@/components/PwaRegistration";
 
 const geistMono = localFont({
   src: "./fonts/GeistMonoVF.woff",
@@ -137,8 +137,8 @@ export default function RootLayout({
                   <LanguageWrapper>
                     {children}
                     <div id="modal-root"></div>
-                    <LazyEnhancedNetworkStatusIndicator />
                     <InstallPrompt />
+                    <PwaRegistration />
                     <LazyToaster position="top-center" />
                   </LanguageWrapper>
                 </SettingsProvider>

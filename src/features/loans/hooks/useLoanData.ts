@@ -1,33 +1,34 @@
 "use client";
 
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../../convex/_generated/api";
+import { useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { localDataStore } from "@/lib/store";
+import { useLocalData } from "@/hooks/useLocalData";
 import { Loan, LoanSummary } from "../types";
 
+/**
+ * Provides loan data and mutation actions.
+ * Reads from the reactive LocalDataStore; mutations write locally and enqueue.
+ */
 export function useLoanData() {
-  const { token } = useAuth();
+  const { user } = useAuth();
+  const { loans: allLoans, isLoading } = useLocalData();
 
-  // Queries
-  const loansQuery = useQuery(
-    api.loans.getLoans,
-    token ? { token } : "skip"
-  );
+  const loans = allLoans as Loan[];
 
-  const summaryQuery = useQuery(
-    api.loans.getLoanSummary,
-    token ? { token } : "skip"
-  );
-
-  // Mutations
-  const createLoanMutation = useMutation(api.loans.createLoan);
-  const updateLoanMutation = useMutation(api.loans.updateLoan);
-  const deleteLoanMutation = useMutation(api.loans.deleteLoan);
-  const payInstallmentMutation = useMutation(api.loans.payInstallment);
-
-  const loans = (loansQuery as Loan[] | undefined) ?? undefined;
-  const summary = (summaryQuery as LoanSummary | undefined) ?? undefined;
-  const isLoading = loansQuery === undefined;
+  const summary = useMemo<LoanSummary>(() => {
+    const activeLoans = loans.filter((l) => l.paidInstallments < l.totalInstallments);
+    const totalAmount = loans.reduce((sum, l) => sum + l.totalAmount, 0);
+    const remainingBalance = activeLoans.reduce(
+      (sum, l) => sum + l.installmentAmount * (l.totalInstallments - l.paidInstallments),
+      0,
+    );
+    return {
+      activeCount: activeLoans.length,
+      totalAmount,
+      remainingBalance,
+    };
+  }, [loans]);
 
   const createLoan = async (data: {
     name: string;
@@ -39,8 +40,8 @@ export function useLoanData() {
     startMonth: number;
     startYear: number;
   }) => {
-    if (!token) throw new Error("Authentication required");
-    return await createLoanMutation({ token, ...data });
+    if (!user) throw new Error("Authentication required");
+    return await localDataStore.createLoan(data);
   };
 
   const updateLoan = async (
@@ -56,18 +57,18 @@ export function useLoanData() {
       startYear: number;
     }
   ) => {
-    if (!token) throw new Error("Authentication required");
-    return await updateLoanMutation({ token, loanId, ...data });
+    if (!user) throw new Error("Authentication required");
+    return await localDataStore.updateLoan(loanId, data);
   };
 
   const deleteLoan = async (loanId: Loan["_id"]) => {
-    if (!token) throw new Error("Authentication required");
-    return await deleteLoanMutation({ token, loanId });
+    if (!user) throw new Error("Authentication required");
+    return await localDataStore.deleteLoan(loanId);
   };
 
   const payInstallment = async (loanId: Loan["_id"]) => {
-    if (!token) throw new Error("Authentication required");
-    return await payInstallmentMutation({ token, loanId });
+    if (!user) throw new Error("Authentication required");
+    return await localDataStore.payInstallment(loanId);
   };
 
   return {

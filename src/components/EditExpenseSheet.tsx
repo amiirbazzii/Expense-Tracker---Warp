@@ -3,9 +3,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import { useAuth } from "@/contexts/AuthContext";
 import { BottomSheet } from "@/components/BottomSheet";
 import { SmartSelectInput } from "@/components/SmartSelectInput";
 import { CustomDatePicker } from "@/components/CustomDatePicker";
@@ -15,6 +12,8 @@ import InputContainer from "@/components/InputContainer";
 import { format } from "date-fns";
 import { Id } from "../../convex/_generated/dataModel";
 import { PencilLine, CreditCard, Tag, User } from "lucide-react";
+import { useLocalData } from "@/hooks/useLocalData";
+import { localDataStore } from "@/lib/store";
 
 const capitalizeWords = (str: string) => {
   return str
@@ -37,27 +36,19 @@ export function EditExpenseSheet({
   onClose,
   onSuccess,
 }: EditExpenseSheetProps) {
-  const { token } = useAuth();
+  // All reference data from the reactive local store
+  const { expenses, categories, forValues, cards: localCards } = useLocalData();
 
-  const updateExpenseMutation = useMutation(api.expenses.updateExpense);
-  const createCategoryMutation = useMutation(api.expenses.createCategory);
-  const createForValueMutation = useMutation(api.expenses.createForValue);
-  const categories = useQuery(
-    api.expenses.getCategories,
-    token ? { token } : "skip",
-  );
-  const forValues = useQuery(
-    api.expenses.getForValues,
-    token ? { token } : "skip",
-  );
-  const cards = useQuery(
-    api.cardsAndIncome.getMyCards,
-    token ? { token } : "skip",
-  );
-  const expense = useQuery(
-    api.expenses.getExpenseById,
-    token && expenseId ? { token, expenseId } : "skip",
-  );
+  // Find the expense being edited from local data
+  const expense = expenseId
+    ? expenses.find((e) => e._id === expenseId)
+    : undefined;
+
+  // Map local card docs to the shape the <select> expects
+  const cards = localCards.map((card) => ({
+    _id: card.cardId,
+    name: card.cardName,
+  }));
 
   const [formData, setFormData] = useState({
     amount: "",
@@ -101,12 +92,8 @@ export function EditExpenseSheet({
   };
 
   const handleCreateCategory = async (name: string): Promise<void> => {
-    if (!token) {
-      toast.error("Authentication required");
-      return;
-    }
     try {
-      await createCategoryMutation({ token, name });
+      await localDataStore.addCategory(name);
       toast.success(`The category "${name}" has been created.`);
     } catch (error) {
       toast.error("There was an error creating the category.");
@@ -115,12 +102,8 @@ export function EditExpenseSheet({
   };
 
   const handleCreateForValue = async (value: string): Promise<void> => {
-    if (!token) {
-      toast.error("Authentication required");
-      return;
-    }
     try {
-      await createForValueMutation({ token, value });
+      await localDataStore.addForValue(value);
       toast.success(`The value "${value}" has been created.`);
     } catch (error) {
       toast.error("There was an error creating the value.");
@@ -130,7 +113,7 @@ export function EditExpenseSheet({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!expenseId || !token) return;
+    if (!expenseId) return;
 
     if (!formData.amount || !formData.title || formData.category.length === 0) {
       toast.error("Please enter the amount, title, and category.");
@@ -145,15 +128,13 @@ export function EditExpenseSheet({
 
     setIsSubmitting(true);
     try {
-      await updateExpenseMutation({
-        token,
-        expenseId,
+      await localDataStore.updateExpense(expenseId, {
         amount,
         title: formData.title,
         category: formData.category,
         for: formData.for,
         date: new Date(formData.date).getTime(),
-        cardId: formData.cardId ? (formData.cardId as any) : undefined,
+        cardId: formData.cardId || undefined,
       });
 
       toast.success("The expense has been successfully updated.");

@@ -177,12 +177,7 @@ export default function SettingsPage() {
               <h3 className="text-lg font-semibold text-gray-900">
                 Preferences
               </h3>
-              {settingsLoading ? (
-                <div className="text-center text-gray-500">
-                  Loading settings...
-                </div>
-              ) : (
-                <div className="space-y-4">
+              <div className="space-y-4">
                   {/* Currency */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -273,7 +268,6 @@ export default function SettingsPage() {
                     </InputContainer>
                   </div>
                 </div>
-              )}
             </div>
 
             {/* Recovery Code Section */}

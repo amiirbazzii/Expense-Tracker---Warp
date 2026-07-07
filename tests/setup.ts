@@ -5,6 +5,24 @@
 
 import '@testing-library/jest-dom';
 
+// Polyfill crypto.randomUUID for jsdom (not provided by default)
+if (typeof crypto.randomUUID !== 'function') {
+  Object.defineProperty(crypto, 'randomUUID', {
+    value: () => {
+      // RFC 4122 version 4 UUID
+      const bytes = new Uint8Array(16);
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { randomFillSync } = require('crypto');
+      randomFillSync(bytes);
+      bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+      bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant 10
+      const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+      return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+    },
+    writable: true,
+  });
+}
+
 // Mock IndexedDB for testing
 const FDBFactory = require('fake-indexeddb/lib/FDBFactory');
 const FDBKeyRange = require('fake-indexeddb/lib/FDBKeyRange');

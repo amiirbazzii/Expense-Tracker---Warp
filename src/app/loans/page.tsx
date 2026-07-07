@@ -199,8 +199,6 @@ export default function LoansPage() {
             ) : null
           }
         />
-        {(navigating || isLoading) && <FullScreenLoader message="Loading..." />}
-
         <div className="max-w-md mx-auto p-4 pt-[72px] pb-28">
           {/* Loan Summary Cards */}
           {hasLoans && (
@@ -225,16 +223,7 @@ export default function LoansPage() {
             />
 
             {/* Loan List or Empty State */}
-            {isLoading ? (
-              <div className="space-y-3 mt-4">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="h-28 animate-pulse bg-gray-100 rounded-xl"
-                  />
-                ))}
-              </div>
-            ) : hasLoans ? (
+            {hasLoans ? (
               <div className="space-y-3 mt-4">
                 {filteredLoans.length > 0 ? (
                   filteredLoans.map((loan) => (

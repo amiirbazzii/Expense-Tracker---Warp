@@ -1,10 +1,8 @@
 import { useMemo, useState, useCallback, useEffect } from "react";
-import { useQuery } from "convex/react";
-import { api } from "../../../../convex/_generated/api";
+import { useSettings } from "@/contexts/SettingsContext";
+import { useLocalData } from "@/hooks/useLocalData";
 import { Expense, MonthlyData } from "../types";
 import { Income } from "../types/income";
-import { useSettings } from "@/contexts/SettingsContext";
-import { useOfflineFirstData } from "@/hooks/useOfflineFirstData";
 import moment from 'jalali-moment';
 
 export function useDashboardData(token: string | null, selectedCardId: string | null, dateRangeOverride?: { start: number; end: number }) {
@@ -12,7 +10,6 @@ export function useDashboardData(token: string | null, selectedCardId: string | 
   const isJalali = settings?.calendar === "jalali";
 
   const [currentDate, setCurrentDate] = useState(moment());
-  const [key, setKey] = useState(0);
 
   useEffect(() => {
     moment.locale(isJalali ? 'fa' : 'en');
@@ -21,72 +18,31 @@ export function useDashboardData(token: string | null, selectedCardId: string | 
   const startDate = (dateRangeOverride?.start) ?? currentDate.clone().startOf(isJalali ? 'jMonth' : 'month').valueOf();
   const endDate = (dateRangeOverride?.end) ?? currentDate.clone().endOf(isJalali ? 'jMonth' : 'month').valueOf();
 
-  // Try to fetch from Convex with date range
-  const expensesResult = useQuery(
-    api.expenses.getExpensesByDateRange,
-    token ? { token, startDate, endDate, key } : "skip"
-  );
+  // Read all data from the reactive local store
+  const { expenses: allLocalExpenses, income: allLocalIncome } = useLocalData();
 
-  const incomeResult = useQuery(
-    api.cardsAndIncome.getIncomeByDateRange,
-    token ? { token, startDate, endDate, key } : "skip"
-  );
-
-  // Get offline-first data as fallback
-  const { 
-    expenses: offlineExpenses, 
-    income: offlineIncome,
-    isUsingOfflineData,
-    isLoading: offlineLoading
-  } = useOfflineFirstData();
-
-  // Determine which data source to use
-  const hasConvexData = expensesResult !== undefined && incomeResult !== undefined;
-  
-  // Use Convex data if available, otherwise use offline data filtered by date
+  // Filter by the current month / date range
   const allExpenses = useMemo(() => {
-    if (hasConvexData) {
-      return expensesResult as unknown as Expense[] | undefined;
-    }
-    
-    // Filter offline data by date range
-    if (offlineExpenses && offlineExpenses.length > 0) {
-      return (offlineExpenses as any[]).filter((exp: any) => 
-        exp.date >= startDate && exp.date <= endDate
-      ) as Expense[];
-    }
-    
-    return undefined;
-  }, [hasConvexData, expensesResult, offlineExpenses, startDate, endDate]);
+    return (allLocalExpenses as any[]).filter((exp) =>
+      exp.date >= startDate && exp.date <= endDate
+    ) as Expense[];
+  }, [allLocalExpenses, startDate, endDate]);
 
   const allIncome = useMemo(() => {
-    if (hasConvexData) {
-      return incomeResult as unknown as Income[] | undefined;
-    }
-    
-    // Filter offline data by date range
-    if (offlineIncome && offlineIncome.length > 0) {
-      return (offlineIncome as any[]).filter((inc: any) => 
-        inc.date >= startDate && inc.date <= endDate
-      ) as Income[];
-    }
-    
-    return undefined;
-  }, [hasConvexData, incomeResult, offlineIncome, startDate, endDate]);
+    return (allLocalIncome as any[]).filter((inc) =>
+      inc.date >= startDate && inc.date <= endDate
+    ) as Income[];
+  }, [allLocalIncome, startDate, endDate]);
 
   const expenses = useMemo(() => {
-    if (!allExpenses) return undefined;
     if (!selectedCardId) return allExpenses;
     return allExpenses.filter((e) => e.cardId === selectedCardId);
   }, [allExpenses, selectedCardId]);
 
   const income = useMemo(() => {
-    if (!allIncome) return undefined;
     if (!selectedCardId) return allIncome;
     return allIncome.filter((i) => i.cardId === selectedCardId);
   }, [allIncome, selectedCardId]);
-  
-  const isLoading = !hasConvexData && offlineLoading;
 
   const monthlyData = useMemo<MonthlyData | null>(() => {
     if (!expenses || !income) return null;
@@ -111,10 +67,10 @@ export function useDashboardData(token: string | null, selectedCardId: string | 
 
     // Calculate category totals
     const categoryTotals = filteredExpenses.reduce<Record<string, number>>((acc, expense) => {
-      const categories = Array.isArray(expense.category) 
-        ? expense.category 
+      const categories = Array.isArray(expense.category)
+        ? expense.category
         : [expense.category];
-      
+
       categories.forEach((cat) => {
         acc[cat] = (acc[cat] || 0) + expense.amount;
       });
@@ -147,8 +103,10 @@ export function useDashboardData(token: string | null, selectedCardId: string | 
     setCurrentDate(currentDate.clone().add(1, "month"));
   };
 
+  // No-op under local-first: data is always live via the store subscription.
+  // Kept for API compatibility with consumers that call it after writes.
   const refetchExpenses = useCallback(() => {
-    setKey((prevKey) => prevKey + 1);
+    // The store re-renders automatically on writes; nothing to do here.
   }, []);
 
   const monthName = isJalali ? currentDate.format("jMMMM") : currentDate.format("MMMM");
@@ -164,7 +122,7 @@ export function useDashboardData(token: string | null, selectedCardId: string | 
     expenses,
     income,
     monthlyData,
-    isLoading,
-    isUsingOfflineData,
+    isLoading: false,
+    isUsingOfflineData: false,
   };
 }

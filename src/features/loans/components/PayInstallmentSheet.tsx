@@ -10,13 +10,15 @@ import { SmartSelectInput } from "@/components/SmartSelectInput";
 import InputContainer from "@/components/InputContainer";
 import { Type, CreditCard, Tag, User } from "lucide-react";
 import { Loan } from "../types";
+import { toast } from "sonner";
+import { format } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useOfflineFirstData } from "@/hooks/useOfflineFirstData";
 import { useOfflineFirst } from "@/providers/OfflineFirstProvider";
-import { toast } from "sonner";
-import { format } from "date-fns";
+import { useLocalData } from "@/hooks/useLocalData";
+import { localDataStore } from "@/lib/store";
 import { Id } from "../../../../convex/_generated/dataModel";
 
 interface PayInstallmentSheetProps {
@@ -39,7 +41,12 @@ export function PayInstallmentSheet({
   loan,
   onPaid,
 }: PayInstallmentSheetProps) {
-  const { token } = useAuth();
+  // All reference data from the reactive local store
+  const {
+    categories: localCats,
+    forValues: localForVals,
+    cards: localCards,
+  } = useLocalData();
 
   // Cards, categories, forValues from Convex
   const cardsQuery = useQuery(
@@ -77,6 +84,7 @@ export function PayInstallmentSheet({
   const forValues =
     forValuesQuery !== undefined ? forValuesQuery : offlineForValues;
 
+  const { user, token } = useAuth();
   const { localStorageManager } = useOfflineFirst();
 
   const createExpenseMutation = useMutation(api.expenses.createExpense);
@@ -117,9 +125,8 @@ export function PayInstallmentSheet({
   };
 
   const handleCreateCategory = async (name: string) => {
-    if (!token) return;
     try {
-      await createCategoryMutation({ token, name });
+      await localDataStore.addCategory(name);
     } catch {
       toast.error("Failed to create category.");
     }
@@ -133,9 +140,8 @@ export function PayInstallmentSheet({
   };
 
   const handleCreateForValue = async (value: string) => {
-    if (!token) return;
     try {
-      await createForValueMutation({ token, value });
+      await localDataStore.addForValue(value);
     } catch {
       toast.error("Failed to add 'for' value.");
     }
@@ -143,7 +149,7 @@ export function PayInstallmentSheet({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!loan || !token) return;
+    if (!loan) return;
 
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
@@ -174,14 +180,11 @@ export function PayInstallmentSheet({
         });
 
         // Ensure the loan exists locally before updating it.
-        // If it doesn't exist yet (e.g. created only on Convex), seed it.
         const existing = await localStorageManager.getEntityById(
           "loans",
           loan._id,
         );
         if (!existing) {
-          // Seed the local loan record without enqueuing any mutation.
-          // The loan already exists on Convex — we only need a local copy.
           await localStorageManager.seedEntity("loans", {
             ...loan,
             id: loan._id,
@@ -190,15 +193,23 @@ export function PayInstallmentSheet({
         }
 
         // Update paidInstallments in the local loan collection.
-        // This enqueues a loans:UPDATE mutation that the sync engine will
-        // dispatch to api.loans.updateLoan (patches the existing loan).
         await localStorageManager.updateEntity("loans", loan._id, {
           paidInstallments: loan.paidInstallments + 1,
         });
       }
 
-      // 1. Create the expense on Convex (only when online — offline is handled
-      //    by the local write above and the sync engine will replay the queue).
+      // Also write to the reactive local store
+      await localDataStore.addExpense({
+        amount: parsedAmount,
+        title: title || loan.name,
+        category,
+        for: paidFor,
+        date: date.getTime(),
+        cardId: cardId as Id<"cards">,
+      });
+      await localDataStore.payInstallment(loan._id);
+
+      // 1. Create the expense on Convex (only when online)
       if (navigator.onLine) {
         await createExpenseMutation({
           token,

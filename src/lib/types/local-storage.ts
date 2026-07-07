@@ -23,17 +23,25 @@ export type EntityType =
   | "cards"
   | "forValues"
   | "incomeCategories"
+  | "loans"
   | string;
 
 export type MutationAction = "CREATE" | "UPDATE" | "DELETE";
 
-// Unified mutation queue item for Offline-First syncing
+/**
+ * Lean pending mutation for the offline-first FIFO queue.
+ * Each enqueued mutation receives a UUIDv4 idempotency key via crypto.randomUUID().
+ * Flat, single-device — no versioning or multi-device properties.
+ */
 export interface PendingMutation {
-  id: string; // Unique identifier (UUID or timestamp)
-  action: MutationAction; // CREATE, UPDATE, or DELETE
-  storeName: string; // Target collection/table name (dynamically handles expenses, loans, etc.)
-  payload: any; // Actual data or modified fields
-  timestamp: number; // Timestamp of when the user made the change locally
+  /** UUIDv4 idempotency key generated via crypto.randomUUID() */
+  id: string;
+  /** Convex mutation route, e.g. "api.expenses.createExpense" */
+  action: string;
+  /** Clean payload to send to the mutation */
+  payload: any;
+  /** FIFO ordering timestamp */
+  timestamp: number;
 }
 
 // Base interface for all local entities
