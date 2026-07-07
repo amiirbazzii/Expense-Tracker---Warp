@@ -9,8 +9,8 @@
  * so UI components need no changes — they just read from a local source.
  */
 
-import { LocalStorageManager } from '../storage/LocalStorageManager';
-import { MutationQueueManager } from '../queue/MutationQueueManager';
+import { LocalStorageManager } from "../storage/LocalStorageManager";
+import { MutationQueueManager } from "../queue/MutationQueueManager";
 
 // ── Public types ────────────────────────────────────────────────────────
 
@@ -61,7 +61,7 @@ export interface CardRecord {
 export interface CategoryDoc {
   _id: string;
   name: string;
-  type?: 'expense' | 'income';
+  type?: "expense" | "income";
 }
 
 /** For-value string list as the UI expects it (mirrors `getForValues`). */
@@ -136,7 +136,15 @@ export class LocalDataStore {
 
   /** Re-read every collection from IndexedDB and emit a change event. */
   async refresh(): Promise<void> {
-    const [expenses, income, categories, forValues, cards, incomeCategories, loans] = await Promise.all([
+    const [
+      expenses,
+      income,
+      categories,
+      forValues,
+      cards,
+      incomeCategories,
+      loans,
+    ] = await Promise.all([
       this.storage.getExpenses(),
       this.storage.getIncome(),
       this.storage.getCategories(),
@@ -152,7 +160,10 @@ export class LocalDataStore {
       // Merge regular categories with income categories for the unified list
       categories: [
         ...categories.map(this.toCategoryDoc),
-        ...incomeCategories.map((c) => ({ ...this.toCategoryDoc(c), type: 'income' as const })),
+        ...incomeCategories.map((c) => ({
+          ...this.toCategoryDoc(c),
+          type: "income" as const,
+        })),
       ],
       forValues: forValues.map(this.toForValueDoc),
       cards: this.computeCardBalances(cards, income, expenses),
@@ -192,7 +203,7 @@ export class LocalDataStore {
       for: data.for,
     });
 
-    await this.queue.enqueue('expenses:createExpense', {
+    await this.queue.enqueue("expenses:createExpense", {
       token: this.userId,
       amount: saved.amount,
       title: saved.title,
@@ -206,18 +217,21 @@ export class LocalDataStore {
     return this.toExpenseDoc(saved);
   }
 
-  async updateExpense(id: string, updates: {
-    amount: number;
-    title: string;
-    category: string[];
-    for: string[];
-    date: number;
-    cardId?: string;
-  }): Promise<ExpenseDoc | null> {
+  async updateExpense(
+    id: string,
+    updates: {
+      amount: number;
+      title: string;
+      category: string[];
+      for: string[];
+      date: number;
+      cardId?: string;
+    },
+  ): Promise<ExpenseDoc | null> {
     const updated = await this.storage.updateExpense(id, updates);
     if (!updated) return null;
 
-    await this.queue.enqueue('expenses:updateExpense', {
+    await this.queue.enqueue("expenses:updateExpense", {
       token: this.userId,
       expenseId: id,
       amount: updated.amount,
@@ -236,7 +250,7 @@ export class LocalDataStore {
     const deleted = await this.storage.deleteExpense(id);
     if (!deleted) return false;
 
-    await this.queue.enqueue('expenses:deleteExpense', {
+    await this.queue.enqueue("expenses:deleteExpense", {
       token: this.userId,
       expenseId: id,
     });
@@ -257,7 +271,7 @@ export class LocalDataStore {
   }): Promise<IncomeDoc> {
     const saved = await this.storage.saveIncome(data);
 
-    await this.queue.enqueue('income:createIncome', {
+    await this.queue.enqueue("income:createIncome", {
       token: this.userId,
       amount: saved.amount,
       cardId: saved.cardId,
@@ -271,18 +285,21 @@ export class LocalDataStore {
     return this.toIncomeDoc(saved);
   }
 
-  async updateIncome(id: string, updates: {
-    amount: number;
-    source: string;
-    category: string;
-    date: number;
-    cardId: string;
-    notes?: string;
-  }): Promise<IncomeDoc | null> {
+  async updateIncome(
+    id: string,
+    updates: {
+      amount: number;
+      source: string;
+      category: string;
+      date: number;
+      cardId: string;
+      notes?: string;
+    },
+  ): Promise<IncomeDoc | null> {
     const updated = await this.storage.updateIncome(id, updates);
     if (!updated) return null;
 
-    await this.queue.enqueue('income:updateIncome', {
+    await this.queue.enqueue("income:updateIncome", {
       token: this.userId,
       incomeId: id,
       amount: updated.amount,
@@ -301,7 +318,7 @@ export class LocalDataStore {
     const deleted = await this.storage.deleteIncome(id);
     if (!deleted) return false;
 
-    await this.queue.enqueue('income:deleteIncome', {
+    await this.queue.enqueue("income:deleteIncome", {
       token: this.userId,
       incomeId: id,
     });
@@ -315,20 +332,26 @@ export class LocalDataStore {
   async addCard(name: string): Promise<CardRecord> {
     const saved = await this.storage.saveCard({ name });
 
-    await this.queue.enqueue('cards:addCard', {
+    await this.queue.enqueue("cards:addCard", {
       token: this.userId,
       name: saved.name,
+      __localId: saved.id,
     });
 
     await this.refresh();
-    return { _id: saved.id, _creationTime: saved.createdAt, userId: this.userId ?? '', name: saved.name };
+    return {
+      _id: saved.id,
+      _creationTime: saved.createdAt,
+      userId: this.userId ?? "",
+      name: saved.name,
+    };
   }
 
   async deleteCard(id: string): Promise<boolean> {
     const deleted = await this.storage.deleteCard(id);
     if (!deleted) return false;
 
-    await this.queue.enqueue('cards:deleteCard', {
+    await this.queue.enqueue("cards:deleteCard", {
       token: this.userId,
       cardId: id,
     });
@@ -339,13 +362,16 @@ export class LocalDataStore {
 
   // ── Category / ForValue writes ─────────────────────────────────────────
 
-  async addCategory(name: string, type: 'expense' | 'income' = 'expense'): Promise<CategoryDoc> {
+  async addCategory(
+    name: string,
+    type: "expense" | "income" = "expense",
+  ): Promise<CategoryDoc> {
     const saved =
-      type === 'income'
+      type === "income"
         ? await this.storage.saveIncomeCategory({ name })
         : await this.storage.saveCategory({ name });
 
-    await this.queue.enqueue('expenses:createCategory', {
+    await this.queue.enqueue("expenses:createCategory", {
       token: this.userId,
       name: saved.name,
     });
@@ -357,7 +383,7 @@ export class LocalDataStore {
   async addForValue(value: string): Promise<ForValueDoc> {
     const saved = await this.storage.saveForValue({ value });
 
-    await this.queue.enqueue('expenses:createForValue', {
+    await this.queue.enqueue("expenses:createForValue", {
       token: this.userId,
       value: saved.value,
     });
@@ -380,7 +406,7 @@ export class LocalDataStore {
   }): Promise<LoanDoc> {
     const saved = await this.storage.saveLoan(data);
 
-    await this.queue.enqueue('loans:createLoan', {
+    await this.queue.enqueue("loans:createLoan", {
       token: this.userId,
       ...data,
     });
@@ -389,20 +415,23 @@ export class LocalDataStore {
     return this.toLoanDoc(saved);
   }
 
-  async updateLoan(id: string, data: {
-    name: string;
-    totalAmount: number;
-    totalInstallments: number;
-    paidInstallments: number;
-    installmentAmount: number;
-    monthlyPaymentDay: number;
-    startMonth: number;
-    startYear: number;
-  }): Promise<LoanDoc | null> {
+  async updateLoan(
+    id: string,
+    data: {
+      name: string;
+      totalAmount: number;
+      totalInstallments: number;
+      paidInstallments: number;
+      installmentAmount: number;
+      monthlyPaymentDay: number;
+      startMonth: number;
+      startYear: number;
+    },
+  ): Promise<LoanDoc | null> {
     const updated = await this.storage.updateLoan(id, data);
     if (!updated) return null;
 
-    await this.queue.enqueue('loans:updateLoan', {
+    await this.queue.enqueue("loans:updateLoan", {
       token: this.userId,
       loanId: id,
       ...data,
@@ -416,7 +445,7 @@ export class LocalDataStore {
     const deleted = await this.storage.deleteLoan(id);
     if (!deleted) return false;
 
-    await this.queue.enqueue('loans:deleteLoan', {
+    await this.queue.enqueue("loans:deleteLoan", {
       token: this.userId,
       loanId: id,
     });
@@ -436,7 +465,7 @@ export class LocalDataStore {
     });
     if (!updated) return null;
 
-    await this.queue.enqueue('loans:payInstallment', {
+    await this.queue.enqueue("loans:payInstallment", {
       token: this.userId,
       loanId,
     });
@@ -450,7 +479,7 @@ export class LocalDataStore {
   private toExpenseDoc = (e: any): ExpenseDoc => ({
     _id: e.cloudId || e.id,
     _creationTime: e.createdAt,
-    userId: this.userId ?? '',
+    userId: this.userId ?? "",
     amount: e.amount,
     title: e.title,
     category: e.category,
@@ -462,7 +491,7 @@ export class LocalDataStore {
   private toIncomeDoc = (i: any): IncomeDoc => ({
     _id: i.cloudId || i.id,
     _creationTime: i.createdAt,
-    userId: this.userId ?? '',
+    userId: this.userId ?? "",
     amount: i.amount,
     cardId: i.cardId,
     date: i.date,
@@ -493,7 +522,7 @@ export class LocalDataStore {
     monthlyPaymentDay: l.monthlyPaymentDay,
     startMonth: l.startMonth,
     startYear: l.startYear,
-    userId: this.userId ?? '',
+    userId: this.userId ?? "",
     createdAt: l.createdAt,
   });
 
