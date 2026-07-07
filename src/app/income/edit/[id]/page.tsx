@@ -60,7 +60,6 @@ export default function EditIncomePage() {
     notes: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (incomeRecord) {
@@ -72,7 +71,6 @@ export default function EditIncomePage() {
         cardId: incomeRecord.cardId,
         notes: incomeRecord.notes || "",
       });
-      setIsLoading(false);
     }
   }, [incomeRecord]);
 
@@ -122,16 +120,6 @@ export default function EditIncomePage() {
       setIsSubmitting(false);
     }
   };
-
-  if (isLoading) {
-    return (
-      <ProtectedRoute>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-lg">Loading income details...</div>
-        </div>
-      </ProtectedRoute>
-    );
-  }
 
   return (
     <ProtectedRoute>

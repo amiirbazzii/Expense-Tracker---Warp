@@ -99,8 +99,6 @@ export default function EditExpensePage() {
   const [categoryInput, setCategoryInput] = useState("");
   const [forInput, setForInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
   // Load expense data into form when available
   useEffect(() => {
     if (expense) {
@@ -112,7 +110,6 @@ export default function EditExpensePage() {
         date: format(new Date(expense.date), "yyyy-MM-dd"),
         cardId: expense.cardId || "",
       });
-      setIsLoading(false);
     }
   }, [expense]);
 
@@ -245,16 +242,6 @@ export default function EditExpensePage() {
   const wouldCreateNew = formattedInput && 
     !formData.category.includes(formattedInput) &&
     !categories?.some(cat => cat.name === formattedInput);
-
-  if (isLoading) {
-    return (
-      <ProtectedRoute>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-lg">Loading...</div>
-        </div>
-      </ProtectedRoute>
-    );
-  }
 
   return (
     <ProtectedRoute>

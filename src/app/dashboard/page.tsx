@@ -10,7 +10,6 @@ import { useEffect, useMemo, useState } from "react";
 
 // Import components
 import { DateFilterHeader } from "@/components/DateFilterHeader";
-import { FullScreenLoader } from "@/components/FullScreenLoader";
 import { CardFilter } from "../../features/dashboard/components/CardFilter";
 import { Chip } from "@/components/Chip";
 
@@ -283,9 +282,6 @@ export default function DashboardPage() {
     <>
       <div className="min-h-screen bg-white">
         <AppHeader />
-        {(navigating || effIsLoading) && (
-          <FullScreenLoader message="Loading month..." />
-        )}
 
         <div className="max-w-md mx-auto p-4 pt-[92px] pb-20">
           {/* Card Balances */}

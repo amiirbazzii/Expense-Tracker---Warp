@@ -273,11 +273,7 @@ export default function CardsPage() {
               </h2>
             </div>
 
-            {cardBalances === undefined ? (
-              <div className="text-center py-8">
-                <div className="text-gray-500">Loading your cards...</div>
-              </div>
-            ) : cardBalances?.length === 0 ? (
+            {cardBalances?.length === 0 ? (
               <div className="text-center py-8">
                 <CreditCard className="mx-auto text-gray-400 mb-4" size={48} />
                 <p className="text-gray-500">

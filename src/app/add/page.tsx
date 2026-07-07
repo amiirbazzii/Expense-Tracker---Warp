@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -155,9 +155,7 @@ function AddTransactionContent() {
 
   // Time Framed Data Hooks
   const {
-    currentDate: expenseCurrentDate,
     data: expenses,
-    isLoading: isExpensesLoading,
     monthName: expenseMonthName,
     year: expenseYear,
     goToPreviousMonth: goToPreviousExpenseMonth,
@@ -168,7 +166,6 @@ function AddTransactionContent() {
 
   const {
     data: incomes,
-    isLoading: isIncomesLoading,
     monthName: incomeMonthName,
     year: incomeYear,
     goToPreviousMonth: goToPreviousIncomeMonth,
@@ -549,9 +546,7 @@ function AddTransactionContent() {
                 variant="card"
               />
 
-              {isExpensesLoading ? (
-                <div className="text-center py-8 text-gray-500">Loading...</div>
-              ) : combinedExpenses.length > 0 ? (
+              {combinedExpenses.length > 0 ? (
                 <div className="space-y-2 mt-4">
                   {combinedExpenses.map((expense) => (
                     <ExpenseCard
@@ -760,9 +755,7 @@ function AddTransactionContent() {
                 variant="card"
               />
 
-              {isIncomesLoading ? (
-                <div className="text-center py-8 text-gray-500">Loading...</div>
-              ) : combinedIncome.length > 0 ? (
+              {combinedIncome.length > 0 ? (
                 <div className="space-y-2 mt-4">
                   {combinedIncome.map((incomeRecord) => (
                     <IncomeCard
@@ -842,11 +835,7 @@ export default function AddTransactionPage() {
     <ProtectedRoute>
       <Suspense
         fallback={
-          <div className="min-h-screen bg-white flex items-center justify-center">
-            <div className="text-lg text-black">
-              Loading add transaction page...
-            </div>
-          </div>
+          <div className="min-h-screen bg-white" />
         }
       >
         <AddTransactionContent />
