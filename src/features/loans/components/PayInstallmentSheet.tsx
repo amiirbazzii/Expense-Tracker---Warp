@@ -41,6 +41,8 @@ export function PayInstallmentSheet({
   loan,
   onPaid,
 }: PayInstallmentSheetProps) {
+  const { user, token } = useAuth();
+
   // All reference data from the reactive local store
   const {
     categories: localCats,
@@ -84,7 +86,6 @@ export function PayInstallmentSheet({
   const forValues =
     forValuesQuery !== undefined ? forValuesQuery : offlineForValues;
 
-  const { user, token } = useAuth();
   const { localStorageManager } = useOfflineFirst();
 
   const createExpenseMutation = useMutation(api.expenses.createExpense);
