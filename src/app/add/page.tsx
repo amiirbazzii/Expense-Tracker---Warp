@@ -32,10 +32,6 @@ import { CurrencyInput } from "@/components/CurrencyInput";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import InputContainer from "@/components/InputContainer";
-import { useOnlineStatus } from "@/hooks/useOnlineStatus";
-import { useOfflineQueue } from "@/hooks/useOfflineQueue";
-import { useOfflineFirst } from "@/providers/OfflineFirstProvider";
-import { useOfflineFirstData } from "@/hooks/useOfflineFirstData";
 import { useLocalData } from "@/hooks/useLocalData";
 import { localDataStore } from "@/lib/store";
 
@@ -78,8 +74,6 @@ function AddTransactionContent() {
   const { token } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isOnline = useOnlineStatus();
-  const { localStorageManager } = useOfflineFirst();
 
   // Tab State
   const tabParam = searchParams.get("tab");
@@ -138,6 +132,8 @@ function AddTransactionContent() {
     cards: localCards,
     income: offlineIncomeData,
   } = useLocalData();
+
+
 
   // Map local card docs to the shape components expect (Convex raw card shape)
   const cards = localCards.map((card) => ({
@@ -234,21 +230,6 @@ function AddTransactionContent() {
     };
 
     try {
-      if (localStorageManager) {
-        await localStorageManager.saveExpense(expenseData);
-      }
-
-      if (isOnline) {
-        await createExpenseMutation({ token: token!, ...expenseData });
-        toast.success("Your expense has been added.");
-        refetchExpenses();
-      } else {
-        addExpenseToOfflineQueue(expenseData);
-        toast.success(
-          "You are offline. Expense saved locally and will be synced later.",
-        );
-      }
-
       await localDataStore.addExpense(expenseData);
       toast.success("Your expense has been added.");
 
@@ -303,21 +284,6 @@ function AddTransactionContent() {
     };
 
     try {
-      if (localStorageManager) {
-        await localStorageManager.saveIncome(incomeData);
-      }
-
-      if (isOnline) {
-        await createIncomeMutation({ token: token!, ...incomeData });
-        toast.success("Your income has been added.");
-        refetchIncome();
-      } else {
-        addIncomeToOfflineQueue(incomeData);
-        toast.success(
-          "You are offline. Income saved locally and will be synced later.",
-        );
-      }
-
       await localDataStore.addIncome(incomeData);
       toast.success("Your income has been added.");
 
@@ -350,10 +316,6 @@ function AddTransactionContent() {
 
   const handleCreateCategory = async (name: string): Promise<void> => {
     try {
-      if (localStorageManager) {
-        await localStorageManager.saveCategory({ name, type: "expense" });
-      }
-      await createCategoryMutation({ token, name });
       await localDataStore.addCategory(name);
     } catch (error) {
       toast.error("Failed to create category.");
@@ -370,10 +332,6 @@ function AddTransactionContent() {
 
   const handleCreateForValue = async (value: string): Promise<void> => {
     try {
-      if (localStorageManager) {
-        await localStorageManager.saveForValue({ value });
-      }
-      await createForValueMutation({ token, value });
       await localDataStore.addForValue(value);
     } catch (error) {
       toast.error("Failed to add 'for' value.");

@@ -205,6 +205,7 @@ export class LocalDataStore {
 
     await this.queue.enqueue("expenses:createExpense", {
       token: this.userId,
+      __localId: saved.id,
       amount: saved.amount,
       title: saved.title,
       category: saved.category,
@@ -273,6 +274,7 @@ export class LocalDataStore {
 
     await this.queue.enqueue("income:createIncome", {
       token: this.userId,
+      __localId: saved.id,
       amount: saved.amount,
       cardId: saved.cardId,
       date: saved.date,

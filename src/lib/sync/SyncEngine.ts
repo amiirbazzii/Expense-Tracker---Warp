@@ -65,8 +65,8 @@ export class SyncEngine {
   private authToken: string | null = null;
 
   // Maps local IDs (e.g. "local_...") to their Convex document IDs.
-  // Populated when a `cards:addCard` mutation succeeds and returns a Convex ID.
-  // Used to translate `cardId` references in subsequent expense/income mutations.
+  // Populated when a create mutation succeeds and returns a Convex ID.
+  // Used to translate ID references in subsequent update/delete mutations.
   private localToConvexId: Map<string, string> = new Map();
 
   // True when the browser reports network connectivity.
@@ -279,31 +279,40 @@ export class SyncEngine {
         try {
           // ── Build payload ─────────────────────────────────────────────
           // 1. Stamp the current auth token.
-          // 2. Translate any local cardId references to Convex IDs.
+          // 2. Translate any local ID references to Convex IDs.
           // 3. Strip internal __localId before sending to Convex.
           const { __localId: _localId, ...rest } = mutation.payload;
-          let payload: Record<string, unknown> = {
+          const payload: Record<string, unknown> = {
             ...rest,
             token: this.authToken,
           };
 
-          // Translate cardId if it's a local reference we have mapped.
-          if (
-            typeof payload.cardId === "string" &&
-            payload.cardId.startsWith("local_") &&
-            this.localToConvexId.has(payload.cardId)
-          ) {
-            payload.cardId = this.localToConvexId.get(payload.cardId)!;
+          // Translate local IDs to Convex IDs for cardId, incomeId, expenseId
+          for (const idField of ["cardId", "incomeId", "expenseId"]) {
+            if (
+              typeof payload[idField] === "string" &&
+              (payload[idField] as string).startsWith("local_") &&
+              this.localToConvexId.has(payload[idField] as string)
+            ) {
+              payload[idField] = this.localToConvexId.get(payload[idField] as string)!;
+            }
           }
 
           // Execute the Convex mutation.
           const result = await this.client.mutation(fn, payload);
 
-          // ── Capture ID mapping for cards ──────────────────────────────
-          if (mutation.action === "cards:addCard" && _localId) {
-            // The result is the Convex document ID (an Id<"cards">).
-            this.localToConvexId.set(_localId, result as string);
-            console.log(`[SyncEngine] 📍 mapped card ${_localId} → ${result}`);
+          // ── Capture ID mapping for cards, income, expenses ────────────
+          if (_localId) {
+            if (mutation.action === "cards:addCard") {
+              this.localToConvexId.set(_localId, result as string);
+              console.log(`[SyncEngine] 📍 mapped card ${_localId} → ${result}`);
+            } else if (mutation.action === "income:createIncome") {
+              this.localToConvexId.set(_localId, result as string);
+              console.log(`[SyncEngine] 📍 mapped income ${_localId} → ${result}`);
+            } else if (mutation.action === "expenses:createExpense") {
+              this.localToConvexId.set(_localId, result as string);
+              console.log(`[SyncEngine] 📍 mapped expense ${_localId} → ${result}`);
+            }
           }
 
           // ✓ Success — atomically remove the head item.
