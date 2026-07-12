@@ -85,6 +85,7 @@ export interface LocalCategory extends LocalEntity {
 // Local storage schema for cards
 export interface LocalCard extends LocalEntity {
   name: string;
+  isArchived?: boolean;
 }
 
 // Local storage schema for "for" values

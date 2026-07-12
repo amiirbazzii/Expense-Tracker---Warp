@@ -84,6 +84,24 @@ export const deleteCard = mutation({
   },
 });
 
+export const updateCard = mutation({
+  args: {
+    token: v.string(),
+    cardId: v.id("cards"),
+    isArchived: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken(ctx, args.token);
+
+    const card = await ctx.db.get(args.cardId);
+    if (!card || card.userId !== user._id) {
+      throw new ConvexError("Card not found or not authorized to update");
+    }
+
+    await ctx.db.patch(args.cardId, { isArchived: args.isArchived });
+  },
+});
+
 // Income Operations
 export const createIncome = mutation({
   args: {

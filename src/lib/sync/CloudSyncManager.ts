@@ -967,9 +967,14 @@ export class CloudSyncManager {
       if (card.syncStatus === 'pending' || card.syncStatus === 'failed') {
         try {
           if (card.cloudId) {
-            // Cards don't have an update method in the current API
-            // Skip updating existing cards for now
-            console.warn(`Card update not supported for card ${card.id}`);
+            await this.retryWithBackoff(async () => {
+              const result = await this.convexClient.mutation(api.cardsAndIncome.updateCard, {
+                token,
+                cardId: card.cloudId as any,
+                isArchived: card.isArchived ?? false,
+              });
+              return result;
+            });
             syncedCount++;
           } else {
             // Create new card using addCard method
@@ -1408,8 +1413,12 @@ export class CloudSyncManager {
         });
         break;
       case 'update':
-        // Cards don't have an update method in the current API
-        throw new Error('Card update operation not supported by current API');
+        await this.convexClient.mutation(api.cardsAndIncome.updateCard, {
+          token,
+          cardId: operation.entityId as any,
+          isArchived: operation.data.isArchived ?? false,
+        });
+        break;
       case 'delete':
         await this.convexClient.mutation(api.cardsAndIncome.deleteCard, {
           token,

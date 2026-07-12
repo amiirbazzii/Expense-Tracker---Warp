@@ -139,6 +139,7 @@ function AddTransactionContent() {
   const cards = localCards.map((card) => ({
     _id: card.cardId,
     name: card.cardName,
+    isArchived: card.isArchived,
     userId: "",
     createdAt: 0,
     _creationTime: 0,
@@ -176,17 +177,18 @@ function AddTransactionContent() {
     isUsingOfflineData: isUsingOfflineIncomeData,
   } = useTimeFramedData("income", token);
 
-  // Auto-select first card
+  // Auto-select first non-archived card
+  const activeCards = cards?.filter((c) => !c.isArchived) ?? [];
   useEffect(() => {
-    if (cards && cards.length > 0) {
+    if (activeCards.length > 0) {
       if (!expenseForm.cardId) {
-        setExpenseForm((prev) => ({ ...prev, cardId: cards[0]._id }));
+        setExpenseForm((prev) => ({ ...prev, cardId: activeCards[0]._id }));
       }
       if (!incomeForm.cardId) {
-        setIncomeForm((prev) => ({ ...prev, cardId: cards[0]._id }));
+        setIncomeForm((prev) => ({ ...prev, cardId: activeCards[0]._id }));
       }
     }
-  }, [cards, expenseForm.cardId, incomeForm.cardId]);
+  }, [activeCards, expenseForm.cardId, incomeForm.cardId]);
 
   // Form Submissions
   const handleExpenseSubmit = async (e: React.FormEvent) => {
@@ -458,7 +460,7 @@ function AddTransactionContent() {
                       required
                     >
                       <option value="">Select card</option>
-                      {cards?.map((card) => (
+                      {activeCards.map((card) => (
                         <option key={card._id} value={card._id}>
                           {card.name}
                         </option>
@@ -670,7 +672,7 @@ function AddTransactionContent() {
                       required
                     >
                       <option value="">Select card</option>
-                      {cards?.map((card) => (
+                      {activeCards.map((card) => (
                         <option key={card._id} value={card._id}>
                           {card.name}
                         </option>

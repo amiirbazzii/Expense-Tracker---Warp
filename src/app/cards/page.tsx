@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import AppHeader from "@/components/AppHeader";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import {
+  Archive,
+  ChevronDown,
+  ChevronUp,
   CreditCard,
   Plus,
-  X,
   Trash2,
   ArrowRight,
   TrendingUp,
@@ -38,10 +40,29 @@ export default function CardsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTransferring, setIsTransferring] = useState(false);
   const [openMenuCardId, setOpenMenuCardId] = useState<string | null>(null);
+  const [isArchivedOpen, setIsArchivedOpen] = useState(false);
   const openMenuRef = useRef<HTMLDivElement | null>(null);
 
   // Single source of truth — reactive local store (deduplicated via LocalDataStore)
-  const { cards: cardBalances } = useLocalData();
+  const { cards: cardBalances, expenses, income } = useLocalData();
+
+  // Set of card IDs that have expenses or income referencing them
+  const cardIdsWithData = useMemo(() => {
+    const ids = new Set<string>();
+    for (const exp of expenses ?? []) if (exp.cardId) ids.add(exp.cardId);
+    for (const inc of income ?? []) if (inc.cardId) ids.add(inc.cardId);
+    return ids;
+  }, [expenses, income]);
+
+  const activeCards = useMemo(
+    () => cardBalances?.filter((c) => !c.isArchived) ?? [],
+    [cardBalances],
+  );
+
+  const archivedCards = useMemo(
+    () => cardBalances?.filter((c) => c.isArchived) ?? [],
+    [cardBalances],
+  );
   const localStorageManager = new LocalStorageManager();
 
   const addCard = async () => {
@@ -242,7 +263,7 @@ export default function CardsPage() {
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
                 >
                   <option value="">From Card</option>
-                  {cardBalances?.map((card) => (
+                  {activeCards?.map((card) => (
                     <option key={card.cardId} value={card.cardId}>
                       {card.cardName}
                     </option>
@@ -255,7 +276,7 @@ export default function CardsPage() {
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
                 >
                   <option value="">To Card</option>
-                  {cardBalances?.map((card) => (
+                  {activeCards?.map((card) => (
                     <option key={card.cardId} value={card.cardId}>
                       {card.cardName}
                     </option>
@@ -288,20 +309,22 @@ export default function CardsPage() {
           >
             <div className="mb-4">
               <h2 className="text-lg font-semibold text-gray-900">
-                Your Cards ({cardBalances?.length || 0})
+                Your Cards ({activeCards.length || 0})
               </h2>
             </div>
 
-            {cardBalances?.length === 0 ? (
+            {activeCards.length === 0 ? (
               <div className="text-center py-8">
                 <CreditCard className="mx-auto text-gray-400 mb-4" size={48} />
                 <p className="text-gray-500">
-                  You haven't added any cards yet.
+                  {archivedCards.length > 0
+                    ? "All cards are archived."
+                    : "You haven't added any cards yet."}
                 </p>
               </div>
             ) : (
               <div className="space-y-3">
-                {cardBalances?.map((card) => (
+                {activeCards?.map((card) => (
                   <div
                     key={card.cardId}
                     className="relative"
@@ -364,10 +387,35 @@ export default function CardsPage() {
                     >
                       <button
                         onClick={() => {
+                          localDataStore.archiveCard(card.cardId);
+                          setOpenMenuCardId(null);
+                          toast("Card archived", {
+                            action: {
+                              label: "Undo",
+                              onClick: () =>
+                                localDataStore.unarchiveCard(card.cardId),
+                            },
+                            duration: 5000,
+                          });
+                        }}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
+                      >
+                        <Archive className="h-4 w-4 mr-2" />
+                        Archive
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (cardIdsWithData.has(card.cardId)) return;
                           deleteCard(card.cardId);
                           setOpenMenuCardId(null);
                         }}
-                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
+                        disabled={cardIdsWithData.has(card.cardId)}
+                        className={`flex items-center w-full px-4 py-2 text-sm text-left ${cardIdsWithData.has(card.cardId) ? "text-gray-400 cursor-not-allowed" : "text-red-600 hover:bg-red-50"}`}
+                        title={
+                          cardIdsWithData.has(card.cardId)
+                            ? "Archive instead — this card has transactions"
+                            : "Delete card"
+                        }
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Delete
@@ -378,6 +426,66 @@ export default function CardsPage() {
               </div>
             )}
           </motion.div>
+
+          {/* Archived Cards Accordion */}
+          {archivedCards.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="rounded-xl border border-gray-200 bg-[#F9F9F9] overflow-hidden mb-4"
+            >
+              <button
+                onClick={() => setIsArchivedOpen(!isArchivedOpen)}
+                className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors min-h-[44px]"
+                aria-expanded={isArchivedOpen}
+                aria-label={
+                  isArchivedOpen ? "Hide archived cards" : "View archived cards"
+                }
+              >
+                <span>View Archived Cards ({archivedCards.length})</span>
+                {isArchivedOpen ? (
+                  <ChevronUp className="h-4 w-4 text-gray-500" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-gray-500" />
+                )}
+              </button>
+              <AnimatePresence initial={false}>
+                {isArchivedOpen && (
+                  <motion.div
+                    key="archived-content"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="border-t border-gray-200 divide-y divide-gray-200">
+                      {archivedCards.map((card) => (
+                        <div
+                          key={card.cardId}
+                          className="flex items-center justify-between px-4 py-3"
+                        >
+                          <div className="font-medium text-gray-900 text-sm">
+                            {card.cardName}
+                          </div>
+                          <button
+                            onClick={() =>
+                              localDataStore.unarchiveCard(card.cardId)
+                            }
+                            className="flex items-center space-x-1 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors min-h-[36px]"
+                          >
+                            <Archive className="h-3.5 w-3.5 mr-1" />
+                            Unarchive
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )}
         </div>
       </div>
     </ProtectedRoute>

@@ -139,6 +139,7 @@ class HydrationService {
         case "cards:addCard":
           if (p.__localId) ids.cards.add(p.__localId);
           break;
+        case "cards:updateCard":
         case "cards:deleteCard":
           if (p.cardId) ids.cards.add(p.cardId);
           break;
@@ -262,6 +263,7 @@ class HydrationService {
           ...base,
           cloudId: doc._id,
           name: doc.name,
+          isArchived: doc.isArchived,
         };
       case "loans":
         return {

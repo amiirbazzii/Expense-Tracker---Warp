@@ -38,6 +38,7 @@ function useMutations() {
     "categories:CREATE": useMutation(api.expenses.createCategory),
     // Cards
     "cards:CREATE": useMutation(api.cardsAndIncome.addCard),
+    "cards:UPDATE": useMutation(api.cardsAndIncome.updateCard),
     "cards:DELETE": useMutation(api.cardsAndIncome.deleteCard),
     // For Values
     "forValues:CREATE": useMutation(api.expenses.createForValue),
@@ -97,6 +98,9 @@ function buildConvexArgs(
     case "cards":
       if (action === "DELETE") {
         return { cardId: payload.id };
+      }
+      if (action === "UPDATE") {
+        return { cardId: payload.id, isArchived: payload.isArchived };
       }
       return { name: payload.name };
 

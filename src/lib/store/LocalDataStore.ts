@@ -47,6 +47,7 @@ export interface CardDoc {
   totalIncome: number;
   totalExpenses: number;
   balance: number;
+  isArchived?: boolean;
 }
 
 /** Raw card record (name only — balances are computed). */
@@ -416,6 +417,34 @@ export class LocalDataStore {
     return true;
   }
 
+  async archiveCard(id: string): Promise<boolean> {
+    const updated = await this.storage.updateCard(id, { isArchived: true });
+    if (!updated) return false;
+
+    await this.queue.enqueue("cards:updateCard", {
+      token: this.userId,
+      cardId: id,
+      isArchived: true,
+    });
+
+    await this.refresh();
+    return true;
+  }
+
+  async unarchiveCard(id: string): Promise<boolean> {
+    const updated = await this.storage.updateCard(id, { isArchived: false });
+    if (!updated) return false;
+
+    await this.queue.enqueue("cards:updateCard", {
+      token: this.userId,
+      cardId: id,
+      isArchived: false,
+    });
+
+    await this.refresh();
+    return true;
+  }
+
   // ── Category / ForValue writes ─────────────────────────────────────────
 
   async addCategory(
@@ -608,6 +637,7 @@ export class LocalDataStore {
         totalIncome: cardIncome,
         totalExpenses: cardExpenses,
         balance: cardIncome - cardExpenses,
+        isArchived: card.isArchived,
       };
     });
   }

@@ -36,6 +36,7 @@ export default defineSchema({
     name: v.string(),
     userId: v.id("users"),
     createdAt: v.number(),
+    isArchived: v.optional(v.boolean()),
   }).index("by_user", ["userId"]).index("by_user_name", ["userId", "name"]),
 
   income: defineTable({

@@ -42,6 +42,7 @@ const ACTION_MAP: Record<string, any> = {
 
   // Cards
   "cards:addCard": api.cardsAndIncome.addCard,
+  "cards:updateCard": api.cardsAndIncome.updateCard,
   "cards:deleteCard": api.cardsAndIncome.deleteCard,
 
   // Loans
