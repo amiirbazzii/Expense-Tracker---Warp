@@ -16,10 +16,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useOfflineFirstData } from "@/hooks/useOfflineFirstData";
-import { useOfflineFirst } from "@/providers/OfflineFirstProvider";
 import { useLocalData } from "@/hooks/useLocalData";
 import { localDataStore } from "@/lib/store";
 import { Id } from "../../../../convex/_generated/dataModel";
+import { MutationQueueManager } from "@/lib/queue/MutationQueueManager";
+import { LocalStorageManager } from "@/lib/storage/LocalStorageManager";
 
 interface PayInstallmentSheetProps {
   open: boolean;
@@ -86,12 +87,10 @@ export function PayInstallmentSheet({
   const forValues =
     forValuesQuery !== undefined ? forValuesQuery : offlineForValues;
 
-  const { localStorageManager } = useOfflineFirst();
-
-  const createExpenseMutation = useMutation(api.expenses.createExpense);
   const createCategoryMutation = useMutation(api.expenses.createCategory);
   const createForValueMutation = useMutation(api.expenses.createForValue);
-  const payInstallmentMutation = useMutation(api.loans.payInstallment);
+
+  const localStorageManager = new LocalStorageManager();
 
   // Form state
   const [amount, setAmount] = useState("");
@@ -168,63 +167,37 @@ export function PayInstallmentSheet({
 
     setIsSubmitting(true);
     try {
-      // 0. Write expense + loan update locally first (local-first pattern)
-      if (localStorageManager) {
-        // Save the expense locally — auto-enqueues expenses:CREATE
-        await localStorageManager.saveExpense({
-          amount: parsedAmount,
-          title: title || loan.name,
-          category,
-          for: paidFor,
-          date: date.getTime(),
-          cardId,
-        });
-
-        // Ensure the loan exists locally before updating it.
-        const existing = await localStorageManager.getEntityById(
-          "loans",
-          loan._id,
-        );
-        if (!existing) {
-          await localStorageManager.seedEntity("loans", {
-            ...loan,
-            id: loan._id,
-            _id: loan._id,
-          });
-        }
-
-        // Update paidInstallments in the local loan collection.
-        await localStorageManager.updateEntity("loans", loan._id, {
-          paidInstallments: loan.paidInstallments + 1,
-        });
-      }
-
-      // Also write to the reactive local store
-      await localDataStore.addExpense({
+      // 1. Write expense locally — NO enqueue (payInstallment handles server creation)
+      const localExpense = await localStorageManager.saveExpense({
         amount: parsedAmount,
         title: title || loan.name,
         category,
         for: paidFor,
         date: date.getTime(),
-        cardId: cardId as Id<"cards">,
+        cardId,
+      }, { skipEnqueue: true });
+
+      // 2. Update loan locally
+      await localStorageManager.updateEntity("loans", loan._id, {
+        paidInstallments: loan.paidInstallments + 1,
       });
-      await localDataStore.payInstallment(loan._id);
 
-      // 1. Create the expense on Convex (only when online)
-      if (navigator.onLine) {
-        await createExpenseMutation({
-          token,
-          amount: parsedAmount,
-          title: title || loan.name,
-          category,
-          for: paidFor,
-          date: date.getTime(),
-          cardId: cardId as Id<"cards">,
-        });
+      // 3. Enqueue payInstallment with localExpenseId for post-sync linking
+      const queue = new MutationQueueManager();
+      await queue.enqueue("loans:payInstallment", {
+        token,
+        loanId: loan._id,
+        amount: parsedAmount,
+        title: title || loan.name,
+        category,
+        for: paidFor,
+        date: date.getTime(),
+        cardId,
+        localExpenseId: localExpense.id,
+      });
 
-        // 2. Increment paid installments on Convex
-        await payInstallmentMutation({ token, loanId: loan._id });
-      }
+      // 4. Refresh → 0ms UI update
+      await localDataStore.refresh();
 
       toast.success("Installment paid successfully!");
       onPaid();

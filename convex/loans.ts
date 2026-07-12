@@ -119,6 +119,12 @@ export const payInstallment = mutation({
   args: {
     token: v.string(),
     loanId: v.id("loans"),
+    amount: v.number(),
+    title: v.string(),
+    category: v.array(v.string()),
+    for: v.array(v.string()),
+    date: v.number(),
+    cardId: v.optional(v.id("cards")),
   },
   handler: async (ctx, args) => {
     const user = await getUserByToken(ctx, args.token);
@@ -136,7 +142,18 @@ export const payInstallment = mutation({
       paidInstallments: loan.paidInstallments + 1,
     });
 
-    return { success: true };
+    const expenseId = await ctx.db.insert("expenses", {
+      amount: args.amount,
+      title: args.title,
+      category: args.category,
+      for: args.for,
+      date: args.date,
+      cardId: args.cardId,
+      userId: user._id,
+      createdAt: Date.now(),
+    });
+
+    return { expenseId };
   },
 });
 

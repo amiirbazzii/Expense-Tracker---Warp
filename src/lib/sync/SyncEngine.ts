@@ -293,7 +293,7 @@ export class SyncEngine {
           };
 
           // Translate local IDs to Convex IDs for cardId, incomeId, expenseId, and transfer fields
-          for (const idField of ["cardId", "incomeId", "expenseId", "fromCardId", "toCardId"]) {
+          for (const idField of ["cardId", "incomeId", "expenseId", "fromCardId", "toCardId", "loanId"]) {
             if (
               typeof payload[idField] === "string" &&
               (payload[idField] as string).startsWith("local_") &&
@@ -362,6 +362,29 @@ export class SyncEngine {
               await localDataStore.refresh();
             } catch (err) {
               console.warn("[SyncEngine] Failed to refresh store after transferFunds:", err);
+            }
+          }
+
+          // ── Special: link local installment expense to cloud ID ──────
+          if (mutation.action === "loans:payInstallment" && result) {
+            const { localExpenseId } = mutation.payload;
+            const res = result as any;
+            const cloudExpenseId = res.expenseId;
+
+            console.log("[SyncEngine] payInstallment response:", res);
+
+            if (localExpenseId && cloudExpenseId) {
+              await this.storage.markEntityAsSynced("expenses", localExpenseId, cloudExpenseId);
+              console.log(`[SyncEngine] 📍 payInstallment: expense ${localExpenseId} → ${cloudExpenseId}`);
+            } else {
+              console.warn("[SyncEngine] ⚠ Could not link installment expense:", { localExpenseId, cloudExpenseId });
+            }
+
+            try {
+              const { localDataStore } = await import("../store");
+              await localDataStore.refresh();
+            } catch (err) {
+              console.warn("[SyncEngine] Failed to refresh store after payInstallment:", err);
             }
           }
 
