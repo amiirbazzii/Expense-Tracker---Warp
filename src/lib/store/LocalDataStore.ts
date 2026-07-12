@@ -464,6 +464,7 @@ export class LocalDataStore {
 
     await this.queue.enqueue("loans:createLoan", {
       token: this.userId,
+      __localId: saved.id,
       ...data,
     });
 
