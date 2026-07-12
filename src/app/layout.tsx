@@ -9,8 +9,6 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 
 import {
-  LazyAnalytics,
-  LazySpeedInsights,
   LazyToaster,
 } from "@/components/LazyComponents";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -146,8 +144,6 @@ export default function RootLayout({
             </AuthProvider>
           </ConvexProvider>
         </ErrorBoundary>
-        <LazyAnalytics />
-        <LazySpeedInsights />
       </body>
     </html>
   );

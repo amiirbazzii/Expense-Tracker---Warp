@@ -60,11 +60,11 @@ export function DailySpendingChart({ dailyTotals, mode = 'expenses', title, _col
       .sort((a, b) => a[0].getTime() - b[0].getTime());
   }, [dailyTotals]);
 
-  const labels = useMemo(() => 
-    entries.map(([date]) => settings ? formatDate(date, settings.calendar, 'yyyy/MM/dd') : date.toISOString().slice(0, 10)), 
+  const labels = useMemo(() =>
+    entries.map(([date]) => settings ? formatDate(date, settings.calendar, 'yyyy/MM/dd') : date.toISOString().slice(0, 10)),
     [entries, settings]
   );
-  
+
   const values = useMemo(() => entries.map(([, v]) => v), [entries]);
 
   if (!dailyTotals || Object.keys(dailyTotals).length === 0 || entries.length === 0) {
@@ -118,9 +118,9 @@ export function DailySpendingChart({ dailyTotals, mode = 'expenses', title, _col
       if (!elem) return;
       const x = elem.x;
       const y = elem.y;
-      
+
       ctx.save();
-      
+
       // Dashed guideline
       ctx.setLineDash([4, 4]);
       ctx.strokeStyle = '#9CA3AF';
@@ -130,13 +130,13 @@ export function DailySpendingChart({ dailyTotals, mode = 'expenses', title, _col
       ctx.lineTo(x, chartArea.bottom);
       ctx.stroke();
       ctx.setLineDash([]);
-      
+
       // Dot
       ctx.fillStyle = '#6B7280';
       ctx.beginPath();
       ctx.arc(x, y, 4, 0, Math.PI * 2);
       ctx.fill();
-      
+
       ctx.restore();
     },
   };
@@ -146,7 +146,7 @@ export function DailySpendingChart({ dailyTotals, mode = 'expenses', title, _col
     afterDraw(chart: any) {
       const { tooltip } = chart;
       const parent = chart.canvas.parentNode;
-      
+
       let tooltipEl = parent.querySelector('.chart-tooltip');
       if (!tooltipEl) {
         tooltipEl = document.createElement('div');

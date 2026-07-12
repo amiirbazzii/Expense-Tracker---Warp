@@ -6,13 +6,7 @@ export const LazyChart = dynamic(() => import('react-chartjs-2').then(mod => ({ 
   ssr: false,
 });
 
-export const LazyAnalytics = dynamic(() => import('@vercel/analytics/next').then(mod => ({ default: mod.Analytics })), {
-  ssr: false,
-});
 
-export const LazySpeedInsights = dynamic(() => import('@vercel/speed-insights/next').then(mod => ({ default: mod.SpeedInsights })), {
-  ssr: false,
-});
 
 export const LazyToaster = dynamic(() => import('sonner').then(mod => ({ default: mod.Toaster })), {
   loading: () => null,
