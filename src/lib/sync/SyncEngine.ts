@@ -49,6 +49,9 @@ const ACTION_MAP: Record<string, any> = {
   "loans:updateLoan": api.loans.updateLoan,
   "loans:deleteLoan": api.loans.deleteLoan,
   "loans:payInstallment": api.loans.payInstallment,
+
+  // Transfers
+  "transferFunds": api.cardsAndIncome.transferFunds,
 };
 
 // ── Names of all IndexedDB databases created by localforage in this app ──────
@@ -289,8 +292,8 @@ export class SyncEngine {
             token: this.authToken,
           };
 
-          // Translate local IDs to Convex IDs for cardId, incomeId, expenseId
-          for (const idField of ["cardId", "incomeId", "expenseId"]) {
+          // Translate local IDs to Convex IDs for cardId, incomeId, expenseId, and transfer fields
+          for (const idField of ["cardId", "incomeId", "expenseId", "fromCardId", "toCardId"]) {
             if (
               typeof payload[idField] === "string" &&
               (payload[idField] as string).startsWith("local_") &&

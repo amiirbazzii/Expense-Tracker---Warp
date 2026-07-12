@@ -21,14 +21,10 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/Button";
 import { InputContainer } from "@/components/InputContainer";
-import { useOfflineFirstData } from "@/hooks/useOfflineFirstData";
-import { useOfflineFirst } from "@/providers/OfflineFirstProvider";
 import { useLocalData } from "@/hooks/useLocalData";
 import { localDataStore } from "@/lib/store";
 import { DropdownMenu } from "@/components/DropdownMenu";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
+import { MutationQueueManager } from "@/lib/queue/MutationQueueManager";
 
 export default function CardsPage() {
   const { token } = useAuth();
@@ -43,38 +39,15 @@ export default function CardsPage() {
   const [openMenuCardId, setOpenMenuCardId] = useState<string | null>(null);
   const openMenuRef = useRef<HTMLDivElement | null>(null);
 
-  const addCardMutation = useMutation(api.cardsAndIncome.addCard);
-  const deleteCardMutation = useMutation(api.cardsAndIncome.deleteCard);
-  const transferFundsMutation = useMutation(api.cardsAndIncome.transferFunds);
-  const { localStorageManager } = useOfflineFirst();
-  const cardBalancesQuery = useQuery(
-    api.cardsAndIncome.getCardBalances,
-    token ? { token } : "skip",
-  );
-
-  // Get offline backup data
-  const { cards: offlineCards, isUsingOfflineData } = useOfflineFirstData();
-
-  // Use online data if available, otherwise use offline backup
-  const cardBalances =
-    cardBalancesQuery !== undefined ? cardBalancesQuery : offlineCards;
-
-  // Also pull from the reactive local store
-  const { cards: localCards } = useLocalData();
+  // Single source of truth — reactive local store (deduplicated via LocalDataStore)
+  const { cards: cardBalances } = useLocalData();
 
   const addCard = async () => {
     if (!cardName.trim()) return;
 
     setIsSubmitting(true);
     try {
-      // Write locally first
-      if (localStorageManager) {
-        await localStorageManager.saveCard({ name: cardName.trim() });
-      }
-
       await localDataStore.addCard(cardName.trim());
-
-      await addCardMutation({ token: token!, name: cardName.trim() });
       toast.success("Your card has been added.");
       setCardName("");
     } catch (error) {
@@ -86,14 +59,7 @@ export default function CardsPage() {
 
   const deleteCard = async (cardId: string) => {
     try {
-      // Write locally first
-      if (localStorageManager) {
-        await localStorageManager.deleteCard(cardId);
-      }
-
       await localDataStore.deleteCard(cardId);
-
-      await deleteCardMutation({ token: token!, cardId: cardId as any });
       toast.success("The card has been deleted.");
     } catch (error: any) {
       toast.error(error.message || "There was an error deleting the card.");
@@ -119,72 +85,42 @@ export default function CardsPage() {
 
     setIsTransferring(true);
     try {
-      // Write locally first (local-first pattern)
-      if (localStorageManager) {
-        // Get card names for the transaction titles
-        const fromCardName =
-          cardBalances?.find((cb: any) => cb._id === fromCard)?.name ||
-          "Source";
-        const toCardName =
-          cardBalances?.find((cb: any) => cb._id === toCard)?.name ||
-          "Destination";
-
-        // 1. Save the expense (deduction from source card)
-        await localStorageManager.saveExpense({
-          amount: transferAmount,
-          title: `Transfer to ${toCardName}`,
-          category: ["Transfer"],
-          for: [],
-          date: Date.now(),
-          cardId: fromCard,
-        });
-
-        // 2. Save the income (addition to destination card)
-        await localStorageManager.saveIncome({
-          amount: transferAmount,
-          source: `Transfer from ${fromCardName}`,
-          category: "Transfer",
-          date: Date.now(),
-          cardId: toCard,
-        });
-      }
-
-      // Also write to reactive local store
+      const fromCardName =
+        cardBalances.find((c) => c.cardId === fromCard)?.cardName || "Source";
+      const toCardName =
+        cardBalances.find((c) => c.cardId === toCard)?.cardName || "Destination";
       const now = Date.now();
+
+      // 1. Write expense (debit source) and income (credit dest) to IndexedDB — no enqueue
+      //    These are local-only records for immediate UI balance updates.
       await localDataStore.addExpense({
         amount: transferAmount,
-        title: "Card Transfer",
+        title: `Transfer to ${toCardName}`,
         category: ["Card Transfer"],
-        for: ["Card Transfer"],
+        for: [],
         date: now,
         cardId: fromCard,
       });
       await localDataStore.addIncome({
         amount: transferAmount,
-        source: "Card Transfer",
-        category: ["Card Transfer"],
-        date: now,
-        cardId: toCard,
-      });
-
-      await transferFundsMutation({
-        token: token!,
-        fromCardId: fromCard as any,
-        toCardId: toCard as any,
-        amount: transferAmount,
-        title: "Card Transfer",
-        category: ["Card Transfer"],
-        for: ["Card Transfer"],
-        date: now,
-        cardId: fromCard,
-      });
-      await localDataStore.addIncome({
-        amount: transferAmount,
-        source: "Card Transfer",
+        source: `Transfer from ${fromCardName}`,
         category: "Card Transfer",
         date: now,
         cardId: toCard,
       });
+
+      // 2. Enqueue a single transferFunds mutation (SyncEngine translates local IDs)
+      const queue = new MutationQueueManager();
+      await queue.enqueue("transferFunds", {
+        token,
+        fromCardId: fromCard,
+        toCardId: toCard,
+        amount: transferAmount,
+      });
+
+      // 3. Refresh local store → 0ms UI update with new balances
+      await localDataStore.refresh();
+
       toast.success("Transfer successful.");
       setFromCard("");
       setToCard("");
