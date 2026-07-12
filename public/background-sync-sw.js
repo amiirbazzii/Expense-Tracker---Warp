@@ -57,13 +57,6 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// ── Install: skip waiting (activate immediately when a new SW is detected) ────
-// Note: next-pwa's skipWaiting + clientsClaim handles this in the generated SW.
-// This is a safety net for standalone SW updates.
-self.addEventListener("install", () => {
-  self.skipWaiting();
-});
-
 // ── Message handling ──────────────────────────────────────────────────────────
 self.addEventListener("message", (event) => {
   if (!event.data) return;

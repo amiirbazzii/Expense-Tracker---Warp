@@ -178,96 +178,96 @@ export default function SettingsPage() {
                 Preferences
               </h3>
               <div className="space-y-4">
-                  {/* Currency */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Currency *
-                    </label>
-                    <InputContainer
-                      leftIcon={DollarSign}
-                      rightAdornment={
-                        <svg
-                          className="size-5 text-gray-500"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                          aria-hidden="true"
-                        >
-                          <path
-                            d="M6 9l6 6 6-6"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      }
-                    >
-                      <select
-                        value={settings?.currency || "USD"}
-                        onChange={async (e) => {
-                          await updateSettings({
-                            currency: e.target.value as Currency,
-                          });
-                          toast.success("Currency updated");
-                        }}
-                        className="w-full bg-transparent outline-none text-black placeholder:text-gray-500 py-1 px-0 appearance-none"
+                {/* Currency */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Currency *
+                  </label>
+                  <InputContainer
+                    leftIcon={DollarSign}
+                    rightAdornment={
+                      <svg
+                        className="size-5 text-gray-500"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true"
                       >
-                        {(["USD", "EUR", "GBP", "IRR"] as Currency[]).map(
-                          (cur) => (
-                            <option key={cur} value={cur}>
-                              {cur}
-                            </option>
-                          ),
-                        )}
-                      </select>
-                    </InputContainer>
-                  </div>
-
-                  {/* Calendar System */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Calendar System *
-                    </label>
-                    <InputContainer
-                      leftIcon={CalendarIcon}
-                      rightAdornment={
-                        <svg
-                          className="size-5 text-gray-500"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                          aria-hidden="true"
-                        >
-                          <path
-                            d="M6 9l6 6 6-6"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      }
+                        <path
+                          d="M6 9l6 6 6-6"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    }
+                  >
+                    <select
+                      value={settings?.currency || "USD"}
+                      onChange={async (e) => {
+                        await updateSettings({
+                          currency: e.target.value as Currency,
+                        });
+                        toast.success("Currency updated");
+                      }}
+                      className="w-full bg-transparent outline-none text-black placeholder:text-gray-500 py-1 px-0 appearance-none"
                     >
-                      <select
-                        value={settings?.calendar || "gregorian"}
-                        onChange={async (e) => {
-                          await updateSettings({
-                            calendar: e.target.value as Calendar,
-                          });
-                          toast.success("Calendar updated");
-                        }}
-                        className="w-full bg-transparent outline-none text-black placeholder:text-gray-500 py-1 px-0 appearance-none"
-                      >
-                        {(["gregorian", "jalali"] as Calendar[]).map((cal) => (
-                          <option key={cal} value={cal}>
-                            {cal}
+                      {(["USD", "EUR", "GBP", "IRR"] as Currency[]).map(
+                        (cur) => (
+                          <option key={cur} value={cur}>
+                            {cur}
                           </option>
-                        ))}
-                      </select>
-                    </InputContainer>
-                  </div>
+                        ),
+                      )}
+                    </select>
+                  </InputContainer>
                 </div>
+
+                {/* Calendar System */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Calendar System *
+                  </label>
+                  <InputContainer
+                    leftIcon={CalendarIcon}
+                    rightAdornment={
+                      <svg
+                        className="size-5 text-gray-500"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M6 9l6 6 6-6"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    }
+                  >
+                    <select
+                      value={settings?.calendar || "gregorian"}
+                      onChange={async (e) => {
+                        await updateSettings({
+                          calendar: e.target.value as Calendar,
+                        });
+                        toast.success("Calendar updated");
+                      }}
+                      className="w-full bg-transparent outline-none text-black placeholder:text-gray-500 py-1 px-0 appearance-none"
+                    >
+                      {(["gregorian", "jalali"] as Calendar[]).map((cal) => (
+                        <option key={cal} value={cal}>
+                          {cal}
+                        </option>
+                      ))}
+                    </select>
+                  </InputContainer>
+                </div>
+              </div>
             </div>
 
             {/* Recovery Code Section */}
@@ -410,6 +410,10 @@ export default function SettingsPage() {
                 <span>Logout</span>
               </motion.button>
             </div>
+
+            <p className="text-center text-xs text-gray-400 mt-6">
+              v{process.env.NEXT_PUBLIC_APP_VERSION}
+            </p>
           </motion.div>
         </div>
 

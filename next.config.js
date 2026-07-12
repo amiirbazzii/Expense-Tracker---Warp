@@ -1,3 +1,5 @@
+process.env.NEXT_PUBLIC_APP_VERSION = require("./package.json").version;
+
 /** @type {import('next').NextConfig} */
 
 const CACHE_VERSION = "v2";
@@ -5,7 +7,7 @@ const CACHE_VERSION = "v2";
 const withPWA = require("next-pwa")({
   dest: "public",
   register: true,
-  skipWaiting: true,
+  skipWaiting: false,
   clientsClaim: true,
   disable: process.env.NODE_ENV === "development",
   sw: "sw.js",
