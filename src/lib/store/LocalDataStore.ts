@@ -134,6 +134,51 @@ export class LocalDataStore {
     return this.initializing;
   }
 
+  /**
+   * Deduplicate records where both a local_* entry and a hydrated cloud entry
+   * exist for the same logical entity. Always prefers the cloud entry; among
+   * equals, the record with the higher updatedAt wins (Last-Write-Wins).
+   */
+  private deduplicateEntities<T extends { id: string; cloudId?: string; updatedAt?: number }>(
+    entities: T[],
+  ): T[] {
+    const byCloudId = new Map<string, T[]>();
+    const noCloudId: T[] = [];
+
+    for (const entity of entities) {
+      if (!entity.cloudId) {
+        noCloudId.push(entity);
+      } else {
+        const existing = byCloudId.get(entity.cloudId);
+        if (existing) {
+          existing.push(entity);
+        } else {
+          byCloudId.set(entity.cloudId, [entity]);
+        }
+      }
+    }
+
+    const deduped: T[] = [...noCloudId];
+
+    for (const group of Array.from(byCloudId.values())) {
+      if (group.length === 1) {
+        deduped.push(group[0]);
+      } else {
+        // Multiple records mapping to the same cloud ID — pick the best one.
+        // Priority: non-local (hydrated) over local_ entries; then highest updatedAt.
+        const sorted = group.sort((a: T, b: T) => {
+          const aIsLocal = a.id.startsWith("local_");
+          const bIsLocal = b.id.startsWith("local_");
+          if (aIsLocal !== bIsLocal) return aIsLocal ? 1 : -1;
+          return (b.updatedAt ?? 0) - (a.updatedAt ?? 0);
+        });
+        deduped.push(sorted[0]);
+      }
+    }
+
+    return deduped;
+  }
+
   /** Re-read every collection from IndexedDB and emit a change event. */
   async refresh(): Promise<void> {
     const [
@@ -154,20 +199,29 @@ export class LocalDataStore {
       this.storage.getLoans(),
     ]);
 
+    // Deduplicate: when a local_* record and a hydrated cloud record share
+    // the same logical entity, keep only the cloud record (LWW by updatedAt).
+    const dedupedExpenses = this.deduplicateEntities(expenses);
+    const dedupedIncome = this.deduplicateEntities(income);
+    const dedupedCategories = this.deduplicateEntities(categories);
+    const dedupedForValues = this.deduplicateEntities(forValues);
+    const dedupedCards = this.deduplicateEntities(cards);
+    const dedupedIncomeCategories = this.deduplicateEntities(incomeCategories);
+    const dedupedLoans = this.deduplicateEntities(loans);
+
     this.snapshot = {
-      expenses: expenses.map(this.toExpenseDoc),
-      income: income.map(this.toIncomeDoc),
-      // Merge regular categories with income categories for the unified list
+      expenses: dedupedExpenses.map(this.toExpenseDoc),
+      income: dedupedIncome.map(this.toIncomeDoc),
       categories: [
-        ...categories.map(this.toCategoryDoc),
-        ...incomeCategories.map((c) => ({
+        ...dedupedCategories.map(this.toCategoryDoc),
+        ...dedupedIncomeCategories.map((c) => ({
           ...this.toCategoryDoc(c),
           type: "income" as const,
         })),
       ],
-      forValues: forValues.map(this.toForValueDoc),
-      cards: this.computeCardBalances(cards, income, expenses),
-      loans: loans.map(this.toLoanDoc),
+      forValues: dedupedForValues.map(this.toForValueDoc),
+      cards: this.computeCardBalances(dedupedCards, dedupedIncome, dedupedExpenses),
+      loans: dedupedLoans.map(this.toLoanDoc),
     };
 
     this.emit();

@@ -20,6 +20,7 @@
 import { ConvexClient } from "convex/browser";
 import { api } from "../../../convex/_generated/api";
 import { MutationQueueManager } from "../queue/MutationQueueManager";
+import { LocalStorageManager } from "../storage/LocalStorageManager";
 
 // ── Action router ─────────────────────────────────────────────────────────────
 // Maps the opaque `action` string stored in the queue to the correct
@@ -59,6 +60,7 @@ const IDB_DATABASES_TO_WIPE = ["ExpenseTrackerV2"];
 export class SyncEngine {
   private client: ConvexClient | null = null;
   private queue = new MutationQueueManager();
+  private storage = new LocalStorageManager();
 
   // The auth token (tokenIdentifier) used to authenticate every mutation.
   // Updated via `setAuthToken` when the session token refreshes.
@@ -301,17 +303,29 @@ export class SyncEngine {
           // Execute the Convex mutation.
           const result = await this.client.mutation(fn, payload);
 
-          // ── Capture ID mapping for cards, income, expenses ────────────
-          if (_localId) {
-            if (mutation.action === "cards:addCard") {
-              this.localToConvexId.set(_localId, result as string);
-              console.log(`[SyncEngine] 📍 mapped card ${_localId} → ${result}`);
-            } else if (mutation.action === "income:createIncome") {
-              this.localToConvexId.set(_localId, result as string);
-              console.log(`[SyncEngine] 📍 mapped income ${_localId} → ${result}`);
-            } else if (mutation.action === "expenses:createExpense") {
-              this.localToConvexId.set(_localId, result as string);
-              console.log(`[SyncEngine] 📍 mapped expense ${_localId} → ${result}`);
+          // ── Capture ID mapping and persist to IndexedDB ────────────
+          if (_localId && result) {
+            const convexId = typeof result === "string" ? result : (result as any)._id ?? (result as any).id;
+            if (convexId) {
+              this.localToConvexId.set(_localId, convexId);
+              console.log(`[SyncEngine] 📍 mapped ${mutation.action} ${_localId} → ${convexId}`);
+
+              // Persist cloudId to IndexedDB so the read layer can deduplicate
+              const entityType = mutation.action.split(":")[0];
+              const collectionMap: Record<string, string> = {
+                expenses: "expenses",
+                income: "income",
+                cards: "cards",
+                categories: "categories",
+                forValues: "forValues",
+                loans: "loans",
+              };
+              const collection = collectionMap[entityType] || entityType;
+              try {
+                await this.storage.markEntityAsSynced(collection, _localId, convexId);
+              } catch (err) {
+                console.warn(`[SyncEngine] Failed to persist cloudId for ${_localId}:`, err);
+              }
             }
           }
 

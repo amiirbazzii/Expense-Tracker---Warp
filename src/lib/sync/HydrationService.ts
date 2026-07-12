@@ -187,9 +187,16 @@ class HydrationService {
 
       const existing = localById.get(docId);
       if (existing) {
-        // Entity exists locally and has no pending mutation — update with server data
-        await this.storage.updateEntity(collection, docId, this.toLocalFields(collection, doc));
-        updated++;
+        // LWW: only update if server data is newer than local data
+        const serverUpdatedAt = doc.updatedAt || doc._creationTime || Date.now();
+        const localUpdatedAt = existing.updatedAt || 0;
+
+        if (serverUpdatedAt >= localUpdatedAt) {
+          await this.storage.updateEntity(collection, docId, this.toLocalFields(collection, doc));
+          updated++;
+        } else {
+          skipped++;
+        }
       } else {
         // New entity from server — insert into IndexedDB
         await this.storage.insertEntity(collection, docId, this.toLocalFields(collection, doc));
@@ -207,9 +214,11 @@ class HydrationService {
    * The storage layer adds id, localId, syncStatus, version, timestamps.
    */
   private toLocalFields(collection: string, doc: any): Record<string, any> {
+    const base = { updatedAt: doc.updatedAt || doc._creationTime || Date.now() };
     switch (collection) {
       case "expenses":
         return {
+          ...base,
           cloudId: doc._id,
           amount: doc.amount,
           title: doc.title,
@@ -220,6 +229,7 @@ class HydrationService {
         };
       case "income":
         return {
+          ...base,
           cloudId: doc._id,
           amount: doc.amount,
           cardId: doc.cardId,
@@ -230,27 +240,32 @@ class HydrationService {
         };
       case "categories":
         return {
+          ...base,
           cloudId: doc._id,
           name: doc.name,
         };
       case "incomeCategories":
         return {
+          ...base,
           cloudId: doc._id,
           name: doc.name,
           type: "income" as const,
         };
       case "forValues":
         return {
+          ...base,
           cloudId: doc._id,
           value: doc.value,
         };
       case "cards":
         return {
+          ...base,
           cloudId: doc._id,
           name: doc.name,
         };
       case "loans":
         return {
+          ...base,
           cloudId: doc._id,
           name: doc.name,
           totalAmount: doc.totalAmount,
@@ -262,7 +277,7 @@ class HydrationService {
           startYear: doc.startYear,
         };
       default:
-        return { cloudId: doc._id, ...doc };
+        return { ...base, cloudId: doc._id, ...doc };
     }
   }
 }
