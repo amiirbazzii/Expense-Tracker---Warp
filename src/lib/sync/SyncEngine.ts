@@ -285,8 +285,8 @@ export class SyncEngine {
           // ── Build payload ─────────────────────────────────────────────
           // 1. Stamp the current auth token.
           // 2. Translate any local ID references to Convex IDs.
-          // 3. Strip internal __localId before sending to Convex.
-          const { __localId: _localId, ...rest } = mutation.payload;
+          // 3. Strip internal fields (__localId, localExpenseId, localIncomeId) before sending to Convex.
+          const { __localId: _localId, localExpenseId: _lei, localIncomeId: _lii, ...rest } = mutation.payload;
           const payload: Record<string, unknown> = {
             ...rest,
             token: this.authToken,
@@ -329,6 +329,39 @@ export class SyncEngine {
               } catch (err) {
                 console.warn(`[SyncEngine] Failed to persist cloudId for ${_localId}:`, err);
               }
+            }
+          }
+
+          // ── Special: link local transfer records to cloud IDs ──────
+          if (mutation.action === "transferFunds" && result) {
+            const { localExpenseId, localIncomeId } = mutation.payload;
+            const res = result as any;
+            const cloudExpenseId = res.expenseId;
+            const cloudIncomeId = res.incomeId;
+
+            console.log("[SyncEngine] transferFunds response:", res);
+            console.log("[SyncEngine] local IDs:", { localExpenseId, localIncomeId });
+
+            if (localExpenseId && cloudExpenseId) {
+              await this.storage.markEntityAsSynced("expenses", localExpenseId, cloudExpenseId);
+              console.log(`[SyncEngine] 📍 transferFunds: expense ${localExpenseId} → ${cloudExpenseId}`);
+            } else {
+              console.warn("[SyncEngine] ⚠ Could not link expense:", { localExpenseId, cloudExpenseId });
+            }
+
+            if (localIncomeId && cloudIncomeId) {
+              await this.storage.markEntityAsSynced("income", localIncomeId, cloudIncomeId);
+              console.log(`[SyncEngine] 📍 transferFunds: income ${localIncomeId} → ${cloudIncomeId}`);
+            } else {
+              console.warn("[SyncEngine] ⚠ Could not link income:", { localIncomeId, cloudIncomeId });
+            }
+
+            // Refresh the store so deduplicateEntities() picks up the cloudId links
+            try {
+              const { localDataStore } = await import("../store");
+              await localDataStore.refresh();
+            } catch (err) {
+              console.warn("[SyncEngine] Failed to refresh store after transferFunds:", err);
             }
           }
 

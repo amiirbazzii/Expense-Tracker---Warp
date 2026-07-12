@@ -388,7 +388,7 @@ export const transferFunds = mutation({
     const now = Date.now();
 
     // Create an expense for the 'from' card
-    await ctx.db.insert("expenses", {
+    const expenseId = await ctx.db.insert("expenses", {
       amount: args.amount,
       cardId: args.fromCardId,
       date: now,
@@ -400,7 +400,7 @@ export const transferFunds = mutation({
     });
 
     // Create an income for the 'to' card
-    await ctx.db.insert("income", {
+    const incomeId = await ctx.db.insert("income", {
       amount: args.amount,
       cardId: args.toCardId,
       date: now,
@@ -411,6 +411,6 @@ export const transferFunds = mutation({
       createdAt: now,
     });
 
-    return { success: true };
+    return { expenseId, incomeId };
   },
 });

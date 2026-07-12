@@ -25,6 +25,7 @@ import { useLocalData } from "@/hooks/useLocalData";
 import { localDataStore } from "@/lib/store";
 import { DropdownMenu } from "@/components/DropdownMenu";
 import { MutationQueueManager } from "@/lib/queue/MutationQueueManager";
+import { LocalStorageManager } from "@/lib/storage/LocalStorageManager";
 
 export default function CardsPage() {
   const { token } = useAuth();
@@ -41,6 +42,7 @@ export default function CardsPage() {
 
   // Single source of truth — reactive local store (deduplicated via LocalDataStore)
   const { cards: cardBalances } = useLocalData();
+  const localStorageManager = new LocalStorageManager();
 
   const addCard = async () => {
     if (!cardName.trim()) return;
@@ -91,34 +93,37 @@ export default function CardsPage() {
         cardBalances.find((c) => c.cardId === toCard)?.cardName || "Destination";
       const now = Date.now();
 
-      // 1. Write expense (debit source) and income (credit dest) to IndexedDB — no enqueue
-      //    These are local-only records for immediate UI balance updates.
-      await localDataStore.addExpense({
+      // 1. Write expense/income to IndexedDB locally — NO enqueue.
+      //    transferFunds handles server creation; we only need local records for 0ms UI.
+      const localExpense = await localStorageManager.saveExpense({
         amount: transferAmount,
         title: `Transfer to ${toCardName}`,
         category: ["Card Transfer"],
         for: [],
         date: now,
         cardId: fromCard,
-      });
-      await localDataStore.addIncome({
+      }, { skipEnqueue: true });
+
+      const localIncome = await localStorageManager.saveIncome({
         amount: transferAmount,
         source: `Transfer from ${fromCardName}`,
         category: "Card Transfer",
         date: now,
         cardId: toCard,
-      });
+      }, { skipEnqueue: true });
 
-      // 2. Enqueue a single transferFunds mutation (SyncEngine translates local IDs)
+      // 2. Enqueue transferFunds with local IDs for post-sync linking
       const queue = new MutationQueueManager();
       await queue.enqueue("transferFunds", {
         token,
         fromCardId: fromCard,
         toCardId: toCard,
         amount: transferAmount,
+        localExpenseId: localExpense.id,
+        localIncomeId: localIncome.id,
       });
 
-      // 3. Refresh local store → 0ms UI update with new balances
+      // 3. Refresh → 0ms UI update with new balances
       await localDataStore.refresh();
 
       toast.success("Transfer successful.");
