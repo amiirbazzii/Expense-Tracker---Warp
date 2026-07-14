@@ -14,18 +14,14 @@ const withPWA = require("next-pwa")({
   importScripts: ["/background-sync-sw.js"],
   buildExcludes: [/app-build-manifest\.json$/, /middleware-manifest\.json$/],
   publicExcludes: ["!robots.txt", "!sitemap.xml", "!background-sync-sw.js"],
-  // Critical: cache the start URL so the shell loads instantly offline
-  // We handle this ourselves via the root-pages StaleWhileRevalidate route below
   dynamicStartUrl: false,
   dynamicStartUrlRedirect: "/dashboard",
   fallbacks: {
     document: "/",
   },
-  // Aggressive caching for offline-first experience
   cacheOnFrontEndNav: true,
-  reloadOnOnline: false, // Don't auto-reload when coming back online
+  reloadOnOnline: false,
   runtimeCaching: [
-    // Next.js static chunks - Cache first for offline support
     {
       urlPattern: /^\/_next\/static\/.*/,
       handler: "CacheFirst",
@@ -33,14 +29,13 @@ const withPWA = require("next-pwa")({
         cacheName: `next-static-chunks-${CACHE_VERSION}`,
         expiration: {
           maxEntries: 200,
-          maxAgeSeconds: 365 * 24 * 60 * 60, // 1 year
+          maxAgeSeconds: 365 * 24 * 60 * 60,
         },
         cacheableResponse: {
           statuses: [0, 200],
         },
       },
     },
-    // Image caching with long expiration
     {
       urlPattern: /\.(?:png|jpg|jpeg|svg|gif|ico|webp|avif)$/,
       handler: "CacheFirst",
@@ -48,11 +43,10 @@ const withPWA = require("next-pwa")({
         cacheName: `images-${CACHE_VERSION}`,
         expiration: {
           maxEntries: 60,
-          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+          maxAgeSeconds: 30 * 24 * 60 * 60,
         },
       },
     },
-    // Static resources with cache first
     {
       urlPattern: /\.(?:js|css|woff|woff2|ttf|eot)$/,
       handler: "CacheFirst",
@@ -60,11 +54,10 @@ const withPWA = require("next-pwa")({
         cacheName: `static-resources-${CACHE_VERSION}`,
         expiration: {
           maxEntries: 100,
-          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+          maxAgeSeconds: 30 * 24 * 60 * 60,
         },
       },
     },
-    // API requests - Network first with offline fallback
     {
       urlPattern: ({ request, url }) => {
         return (
@@ -80,7 +73,7 @@ const withPWA = require("next-pwa")({
         networkTimeoutSeconds: 10,
         expiration: {
           maxEntries: 50,
-          maxAgeSeconds: 5 * 60, // 5 minutes
+          maxAgeSeconds: 5 * 60,
         },
         cacheableResponse: {
           statuses: [0, 200],
@@ -88,11 +81,9 @@ const withPWA = require("next-pwa")({
         plugins: [
           {
             cacheWillUpdate: async ({ response }) => {
-              // Only cache successful responses
               return response.status === 200 ? response : null;
             },
             requestWillFetch: async ({ request }) => {
-              // Add offline indicator to requests
               const url = new URL(request.url);
               url.searchParams.set("offline-capable", "true");
               return new Request(url.toString(), request);
@@ -101,12 +92,9 @@ const withPWA = require("next-pwa")({
         ],
       },
     },
-    // App pages - StaleWhileRevalidate so cached shell is served instantly
-    // offline; Next.js client-side router handles the actual page rendering.
     {
       urlPattern: ({ request, url }) => {
         const pathname = new URL(url).pathname;
-        // All main app pages – must be visited at least once online to be cached
         const appPages = [
           "/dashboard",
           "/add",
@@ -127,15 +115,13 @@ const withPWA = require("next-pwa")({
         cacheName: `app-pages-${CACHE_VERSION}`,
         expiration: {
           maxEntries: 30,
-          maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
+          maxAgeSeconds: 7 * 24 * 60 * 60,
         },
         cacheableResponse: {
           statuses: [0, 200],
         },
       },
     },
-    // Root page and auth pages - StaleWhileRevalidate for instant
-    // offline access. Root (/) is the critical entry point when bootstrapping.
     {
       urlPattern: ({ request, url }) => {
         const pathname = new URL(url).pathname;
@@ -151,14 +137,13 @@ const withPWA = require("next-pwa")({
         cacheName: `root-pages-${CACHE_VERSION}`,
         expiration: {
           maxEntries: 10,
-          maxAgeSeconds: 14 * 24 * 60 * 60, // 14 days
+          maxAgeSeconds: 14 * 24 * 60 * 60,
         },
         cacheableResponse: {
           statuses: [0, 200],
         },
       },
     },
-    // Other navigation requests - StaleWhileRevalidate for instant offline support
     {
       urlPattern: ({ request }) => request.destination === "document",
       handler: "StaleWhileRevalidate",
@@ -166,14 +151,13 @@ const withPWA = require("next-pwa")({
         cacheName: `pages-${CACHE_VERSION}`,
         expiration: {
           maxEntries: 50,
-          maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
+          maxAgeSeconds: 7 * 24 * 60 * 60,
         },
         cacheableResponse: {
           statuses: [0, 200],
         },
       },
     },
-    // Vercel analytics - Network only, fail silently when offline
     {
       urlPattern: ({ url }) => {
         const pathname = new URL(url).pathname;
@@ -184,7 +168,6 @@ const withPWA = require("next-pwa")({
         plugins: [
           {
             handlerDidError: async () => {
-              // Fail silently for analytics when offline
               console.log("Vercel analytics unavailable offline");
               return new Response("", { status: 200 });
             },
@@ -192,13 +175,9 @@ const withPWA = require("next-pwa")({
         ],
       },
     },
-    // General resources with cache-first strategy for offline support.
-    // Excludes document requests (handled by dedicated page caches above)
-    // and API/Convex requests (handled by api-cache).
     {
       urlPattern: ({ request, url }) => {
         const pathname = new URL(url).pathname;
-        // Skip documents (handled by page caches), API calls, and dev HMR
         const noCache = [
           "/api/",
           "/_next/webpack-hmr",
@@ -216,7 +195,7 @@ const withPWA = require("next-pwa")({
         cacheName: `general-cache-${CACHE_VERSION}`,
         expiration: {
           maxEntries: 100,
-          maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
+          maxAgeSeconds: 7 * 24 * 60 * 60,
         },
         cacheableResponse: {
           statuses: [0, 200],
@@ -229,23 +208,21 @@ const withPWA = require("next-pwa")({
 const path = require("path");
 
 const nextConfig = {
-  // Optionally ignore type errors during builds
+  // ۱. اضافه شدن خروجی مستقل برای سازگاری حداکثری با کلودفلر
+  output: "standalone",
+  
   typescript: {
     ignoreBuildErrors: false,
   },
-  // Performance optimizations
   experimental: {
     optimizePackageImports: ["lucide-react", "framer-motion"],
   },
-  // Compress images
   images: {
     formats: ["image/webp", "image/avif"],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
-  // Bundle optimization
   webpack: (config, { isServer }) => {
-    // Resolve @/ path alias from tsconfig
     config.resolve.alias = {
       ...config.resolve.alias,
       "@": path.join(__dirname, "src"),
@@ -258,30 +235,31 @@ const nextConfig = {
       };
     }
 
-    // Optimize bundle splitting
-    config.optimization = {
-      ...config.optimization,
-      splitChunks: {
-        chunks: "all",
-        cacheGroups: {
-          vendor: {
-            test: /[\/]node_modules[\/]/,
-            name: "vendors",
-            chunks: "all",
-          },
-          common: {
-            name: "common",
-            minChunks: 2,
-            chunks: "all",
-            enforce: true,
+    // ۲. اصلاح وب‌پک: حذف چانک‌بندی دستی زمان بیلد سرور برای جلوگیری از تداخل با وورکرها
+    if (!isServer) {
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          chunks: "all",
+          cacheGroups: {
+            vendor: {
+              test: /[\/]node_modules[\/]/,
+              name: "vendors",
+              chunks: "all",
+            },
+            common: {
+              name: "common",
+              minChunks: 2,
+              chunks: "all",
+              enforce: true,
+            },
           },
         },
-      },
-    };
+      };
+    }
 
     return config;
   },
-  // Enable compression
   compress: true,
 };
 
