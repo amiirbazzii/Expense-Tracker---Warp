@@ -28,7 +28,7 @@ const TAB_BASE = `flex-1 py-2.5 text-[13px] font-medium text-center transition-a
 const TAB_ACTIVE = `${TAB_BASE} text-black border-b-2 border-black`;
 const TAB_INACTIVE = `${TAB_BASE} text-gray-400 hover:text-gray-600 border-b-2 border-transparent`;
 
-const NAV_BTN = "p-1.5 rounded-lg hover:bg-gray-100 transition-colors duration-150";
+const NAV_BTN = "p-2 rounded-lg hover:bg-gray-100";
 const NAV_ICON = "text-gray-600";
 
 const GRID_CLS = "grid grid-cols-3 gap-3 p-4 text-center";
@@ -105,15 +105,25 @@ export function PersianDatePicker({ value, onChange, label }: PersianDatePickerP
         zIndex: 50,
         width: POPOVER_W,
         left,
+        direction: "rtl",
         ...(showBelow
           ? { top: rect.bottom + 4 }
           : { bottom: viewportH - rect.top + 4 }),
       });
     };
+
     updatePosition();
+
+    // Double-RAF: waits for browser paint frame boundaries so Framer Motion spring updates are tracked
+    const rafId = requestAnimationFrame(() => {
+      requestAnimationFrame(updatePosition);
+    });
+
     window.addEventListener("resize", updatePosition);
     window.addEventListener("scroll", updatePosition, true);
+
     return () => {
+      cancelAnimationFrame(rafId);
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
     };
@@ -278,18 +288,18 @@ export function PersianDatePicker({ value, onChange, label }: PersianDatePickerP
 
           <div className="flex items-center justify-between px-4 py-2 select-none">
             <button type="button" onClick={goBack} className={NAV_BTN} aria-label="Previous">
-              <ChevronLeft size={18} className={NAV_ICON} />
+              <ChevronRight size={18} className={NAV_ICON} />
             </button>
             <span className={`text-sm font-semibold text-gray-900 ${FONT}`}>{rangeText}</span>
             <button type="button" onClick={goForward} className={NAV_BTN} aria-label="Next">
-              <ChevronRight size={18} className={NAV_ICON} />
+              <ChevronLeft size={18} className={NAV_ICON} />
             </button>
           </div>
 
           <div className="h-[256px] grid">
-            {viewMode === "day" &&
+            {viewMode === "day" && (
               <div className="w-full px-3">
-                <CalendarGrid rtl
+                <CalendarGrid
                   value={tempDate}
                   onChange={handleCalendarChange}
                   currentDate={currentDate}
@@ -301,7 +311,6 @@ export function PersianDatePicker({ value, onChange, label }: PersianDatePickerP
                   buttons={false}
                   showOtherDays
                   className="rmdp-custom rmdp-rtl"
-                  animations={[]}
                 />
               </div>
             )}

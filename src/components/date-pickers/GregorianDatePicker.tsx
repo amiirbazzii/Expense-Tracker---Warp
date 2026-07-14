@@ -104,10 +104,19 @@ export function GregorianDatePicker({ value, onChange, label }: GregorianDatePic
           : { bottom: viewportH - rect.top + 4 }),
       });
     };
+
     updatePosition();
+
+    // Double-RAF: waits for browser paint frame boundaries so Framer Motion spring updates are tracked
+    const rafId = requestAnimationFrame(() => {
+      requestAnimationFrame(updatePosition);
+    });
+
     window.addEventListener("resize", updatePosition);
     window.addEventListener("scroll", updatePosition, true);
+
     return () => {
+      cancelAnimationFrame(rafId);
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
     };
