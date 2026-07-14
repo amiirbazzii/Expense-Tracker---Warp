@@ -120,10 +120,7 @@ body {
   }
 
   /* Apply Persian font to any text containing Persian characters */
-  html
-    :is(h1, h2, h3, h4, h5, h6, p, span, div, label, button, a, li, td, th):not(
-      input
-    ):not(textarea):not(select) {
+  html :is(h1, h2, h3, h4, h5, h6, p, span, div, label, button, a, li, td, th):not(input):not(textarea):not(select) {
     /* This will be handled by JavaScript font detection */
   }
 
@@ -145,6 +142,7 @@ body {
     transform: translateY(100%);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -155,6 +153,7 @@ body {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -165,12 +164,15 @@ body {
     transform: scale(0.3);
     opacity: 0;
   }
+
   50% {
     transform: scale(1.05);
   }
+
   70% {
     transform: scale(0.9);
   }
+
   100% {
     transform: scale(1);
     opacity: 1;
@@ -179,10 +181,12 @@ body {
 
 /* Sync status dot pulse — fades between amber and transparent */
 @keyframes pulse-sync {
+
   0%,
   100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.25;
   }
@@ -206,6 +210,7 @@ body {
 
 /* Mobile-friendly touch targets */
 @media (hover: none) and (pointer: coarse) {
+
   button,
   a,
   input,
@@ -250,4 +255,87 @@ html {
 /* Disable pull-to-refresh on mobile */
 body {
   overscroll-behavior-y: contain;
+}
+
+/* ===== Custom Date Picker Styles (react-multi-date-picker overrides) ===== */
+
+.rmdp-custom.rmdp-wrapper {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  width: 100% !important;
+}
+
+.rmdp-custom .rmdp-header {
+  display: none !important;
+}
+
+.rmdp-custom .rmdp-calendar {
+  padding: 0 !important;
+}
+
+.rmdp-custom .rmdp-day-picker {
+  padding: 0 !important;
+  display: grid !important;
+}
+
+.rmdp-custom .rmdp-top-class {
+  display: grid !important;
+}
+
+.rmdp-custom .rmdp-day,
+.rmdp-custom .rmdp-week-day {
+  height: 36px;
+  width: 36px;
+}
+
+.rmdp-custom .rmdp-day span {
+  font-size: 14px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  width: 36px;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  font-family: inherit;
+}
+
+.rmdp-custom .rmdp-week-day {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  height: 32px;
+  font-family: inherit;
+}
+
+.rmdp-custom .rmdp-month-picker,
+.rmdp-custom .rmdp-year-picker {
+  padding: 8px 0;
+}
+
+.rmdp-custom .rmdp-month-picker .rmdp-day,
+.rmdp-custom .rmdp-year-picker .rmdp-day {
+  height: 44px;
+  width: auto;
+}
+
+.rmdp-custom .rmdp-month-picker .rmdp-day span,
+.rmdp-custom .rmdp-year-picker .rmdp-day span {
+  height: 44px;
+  width: 100%;
+  font-size: 14px;
+  border-radius: 12px;
+  font-family: inherit;
+}
+
+.persian-datepicker-popover {
+  direction: rtl !important;
+  text-align: right !important;
+}
+
+.persian-datepicker-popover * {
+  direction: rtl !important;
 }

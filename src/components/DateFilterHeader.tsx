@@ -1,7 +1,6 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useSettings } from "@/contexts/SettingsContext";
 import { Button } from "@/components/Button";
 
 
@@ -16,31 +15,23 @@ interface DateFilterHeaderProps {
   isLoading?: boolean;
 }
 
-export function DateFilterHeader({ 
-  monthName, 
-  year, 
-  onPreviousMonth, 
-  onNextMonth, 
-  subtitle, 
-  variant = 'default',
+export function DateFilterHeader({
+  monthName,
+  year,
+  onPreviousMonth,
+  onNextMonth,
+  subtitle,
   isMainTitle = false,
-  isLoading = false 
+  isLoading = false
 }: DateFilterHeaderProps) {
-  const { settings } = useSettings();
-
-  const containerClasses = variant === 'card'
-    ? "flex items-center justify-between mb-4"
-    : "flex items-center justify-between mb-4";
-
+  const containerClasses = "flex items-center justify-between mb-4";
   const titleClasses = isMainTitle
     ? "text-xl font-bold text-gray-900 text-center"
     : "text-lg font-semibold text-gray-800 text-center";
-  
+
   const MainTitleComponent = isMainTitle ? 'h1' : 'h2';
 
-  const formattedDate = settings 
-    ? `${monthName} ${year}` 
-    : `${monthName} ${year}`;
+  const formattedDate = `${monthName} ${year}`;
 
   return (
     <div className={containerClasses}>
