@@ -36,8 +36,10 @@ export type MutationAction = "CREATE" | "UPDATE" | "DELETE";
 export interface PendingMutation {
   /** UUIDv4 idempotency key generated via crypto.randomUUID() */
   id: string;
-  /** Convex mutation route, e.g. "api.expenses.createExpense" */
+  /** Mutation action: "CREATE" | "UPDATE" | "DELETE" or a composite route like "expenses:createExpense" */
   action: string;
+  /** Entity store name, e.g. "expenses", "income", "cards" */
+  storeName: string;
   /** Clean payload to send to the mutation */
   payload: any;
   /** FIFO ordering timestamp */

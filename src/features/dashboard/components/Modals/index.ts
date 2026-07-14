@@ -1,1 +1,1 @@
-export * from './DeleteConfirmationModal';
+// Modals module

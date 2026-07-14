@@ -811,10 +811,10 @@ export class ConflictDetector {
 
     // Merge each entity type
     for (const entityType of ['expenses', 'income', 'categories', 'cards'] as EntityType[]) {
-      if (cloudData[entityType] && localData[entityType]) {
+      if ((cloudData as any)[entityType] && (localData as any)[entityType]) {
         merged[entityType] = this.mergeEntityTypeByTimestamp(
-          localData[entityType],
-          cloudData[entityType],
+          (localData as any)[entityType],
+          (cloudData as any)[entityType],
           entityType
         );
       }

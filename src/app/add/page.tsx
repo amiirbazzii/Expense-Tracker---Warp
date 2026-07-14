@@ -765,7 +765,7 @@ function AddTransactionContent() {
                     <IncomeCard
                       key={incomeRecord._id}
                       income={incomeRecord as any}
-                      cardName={cardMap[incomeRecord.cardId] || "Unknown Card"}
+                      cardName={incomeRecord.cardId ? (cardMap[incomeRecord.cardId] || "Unknown Card") : "Unknown Card"}
                       onDelete={(incomeId: Id<"income">) => {
                         setPendingIncomeDeletions((prev) => [
                           ...prev,

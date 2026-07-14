@@ -180,7 +180,7 @@ export function PayInstallmentSheet({
       // 2. Update loan locally
       await localStorageManager.updateEntity("loans", loan._id, {
         paidInstallments: loan.paidInstallments + 1,
-      });
+      } as any);
 
       // 3. Enqueue payInstallment with localExpenseId for post-sync linking
       const queue = new MutationQueueManager();

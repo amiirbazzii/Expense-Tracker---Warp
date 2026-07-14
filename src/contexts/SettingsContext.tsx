@@ -60,9 +60,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const saveOfflineSettings = async () => {
       if (onlineSettings) {
         const settingsToCache: OfflineUserSettings = {
-          currency: onlineSettings.currency,
-          calendar: onlineSettings.calendar,
-          language: onlineSettings.language
+          currency: onlineSettings.currency as OfflineUserSettings['currency'],
+          calendar: onlineSettings.calendar as OfflineUserSettings['calendar'],
+          language: (onlineSettings.language ?? 'en') as OfflineUserSettings['language'],
         };
         
         try {
@@ -94,14 +94,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }, [onlineSettings]);
 
   // Determine which settings to use
-  const effectiveSettings = onlineSettings || (offlineSettings ? {
+  const effectiveSettings = (onlineSettings || (offlineSettings ? {
     _id: 'offline' as any,
     _creationTime: Date.now(),
-    userId: 'offline',
+    updatedAt: Date.now(),
+    userId: '' as any,
     currency: offlineSettings.currency,
     calendar: offlineSettings.calendar,
-    language: offlineSettings.language
-  } : null);
+    language: offlineSettings.language,
+  } : null)) as Doc<"userSettings"> | null | undefined;
 
   // Track if we're using offline settings
   useEffect(() => {
@@ -128,8 +129,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       };
       
       const updatedSettings: OfflineUserSettings = {
-        ...currentSettings,
-        ...args
+        currency: (args.currency != null ? args.currency : currentSettings.currency) as OfflineUserSettings['currency'],
+        calendar: (args.calendar != null ? args.calendar : currentSettings.calendar) as OfflineUserSettings['calendar'],
+        language: (args.language != null ? args.language : currentSettings.language) as OfflineUserSettings['language'],
       };
       
       await offlineTokenManager.updateOfflineSettings(updatedSettings);

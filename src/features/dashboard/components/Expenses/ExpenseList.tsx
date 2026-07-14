@@ -6,10 +6,10 @@ import { Id } from "../../../../../convex/_generated/dataModel"; // Import Id ty
 interface ExpenseListProps {
   expenses: Expense[];
   onEdit: (expense: Expense) => void;
-  onDeleteSuccess: (expenseId: Id<"expenses">) => void; // Add onDeleteSuccess prop
+  onDelete: (expenseId: Id<"expenses">) => void;
 }
 
-export function ExpenseList({ expenses, onEdit, onDeleteSuccess }: ExpenseListProps) {
+export function ExpenseList({ expenses, onEdit, onDelete }: ExpenseListProps) {
   if (expenses.length === 0) {
     return (
       <div className="text-center py-8">
@@ -29,7 +29,7 @@ export function ExpenseList({ expenses, onEdit, onDeleteSuccess }: ExpenseListPr
               key={expense._id}
               expense={expense}
               onEdit={onEdit}
-              onDeleteSuccess={onDeleteSuccess} // Pass onDeleteSuccess to ExpenseCard
+              onDelete={onDelete}
             />
           ))}
       </AnimatePresence>

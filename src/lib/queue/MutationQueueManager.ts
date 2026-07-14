@@ -33,6 +33,7 @@ export class MutationQueueManager {
     const mutation: PendingMutation = {
       id: crypto.randomUUID(),
       action,
+      storeName: action.includes(':') ? action.split(':')[0] : action,
       payload,
       timestamp: Date.now(),
     };

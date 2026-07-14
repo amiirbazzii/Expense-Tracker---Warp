@@ -74,8 +74,8 @@ export function useTimeFramedData(type: DataType, _token: string | null) {
         return bDay - aDay;
       }
 
-      const aTime = a.createdAt ?? a._creationTime ?? a.date;
-      const bTime = b.createdAt ?? b._creationTime ?? b.date;
+      const aTime = (a as any).createdAt ?? a._creationTime ?? a.date;
+      const bTime = (b as any).createdAt ?? b._creationTime ?? b.date;
       return bTime - aTime;
     });
   }, [displayData]);

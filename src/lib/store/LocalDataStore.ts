@@ -453,8 +453,8 @@ export class LocalDataStore {
   ): Promise<CategoryDoc> {
     const saved =
       type === "income"
-        ? await this.storage.saveIncomeCategory({ name })
-        : await this.storage.saveCategory({ name });
+        ? await this.storage.saveIncomeCategory({ name, type: "income" })
+        : await this.storage.saveCategory({ name, type: "expense" });
 
     await this.queue.enqueue("expenses:createCategory", {
       token: this.userId,
@@ -489,7 +489,7 @@ export class LocalDataStore {
     startMonth: number;
     startYear: number;
   }): Promise<LoanDoc> {
-    const saved = await this.storage.saveLoan(data);
+    const saved = await this.storage.saveLoan({ ...data, userId: this.userId ?? "" });
 
     await this.queue.enqueue("loans:createLoan", {
       token: this.userId,

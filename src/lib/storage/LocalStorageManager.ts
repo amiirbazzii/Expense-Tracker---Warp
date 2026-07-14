@@ -32,7 +32,6 @@ export class LocalStorageManager {
       name: "ExpenseTrackerV2",
       storeName: "local_first_data",
       description: "Local-first data storage with cloud sync capabilities",
-      version: 2.0,
     });
   }
 
@@ -348,30 +347,6 @@ export class LocalStorageManager {
       syncStatus: "synced",
       version: 1,
       createdAt: Date.now(),
-      updatedAt: Date.now(),
-    } as any;
-
-    await this.setEntityCollection(entityType, collection);
-  }
-
-  /**
-   * Update an existing entity with server data (only if no pending mutation).
-   * Used by HydrationService to refresh synced entities.
-   */
-  async updateEntity(
-    entityType: EntityType,
-    id: string,
-    fields: Record<string, any>,
-  ): Promise<void> {
-    const collection = await this.getEntityCollection(entityType);
-    const existing = collection[id];
-    if (!existing) return;
-
-    collection[id] = {
-      ...existing,
-      ...fields,
-      id,
-      syncStatus: "synced",
       updatedAt: Date.now(),
     } as any;
 
@@ -1871,67 +1846,4 @@ export class LocalStorageManager {
     return total;
   }
 
-  async getEntityById<T extends LocalEntity>(
-    entityType: EntityType,
-    id: string,
-  ): Promise<T | null> {
-    const collection = await this.getEntityCollection<T>(entityType);
-    return collection[id] || null;
-  }
-
-  async searchEntities<T extends LocalEntity>(
-    entityType: EntityType,
-    searchTerm: string,
-    fields: string[] = [],
-  ): Promise<T[]> {
-    const collection = await this.getEntityCollection<T>(entityType);
-    const entities = Object.values(collection);
-
-    if (!searchTerm.trim()) return entities;
-
-    const searchLower = searchTerm.toLowerCase();
-
-    return entities.filter((entity) => {
-      // If no specific fields provided, search common fields
-      if (fields.length === 0) {
-        const searchableFields = [
-          "name",
-          "title",
-          "value",
-          "source",
-          "category",
-        ];
-        return searchableFields.some((field) => {
-          const fieldValue = (entity as any)[field];
-          if (typeof fieldValue === "string") {
-            return fieldValue.toLowerCase().includes(searchLower);
-          }
-          if (Array.isArray(fieldValue)) {
-            return fieldValue.some(
-              (item) =>
-                typeof item === "string" &&
-                item.toLowerCase().includes(searchLower),
-            );
-          }
-          return false;
-        });
-      }
-
-      // Search specific fields
-      return fields.some((field) => {
-        const fieldValue = (entity as any)[field];
-        if (typeof fieldValue === "string") {
-          return fieldValue.toLowerCase().includes(searchLower);
-        }
-        if (Array.isArray(fieldValue)) {
-          return fieldValue.some(
-            (item) =>
-              typeof item === "string" &&
-              item.toLowerCase().includes(searchLower),
-          );
-        }
-        return false;
-      });
-    });
-  }
 }

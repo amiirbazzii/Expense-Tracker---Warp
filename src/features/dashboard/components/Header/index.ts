@@ -1,1 +1,1 @@
-export * from './HeaderSection';
+// Header module - exports placeholder

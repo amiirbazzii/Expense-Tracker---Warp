@@ -226,14 +226,12 @@ const withPWA = require("next-pwa")({
   ],
 });
 
+const path = require("path");
+
 const nextConfig = {
-  // Skip ESLint checks during production builds (Vercel)
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   // Optionally ignore type errors during builds
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   // Performance optimizations
   experimental: {
@@ -247,6 +245,12 @@ const nextConfig = {
   },
   // Bundle optimization
   webpack: (config, { isServer }) => {
+    // Resolve @/ path alias from tsconfig
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "@": path.join(__dirname, "src"),
+    };
+
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -279,8 +283,6 @@ const nextConfig = {
   },
   // Enable compression
   compress: true,
-  // Reduce JavaScript bundle size
-  swcMinify: true,
 };
 
 module.exports = withPWA(nextConfig);

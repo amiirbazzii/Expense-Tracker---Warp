@@ -71,6 +71,6 @@ export function useLocalData() {
     // Exposed for components that previously checked this flag — always local now.
     isUsingOfflineData: false,
     hasOfflineBackup: true,
-    offlineBackupDate: null,
+    offlineBackupDate: null as Date | null,
   };
 }
