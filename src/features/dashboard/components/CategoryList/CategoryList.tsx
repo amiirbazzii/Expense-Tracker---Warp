@@ -46,7 +46,7 @@ export function CategoryList({ categoryTotals, expenses = [], income = [], mode 
           .sort(([, a], [, b]) => b - a)
           .map(([category, amount]) => (
             <button
-              key={category}
+              key={`cat-${category}`}
               type="button"
               onClick={() => setOpenCategory(category)}
               className="w-full flex items-center justify-between p-4 bg-white rounded-lg shadow-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 active:scale-[0.99] transition"

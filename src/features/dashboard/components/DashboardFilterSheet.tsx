@@ -123,8 +123,8 @@ export function DashboardFilterSheet({ open, onClose, title = "Filters", categor
               onChange={(e) => setCategory(e.target.value)}
             >
               <option value="">All categories</option>
-              {categoriesSuggestions.map((c) => (
-                <option key={c} value={c}>{c}</option>
+              {categoriesSuggestions.map((c, i) => (
+                <option key={`${c}-${i}`} value={c}>{c}</option>
               ))}
             </select>
           </InputContainer>
@@ -145,8 +145,8 @@ export function DashboardFilterSheet({ open, onClose, title = "Filters", categor
                 onChange={(e) => setForValue(e.target.value)}
               >
                 <option value="">All</option>
-                {forSuggestions.map((f) => (
-                  <option key={f} value={f}>{f}</option>
+                {forSuggestions.map((f, i) => (
+                  <option key={`${f}-${i}`} value={f}>{f}</option>
                 ))}
               </select>
             </InputContainer>

@@ -240,7 +240,7 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
               return (
                 <button
                   type="button"
-                  key={item.label}
+                  key={`legend-${item.label}`}
                   onClick={() => handleLegendClick(item.label)}
                   className="flex items-center gap-[4px] select-none transition-opacity"
                   style={{ minHeight: 'auto', height: 'auto' }}
