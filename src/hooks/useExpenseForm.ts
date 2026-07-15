@@ -1,7 +1,8 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { localDataStore } from "@/lib/store";
 import { validateAmount } from "@/lib/validation";
+import type { ExpenseDoc } from "@/lib/store";
 
 interface ExpenseFormState {
   amount: string;
@@ -21,11 +22,29 @@ const INITIAL_EXPENSE_FORM: ExpenseFormState = {
   cardId: "",
 };
 
-export function useExpenseForm() {
-  const [form, setForm] = useState<ExpenseFormState>(INITIAL_EXPENSE_FORM);
+interface UseExpenseFormOptions {
+  existingExpense?: ExpenseDoc;
+  expenseId?: string;
+}
+
+export function useExpenseForm(options?: UseExpenseFormOptions) {
+  const [form, setForm] = useState<ExpenseFormState>(() => {
+    if (options?.existingExpense) {
+      const e = options.existingExpense;
+      return {
+        amount: e.amount.toString(),
+        title: e.title,
+        category: e.category,
+        for: Array.isArray(e.for) ? e.for : (e.for ? [e.for] : []),
+        date: new Date(e.date),
+        cardId: e.cardId || "",
+      };
+    }
+    return INITIAL_EXPENSE_FORM;
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const setField = useCallback((key: string, value: any) => {
+  const setField = useCallback((key: string, value: unknown) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   }, []);
 
@@ -47,7 +66,7 @@ export function useExpenseForm() {
         return;
       }
 
-      if (!form.cardId) {
+      if (!options?.expenseId && !form.cardId) {
         toast.error("Please select the card used for this expense.");
         return;
       }
@@ -67,26 +86,42 @@ export function useExpenseForm() {
       setIsSubmitting(true);
 
       try {
-        await localDataStore.addExpense({
-          amount,
-          title: form.title,
-          category: form.category,
-          for: form.for,
-          date: parsedDate.getTime(),
-          cardId: form.cardId,
-        });
-        toast.success("Your expense has been added.");
-        setForm((prev) => ({
-          ...INITIAL_EXPENSE_FORM,
-          cardId: prev.cardId,
-        }));
+        if (options?.expenseId) {
+          await localDataStore.updateExpense(options.expenseId, {
+            amount,
+            title: form.title,
+            category: form.category,
+            for: form.for,
+            date: parsedDate.getTime(),
+            cardId: form.cardId || undefined,
+          });
+          toast.success("Your expense has been updated.");
+        } else {
+          await localDataStore.addExpense({
+            amount,
+            title: form.title,
+            category: form.category,
+            for: form.for,
+            date: parsedDate.getTime(),
+            cardId: form.cardId,
+          });
+          toast.success("Your expense has been added.");
+          setForm((prev) => ({
+            ...INITIAL_EXPENSE_FORM,
+            cardId: prev.cardId,
+          }));
+        }
       } catch {
-        toast.error("Could not add your expense. Please try again.");
+        toast.error(
+          options?.expenseId
+            ? "Could not update your expense. Please try again."
+            : "Could not add your expense. Please try again.",
+        );
       } finally {
         setIsSubmitting(false);
       }
     },
-    [form],
+    [form, options?.expenseId],
   );
 
   const resetForm = useCallback(() => {

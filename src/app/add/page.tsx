@@ -10,7 +10,6 @@ import AppHeader from "@/components/AppHeader";
 import { SmartSelectInput } from "@/components/SmartSelectInput";
 import { Tabs } from "@/components/Tabs";
 import {
-  CreditCard,
   Receipt,
   Tag,
   User,
@@ -31,7 +30,7 @@ import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
-import InputContainer from "@/components/InputContainer";
+import { CardSelect } from "@/components/add/CardSelect";
 import { useLocalData } from "@/hooks/useLocalData";
 import { localDataStore } from "@/lib/store";
 import { useExpenseForm } from "@/hooks/useExpenseForm";
@@ -44,41 +43,6 @@ const capitalizeWords = (str: string) =>
     .split(" ")
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
-
-function CardSelect({
-  value,
-  cards,
-  onChange,
-}: {
-  value: string;
-  cards: { _id: string; name: string }[];
-  onChange: (v: string) => void;
-}) {
-  return (
-    <InputContainer
-      leftIcon={CreditCard}
-      rightAdornment={
-        <svg className="size-5 text-gray-500" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      }
-    >
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-transparent outline-none text-black placeholder:text-gray-500 py-1 px-0 appearance-none font-normal"
-        required
-      >
-        <option value="">Select card</option>
-        {cards.map((card) => (
-          <option key={card._id} value={card._id}>
-            {card.name}
-          </option>
-        ))}
-      </select>
-    </InputContainer>
-  );
-}
 
 function OfflineBanner() {
   return (
