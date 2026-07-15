@@ -3,7 +3,7 @@
   "version": "0.1.1",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "next lint",
@@ -15,7 +15,6 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
-    "@tailwindcss/postcss": "^4.3.2",
     "chart.js": "^4.5.1",
     "convex": "^1.42.1",
     "critters": "^0.0.25",
@@ -37,6 +36,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",

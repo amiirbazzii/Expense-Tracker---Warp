@@ -22,7 +22,7 @@ const geistMono = localFont({
   variable: "--font-geist-mono",
   weight: "100 900",
   display: "swap",
-  preload: true,
+  preload: false,
 });
 
 const iranSansX = localFont({
@@ -90,7 +90,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" data-scroll-behavior="smooth">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link

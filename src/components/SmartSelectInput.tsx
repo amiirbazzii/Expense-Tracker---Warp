@@ -179,8 +179,8 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
         contentClassName="gap-2 flex-wrap items-start"
       >
         <div className="flex w-full gap-2 flex-wrap items-center" onClick={() => inputRef.current?.focus()}>
-          {value.map(item => (
-            <span key={item} className="flex items-center gap-1.5 bg-[#e9e9e9] text-gray-800 text-sm font-medium px-2 py-1 rounded-md">
+          {value.map((item, i) => (
+            <span key={`${name}-chip-${item}-${i}`} className="flex items-center gap-1.5 bg-[#e9e9e9] text-gray-800 text-sm font-medium px-2 py-1 rounded-md">
               {item}
               {multiple && (
                 <button type="button" onClick={() => handleRemove(item)} className="text-gray-500 hover:text-gray-800">
@@ -218,7 +218,7 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
             {isLoading && <div className="px-3 py-2 text-sm text-gray-500">Loading...</div>}
             {!isLoading && suggestions.map((s, i) => (
               <button
-                key={s}
+                key={`${name}-suggestion-${s}-${i}`}
                 type="button"
                 onClick={() => handleSelect(s)}
                 className={`w-full text-left px-3 py-2 text-sm ${activeIndex === i ? 'bg-gray-100 text-gray-900' : 'text-gray-900 hover:bg-gray-50'}`}

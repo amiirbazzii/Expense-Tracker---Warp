@@ -7,6 +7,19 @@ export function usePwaRegistration() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
+    if (process.env.NODE_ENV === "development") {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const registration of registrations) {
+          registration.unregister().then((success) => {
+            if (success) {
+              console.log("[PWA] Unregistered active service worker in development mode");
+            }
+          });
+        }
+      });
+      return;
+    }
+
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     let isMounted = true;
     let isUpdating = false;
