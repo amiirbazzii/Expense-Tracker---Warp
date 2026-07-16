@@ -77,9 +77,10 @@ export function TransferForm({
         />
         <Button
           onClick={onTransfer}
+          size="medium"
           disabled={!fromCard || !toCard || !amount || isTransferring}
           loading={isTransferring}
-          className="w-full min-h-[44px]"
+          className="w-full"
           title="Transfer funds"
         >
           Transfer

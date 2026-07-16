@@ -141,9 +141,10 @@ export default function LoginPage() {
           <div>
             <Button
               type="submit"
+              size="medium"
               disabled={isLoading}
               loading={isLoading}
-              className="w-full min-h-[44px]"
+              className="w-full"
             >
               Sign in
             </Button>

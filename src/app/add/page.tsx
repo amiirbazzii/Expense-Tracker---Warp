@@ -381,7 +381,8 @@ function ExpenseTab({
           />
           <Button
             type="submit"
-            className="w-full bg-[#EAEAEA] text-gray-700 hover:bg-[#E0E0E0]"
+            variant="secondary"
+            className="w-full"
             disabled={isSubmitting || form.category.length === 0 || !form.cardId}
             loading={isSubmitting}
           >
@@ -518,7 +519,8 @@ function IncomeTab({
           </div>
           <Button
             type="submit"
-            className="w-full bg-[#EAEAEA] text-gray-700 hover:bg-[#E0E0E0]"
+            variant="secondary"
+            className="w-full"
             disabled={isSubmitting || form.category.length === 0 || !form.cardId}
             loading={isSubmitting}
           >

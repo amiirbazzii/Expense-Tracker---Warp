@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp, Archive } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { Button } from "@/components/Button";
 import type { CardDoc } from "@/lib/store/LocalDataStore";
 
 interface ArchivedCardsSectionProps {
@@ -57,13 +58,13 @@ export function ArchivedCardsSection({
                   <div className="font-medium text-gray-900 text-sm">
                     {card.cardName}
                   </div>
-                  <button
-                    onClick={() => onUnarchive(card.cardId)}
-                    className="flex items-center space-x-1 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors min-h-[36px]"
-                  >
-                    <Archive className="h-3.5 w-3.5 mr-1" />
+                  <Button
+                      variant="secondary"
+                      size="small"
+                      onClick={() => onUnarchive(card.cardId)}
+                    >
                     Unarchive
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>

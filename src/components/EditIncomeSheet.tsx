@@ -233,11 +233,12 @@ export function EditIncomeSheet({
         <div className="pt-2 pb-4">
           <Button
             type="submit"
+            size="medium"
             disabled={
               isSubmitting || formData.category.length === 0 || !formData.cardId
             }
             loading={isSubmitting}
-            className="w-full min-h-[44px]"
+            className="w-full"
           >
             Update Income
           </Button>

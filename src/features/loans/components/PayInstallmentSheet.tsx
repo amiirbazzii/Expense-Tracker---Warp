@@ -299,7 +299,8 @@ export function PayInstallmentSheet({
 
         <Button
           type="submit"
-          className="w-full bg-[#EAEAEA] text-gray-700 hover:bg-[#E0E0E0]"
+          variant="secondary"
+          className="w-full"
           disabled={isSubmitting || category.length === 0 || !cardId}
           loading={isSubmitting}
         >

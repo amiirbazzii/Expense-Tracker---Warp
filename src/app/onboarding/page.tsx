@@ -104,8 +104,8 @@ export default function OnboardingPage() {
                     onClick={addCard}
                     disabled={!cardName.trim()}
                     buttonType="icon"
-                    icon={<Plus size={20} />}
-                    className="min-h-[44px]"
+                    size="medium"
+                    icon={<Plus />}
                     aria-label="Add card"
                   />
                 </div>
@@ -147,9 +147,10 @@ export default function OnboardingPage() {
               <div className="pt-4">
                 <Button
                   type="submit"
+                  size="medium"
                   disabled={isSubmitting || cards.length === 0}
                   loading={isSubmitting}
-                  className="w-full min-h-[44px]"
+                  className="w-full"
                 >
                   Continue to Dashboard
                 </Button>

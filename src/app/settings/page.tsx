@@ -26,6 +26,7 @@ import { ConnectionStatusSection } from "@/components/settings/ConnectionStatusS
 import { PreferenceSelect } from "@/components/settings/PreferenceSelect";
 import { BackupBanner } from "@/components/settings/BackupBanner";
 import { ExportButton } from "@/components/settings/ExportButton";
+import { Button } from "@/components/Button";
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
@@ -190,14 +191,14 @@ export default function SettingsPage() {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900">Actions</h3>
 
-              <motion.button
-                whileTap={{ scale: 0.98 }}
+              <Button
                 onClick={handleLogout}
-                className="w-full flex items-center justify-center space-x-2 py-3 px-4 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 min-h-[44px]"
+                variant="danger"
+                size="medium"
+                className="w-full"
               >
-                <LogOut size={20} />
-                <span>Logout</span>
-              </motion.button>
+                Logout
+              </Button>
             </div>
 
             <p className="text-center text-xs text-gray-400 mt-6">

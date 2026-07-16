@@ -99,13 +99,14 @@ export function ExpenseFormFields({
       />
       <Button
         type="submit"
+        size="medium"
         disabled={
           isSubmitting ||
           form.category.length === 0 ||
           (requireCard && !form.cardId)
         }
         loading={isSubmitting}
-        className="w-full min-h-[44px]"
+        className="w-full"
       >
         {submitLabel}
       </Button>

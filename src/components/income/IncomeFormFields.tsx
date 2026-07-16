@@ -86,9 +86,10 @@ export function IncomeFormFields({
       </div>
       <Button
         type="submit"
+        size="medium"
         disabled={isSubmitting || form.category.length === 0 || !form.cardId}
         loading={isSubmitting}
-        className="w-full min-h-[44px]"
+        className="w-full"
       >
         {submitLabel}
       </Button>

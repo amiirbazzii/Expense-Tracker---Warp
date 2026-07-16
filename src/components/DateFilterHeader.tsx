@@ -43,7 +43,7 @@ export function DateFilterHeader({
         loading={isLoading}
         disabled={isLoading}
         aria-busy={isLoading}
-        icon={<ChevronLeft size={20} />}
+        icon={<ChevronLeft />}
       />
 
       <div className="text-center px-2">
@@ -61,7 +61,7 @@ export function DateFilterHeader({
         loading={isLoading}
         disabled={isLoading}
         aria-busy={isLoading}
-        icon={<ChevronRight size={20} />}
+        icon={<ChevronRight />}
       />
     </div>
   );

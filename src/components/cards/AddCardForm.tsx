@@ -58,11 +58,11 @@ export function AddCardForm({ onAddCard, isSubmitting }: AddCardFormProps) {
         </InputContainer>
         <Button
           type="submit"
+          size="medium"
           disabled={!cardName.trim() || isSubmitting}
           loading={isSubmitting}
           buttonType="icon"
           icon={<Plus size={20} />}
-          className="min-h-[44px]"
           aria-label="Add card"
           title="Add card"
         />

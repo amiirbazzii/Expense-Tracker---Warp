@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import { Wifi, WifiOff, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/Button";
 
 interface ConnectionStatusSectionProps {
   isOnline: boolean;
@@ -73,14 +73,10 @@ export function ConnectionStatusSection({
         </div>
 
         {!isOnline && pendingOperationsCount > 0 && (
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={handleSync}
-            className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 min-h-[44px]"
-          >
+          <Button onClick={handleSync} size="medium" variant="default">
             <RefreshCw size={16} />
             <span>Sync</span>
-          </motion.button>
+          </Button>
         )}
       </div>
     </div>
