@@ -10,6 +10,8 @@ import { DateFilterHeader } from "@/components/DateFilterHeader";
 import { FullScreenLoader } from "@/components/FullScreenLoader";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { Button } from "@/components/Button";
+
 
 // Import loan components
 import { LoanCard } from "@/features/loans/components/LoanCard";
@@ -187,15 +189,16 @@ export default function LoansPage() {
         <AppHeader
           right={
             hasLoans ? (
-              <button
+              <Button
+                variant="secondary"
+                size="small"
                 onClick={() => {
                   setEditingLoan(null);
                   setShowForm(true);
                 }}
-                className="text-sm font-semibold text-black bg-gray-100 py-3 px-5 transition-colors rounded-full"
               >
                 Add Loan
-              </button>
+            </Button>
             ) : null
           }
         />

@@ -233,7 +233,7 @@ export function EditIncomeSheet({
         <div className="pt-2 pb-4">
           <Button
             type="submit"
-            size="medium"
+            size="large"
             disabled={
               isSubmitting || formData.category.length === 0 || !formData.cardId
             }

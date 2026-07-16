@@ -200,7 +200,6 @@ export function LoanForm({ open, onClose, onSubmit, editingLoan }: LoanFormProps
 
         <Button
           type="submit"
-          variant="secondary"
           className="w-full"
           disabled={isSubmitting || !form.name || !form.totalAmount || !form.totalInstallments || !form.installmentAmount || !form.monthlyPaymentDay}
           loading={isSubmitting}

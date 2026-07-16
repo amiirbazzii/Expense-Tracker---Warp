@@ -15,7 +15,6 @@ import {
   User,
   TrendingUp,
   Type,
-  CaseSensitive,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -482,7 +481,7 @@ function IncomeTab({
             value={form.source}
             onChange={(e) => setField("source", e.target.value)}
             placeholder="Add a title"
-            icon={CaseSensitive}
+            icon={Type}
             required
           />
           <CardSelect
