@@ -11,26 +11,24 @@ import AppHeader from "@/components/AppHeader";
 import { RecoveryCodeCard } from "@/components/RecoveryCodeCard";
 import {
   LogOut,
-  Database,
   FileJson,
   FileSpreadsheet,
-  DollarSign,
-  Calendar as CalendarIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useDataBackup } from "@/hooks/useDataBackup";
 import { useEffect, useState } from "react";
 
 import { UserProfileSection } from "@/components/settings/UserProfileSection";
-import { ConnectionStatusSection } from "@/components/settings/ConnectionStatusSection";
+
 import { PreferenceSelect } from "@/components/settings/PreferenceSelect";
 import { BackupBanner } from "@/components/settings/BackupBanner";
 import { ExportButton } from "@/components/settings/ExportButton";
+import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/Button";
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
-  const { isOnline, pendingOperationsCount, forcSync } = useOfflineFirst();
+  const { isOnline } = useOfflineFirst();
   const {
     settings,
     updateSettings,
@@ -39,7 +37,6 @@ export default function SettingsPage() {
   const {
     exportAsJSON,
     exportAsExcel,
-    saveToIndexedDB,
     getLastBackupInfo,
     isExporting,
     isUsingOfflineData,
@@ -86,123 +83,104 @@ export default function SettingsPage() {
       <div className="min-h-screen bg-white">
         <AppHeader />
 
-        <div className="max-w-lg mx-auto p-4 pt-[92px] pb-24">
+        <div className="max-w-md mx-auto px-6 pt-[92px] pb-28">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-xl border border-gray-200 bg-[#F9F9F9] p-4 mb-6"
+            className="flex flex-col gap-3 items-center"
           >
+            {/* Profile Container */}
             <UserProfileSection username={user?.username} />
 
-            <ConnectionStatusSection
-              isOnline={isOnline}
-              pendingOperationsCount={pendingOperationsCount}
-              onSync={forcSync}
-            />
 
-            <div className="mb-6 space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Preferences
-              </h3>
-              <div className="space-y-4">
-                <PreferenceSelect
-                  label="Currency"
-                  icon={DollarSign}
-                  value={settings?.currency || "USD"}
-                  onChange={async (value) => {
-                    await updateSettings({ currency: value as Currency });
-                    toast.success("Currency updated");
-                  }}
-                  options={[...CURRENCY_OPTIONS]}
-                />
 
-                <PreferenceSelect
-                  label="Calendar System"
-                  icon={CalendarIcon}
-                  value={settings?.calendar || "gregorian"}
-                  onChange={async (value) => {
-                    await updateSettings({ calendar: value as Calendar });
-                    toast.success("Calendar updated");
-                  }}
-                  options={[...CALENDAR_OPTIONS]}
-                />
-              </div>
-            </div>
-
-            <RecoveryCodeCard />
-
-            <div className="mb-6 space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Data Backup & Export
-              </h3>
-
-              <BackupBanner
-                isUsingOfflineData={isUsingOfflineData}
-                hasOfflineBackup={hasOfflineBackup}
-                isOnline={isOnline}
-                offlineBackupDate={offlineBackupDate || null}
-                lastBackup={lastBackup}
-                showLastBackup={!isUsingOfflineData}
+            {/* Preferences Card */}
+            <SettingsCard title="Preferences">
+              {/* Currency Preference */}
+              <PreferenceSelect
+                label="Currency"
+                value={settings?.currency || "USD"}
+                onChange={async (value) => {
+                  await updateSettings({ currency: value as Currency });
+                  toast.success("Currency updated");
+                }}
+                options={[...CURRENCY_OPTIONS]}
               />
 
-              <div className="space-y-3">
-                <ExportButton
-                  icon={Database}
-                  onClick={async () => {
-                    await saveToIndexedDB();
-                    const info = await getLastBackupInfo();
-                    setLastBackup(info);
-                  }}
-                  disabled={isExporting}
-                  title="Save to IndexedDB"
-                  description="Local backup in browser storage"
-                  iconColor="text-purple-600"
-                  bgClass="bg-purple-50"
-                  hoverClass="hover:bg-purple-100"
-                  borderClass="border-purple-200"
-                />
+              {/* Divider */}
+              <div className="w-full border-t border-[#e4e4e4] my-1" />
 
-                <ExportButton
-                  icon={FileJson}
-                  onClick={exportAsJSON}
-                  disabled={isExporting}
-                  title="Export as JSON"
-                  description="Download complete backup file"
-                  iconColor="text-blue-600"
-                  bgClass="bg-blue-50"
-                  hoverClass="hover:bg-blue-100"
-                  borderClass="border-blue-200"
-                />
+              {/* Calendar Preference */}
+              <PreferenceSelect
+                label="Calendar System"
+                value={settings?.calendar || "gregorian"}
+                onChange={async (value) => {
+                  await updateSettings({ calendar: value as Calendar });
+                  toast.success("Calendar updated");
+                }}
+                options={[...CALENDAR_OPTIONS]}
+              />
+            </SettingsCard>
 
-                <ExportButton
-                  icon={FileSpreadsheet}
-                  onClick={exportAsExcel}
-                  disabled={isExporting}
-                  title="Export as Excel"
-                  description="Spreadsheet format for analysis"
-                  iconColor="text-green-600"
-                  bgClass="bg-green-50"
-                  hoverClass="hover:bg-green-100"
-                  borderClass="border-green-200"
+            {/* Security Section (RecoveryCodeCard handles its own container now) */}
+            <RecoveryCodeCard />
+
+            {/* Data Backup & Export Card */}
+            <SettingsCard title="Data Backup & Export">
+              {/* Backup Banner if active */}
+              <div className="px-4 py-1">
+                <BackupBanner
+                  isUsingOfflineData={isUsingOfflineData}
+                  hasOfflineBackup={hasOfflineBackup}
+                  isOnline={isOnline}
+                  offlineBackupDate={offlineBackupDate || null}
+                  lastBackup={lastBackup}
+                  showLastBackup={!isUsingOfflineData}
                 />
               </div>
-            </div>
 
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">Actions</h3>
+              {/* Export as JSON */}
+              <ExportButton
+                icon={FileJson}
+                onClick={exportAsJSON}
+                disabled={isExporting}
+                title="Export as JSON"
+                description="Download complete backup file"
+              />
 
-              <Button
-                onClick={handleLogout}
-                variant="danger"
-                size="medium"
-                className="w-full"
-              >
-                Logout
-              </Button>
-            </div>
+              {/* Divider */}
+              <div className="w-full border-t border-[#e4e4e4] my-1" />
 
-            <p className="text-center text-xs text-gray-400 mt-6">
-              v{process.env.NEXT_PUBLIC_APP_VERSION}
+              {/* Export as Excel */}
+              <ExportButton
+                icon={FileSpreadsheet}
+                onClick={exportAsExcel}
+                disabled={isExporting}
+                title="Export as Excel"
+                description="Spreadsheet format for analysis"
+              />
+            </SettingsCard>
+
+            {/* Actions Card */}
+            <SettingsCard title="Actions">
+              {/* Logout Row */}
+              <div className="w-full flex items-center justify-between px-4 py-2 drop-shadow-[0px_3px_2px_rgba(0,0,0,0.03)]">
+                <p className="font-medium text-[16px] text-black">Logout</p>
+
+                <button
+                  onClick={handleLogout}
+                  type="button"
+                  className="border-2 border-[#c15959] bg-[#e99c9c] text-black p-[10px] rounded-[12px] shadow-[inset_0px_2px_2px_0px_rgba(255,255,255,0.5),0px_2px_6px_0px_rgba(0,0,0,0.15)] hover:bg-[#e48b8b] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center shrink-0 w-10 h-10 cursor-pointer"
+                  aria-label="Logout"
+                >
+                  <LogOut size={16} className="text-black" />
+                </button>
+              </div>
+            </SettingsCard>
+
+            {/* App Version */}
+            <p className="text-center text-xs text-[#707070] mt-4">
+              v{process.env.NEXT_PUBLIC_APP_VERSION || "0.1.4"}
             </p>
           </motion.div>
         </div>

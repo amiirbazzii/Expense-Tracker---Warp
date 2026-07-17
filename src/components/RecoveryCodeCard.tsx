@@ -4,13 +4,14 @@ import { memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Shield, Eye, EyeOff, Copy, CheckCircle } from "lucide-react";
 import { useRecoveryCode } from "@/hooks/useRecoveryCode";
+import { SettingsCard } from "@/components/settings/SettingsCard";
 
 // Memoized sub-components for better performance
 const RecoveryCodeActions = memo(({ onGenerate, isLoading }: { onGenerate: () => void; isLoading: boolean }) => (
   <button
     onClick={onGenerate}
     disabled={isLoading}
-    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+    className="px-6 h-[40px] bg-[#e1e1e1] text-black border-2 border-[#cacaca] rounded-[12px] font-medium text-[14px] shadow-[inset_0px_2px_2px_0px_rgba(255,255,255,0.5),0px_2px_6px_0px_rgba(0,0,0,0.15)] hover:bg-[#d5d5d5] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center cursor-pointer"
   >
     {isLoading ? "Generating..." : "Generate"}
   </button>
@@ -60,28 +61,26 @@ export const RecoveryCodeCard = memo(() => {
 
   return (
     <>
-      <div className="mb-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Security</h3>
-        
-        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Shield className="text-blue-600" size={20} />
-              <div>
-                <div className="font-medium text-gray-900">Recovery Code</div>
-                <div className="text-sm text-gray-600">
-                  {statusText}
-                </div>
-              </div>
-            </div>
-            
+      <SettingsCard title="Security">
+        {/* Recovery Code row */}
+        <div className="w-full flex items-center justify-between px-4 py-3 drop-shadow-[0px_3px_2px_rgba(0,0,0,0.03)] gap-4">
+          <div className="flex flex-col items-start justify-center">
+            <p className="font-medium text-[16px] text-black whitespace-nowrap">
+              Recovery Code
+            </p>
+            <p className="font-normal text-[#707070] text-[12px] mt-0.5 leading-tight">
+              {statusText}
+            </p>
+          </div>
+          
+          <div className="shrink-0">
             <RecoveryCodeActions
               onGenerate={generateCode}
               isLoading={isGenerating}
             />
           </div>
         </div>
-      </div>
+      </SettingsCard>
 
       {/* Generate Recovery Code Modal */}
       <AnimatePresence>

@@ -8,14 +8,21 @@ interface UserProfileSectionProps {
 
 export function UserProfileSection({ username }: UserProfileSectionProps) {
   return (
-    <div className="flex items-center space-x-4 mb-6">
-      <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-        <User className="text-blue-600" size={32} />
+    <div className="flex flex-col items-center gap-3 w-full mb-6">
+      {/* Avatar Container */}
+      <div className="bg-[#eee] rounded-full p-4 flex items-center justify-center shrink-0 w-16 h-16">
+        <User className="text-gray-600" size={32} />
       </div>
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900">{username}</h2>
-        <p className="text-sm text-gray-600">Expense Tracker User</p>
+      {/* Name and Role Container */}
+      <div className="text-center w-full">
+        <h2 className="font-medium text-[24px] text-black leading-none">
+          {username || "User"}
+        </h2>
+        <p className="font-normal text-[#707070] text-[14px] mt-1">
+          Spendly user
+        </p>
       </div>
     </div>
   );
 }
+

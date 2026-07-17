@@ -1,6 +1,3 @@
-"use client";
-
-import { motion } from "framer-motion";
 import { Download, LucideIcon } from "lucide-react";
 
 interface ExportButtonProps {
@@ -9,10 +6,10 @@ interface ExportButtonProps {
   disabled?: boolean;
   title: string;
   description: string;
-  iconColor: string;
-  bgClass: string;
-  hoverClass: string;
-  borderClass: string;
+  iconColor?: string;
+  bgClass?: string;
+  hoverClass?: string;
+  borderClass?: string;
 }
 
 export function ExportButton({
@@ -21,26 +18,27 @@ export function ExportButton({
   disabled = false,
   title,
   description,
-  iconColor,
-  bgClass,
-  hoverClass,
-  borderClass,
 }: ExportButtonProps) {
   return (
-    <motion.button
-      whileTap={{ scale: 0.98 }}
+    <button
       onClick={onClick}
       disabled={disabled}
-      className={`w-full flex items-center justify-between p-4 ${bgClass} border ${borderClass} rounded-lg ${hoverClass} transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]`}
+      type="button"
+      className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-100/40 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed text-left drop-shadow-[0px_3px_2px_rgba(0,0,0,0.03)] cursor-pointer"
     >
       <div className="flex items-center space-x-3">
-        <Icon className={iconColor} size={20} />
-        <div className="text-left">
-          <div className="font-medium text-gray-900">{title}</div>
-          <div className="text-sm text-gray-600">{description}</div>
+        <Icon className="text-gray-500 shrink-0" size={24} />
+        <div className="flex flex-col">
+          <div className="font-medium text-[16px] text-black leading-tight">
+            {title}
+          </div>
+          <div className="font-normal text-[12px] text-[#707070] mt-0.5">
+            {description}
+          </div>
         </div>
       </div>
-      <Download className={iconColor} size={20} />
-    </motion.button>
+      <Download className="text-black shrink-0" size={24} />
+    </button>
   );
 }
+
