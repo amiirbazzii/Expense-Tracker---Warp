@@ -380,7 +380,6 @@ function ExpenseTab({
           />
           <Button
             type="submit"
-            variant="secondary"
             className="w-full"
             disabled={isSubmitting || form.category.length === 0 || !form.cardId}
             loading={isSubmitting}
@@ -497,7 +496,7 @@ function IncomeTab({
             value={form.category}
             onChange={(v) => setField("category", v)}
             fetchSuggestions={catSuggestions}
-            onCreateNew={async () => {}}
+            onCreateNew={async () => { }}
             formatNewItem={capitalizeWords}
             placeholder="Choose category"
           />
@@ -518,7 +517,6 @@ function IncomeTab({
           </div>
           <Button
             type="submit"
-            variant="secondary"
             className="w-full"
             disabled={isSubmitting || form.category.length === 0 || !form.cardId}
             loading={isSubmitting}
