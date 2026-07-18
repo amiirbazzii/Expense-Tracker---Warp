@@ -34,11 +34,16 @@ const ACTION_MAP: Record<string, any> = {
   "expenses:deleteExpense": api.expenses.deleteExpense,
   "expenses:createCategory": api.expenses.createCategory,
   "expenses:createForValue": api.expenses.createForValue,
+  "expenses:archiveCategory": api.expenses.archiveCategory,
+  "expenses:deleteCategory": api.expenses.deleteCategory,
 
   // Income
   "income:createIncome": api.cardsAndIncome.createIncome,
   "income:updateIncome": api.cardsAndIncome.updateIncome,
   "income:deleteIncome": api.cardsAndIncome.deleteIncome,
+  "incomeCategories:archiveIncomeCategory": api.cardsAndIncome.archiveIncomeCategory,
+  "incomeCategories:deleteIncomeCategory": api.cardsAndIncome.deleteIncomeCategory,
+  "incomeCategories:createIncomeCategory": api.cardsAndIncome.createIncomeCategory,
 
   // Cards
   "cards:addCard": api.cardsAndIncome.addCard,
@@ -294,13 +299,36 @@ export class SyncEngine {
           };
 
           // Translate local IDs to Convex IDs for cardId, incomeId, expenseId, and transfer fields
-          for (const idField of ["cardId", "incomeId", "expenseId", "fromCardId", "toCardId", "loanId"]) {
+          for (const idField of ["cardId", "incomeId", "expenseId", "fromCardId", "toCardId", "loanId", "categoryId"]) {
             if (
               typeof payload[idField] === "string" &&
-              (payload[idField] as string).startsWith("local_") &&
-              this.localToConvexId.has(payload[idField] as string)
+              (payload[idField] as string).startsWith("local_")
             ) {
-              payload[idField] = this.localToConvexId.get(payload[idField] as string)!;
+              // 1. Check in-memory map first (for entities created this session)
+              const mapped = this.localToConvexId.get(payload[idField] as string);
+              if (mapped) {
+                payload[idField] = mapped;
+              } else {
+                // 2. Fall back to IndexedDB cloudId (for hydrated/existing entities)
+                try {
+                  const entityType = idField === "categoryId"
+                    ? (mutation.action.includes("incomeCategories") ? "incomeCategories" : "categories")
+                    : idField === "cardId" ? "cards"
+                    : idField === "expenseId" ? "expenses"
+                    : idField === "incomeId" ? "income"
+                    : idField === "loanId" ? "loans"
+                    : null;
+                  if (entityType) {
+                    const entity = await this.storage.getEntityById(entityType, payload[idField] as string);
+                    if (entity?.cloudId) {
+                      this.localToConvexId.set(payload[idField] as string, entity.cloudId);
+                      payload[idField] = entity.cloudId;
+                    }
+                  }
+                } catch {
+                  // Ignore lookup failures — will fail on server side
+                }
+              }
             }
           }
 

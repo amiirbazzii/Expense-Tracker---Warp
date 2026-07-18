@@ -63,6 +63,7 @@ export interface CategoryDoc {
   _id: string;
   name: string;
   type?: "expense" | "income";
+  isArchived?: boolean;
 }
 
 /** For-value string list as the UI expects it (mirrors `getForValues`). */
@@ -219,7 +220,7 @@ export class LocalDataStore {
           ...this.toCategoryDoc(c),
           type: "income" as const,
         })),
-      ],
+      ].filter((c) => c.isArchived !== true),
       forValues: dedupedForValues.map(this.toForValueDoc),
       cards: this.computeCardBalances(dedupedCards, dedupedIncome, dedupedExpenses),
       loans: dedupedLoans.map(this.toLoanDoc),
@@ -456,13 +457,128 @@ export class LocalDataStore {
         ? await this.storage.saveIncomeCategory({ name, type: "income" })
         : await this.storage.saveCategory({ name, type: "expense" });
 
-    await this.queue.enqueue("expenses:createCategory", {
-      token: this.userId,
-      name: saved.name,
-    });
+    await this.queue.enqueue(
+      type === "income"
+        ? "incomeCategories:createIncomeCategory"
+        : "expenses:createCategory",
+      {
+        token: this.userId,
+        name: saved.name,
+      },
+    );
 
     await this.refresh();
     return this.toCategoryDoc(saved);
+  }
+
+  async archiveCategory(id: string): Promise<boolean> {
+    // Look up the category name and type before archiving
+    const cats = await this.storage.getCategories();
+    const incCats = await this.storage.getIncomeCategories();
+    const allCats = [...cats, ...incCats];
+    const cat = allCats.find((c) => c.id === id);
+    if (!cat) return false;
+
+    const isIncome = cat.type === "income";
+    const updated = isIncome
+      ? await this.storage.updateIncomeCategory(id, { isArchived: true }, { skipEnqueue: true })
+      : await this.storage.updateCategory(id, { isArchived: true }, { skipEnqueue: true });
+    if (!updated) return false;
+
+    const mutationRoute = isIncome
+      ? "incomeCategories:archiveIncomeCategory"
+      : "expenses:archiveCategory";
+
+    await this.queue.enqueue(mutationRoute, {
+      token: this.userId,
+      categoryName: cat.name,
+      isArchived: true,
+    });
+
+    await this.refresh();
+    return true;
+  }
+
+  async unarchiveCategory(id: string): Promise<boolean> {
+    const cats = await this.storage.getCategories();
+    const incCats = await this.storage.getIncomeCategories();
+    const allCats = [...cats, ...incCats];
+    const cat = allCats.find((c) => c.id === id);
+    if (!cat) return false;
+
+    const isIncome = cat.type === "income";
+    const updated = isIncome
+      ? await this.storage.updateIncomeCategory(id, { isArchived: false }, { skipEnqueue: true })
+      : await this.storage.updateCategory(id, { isArchived: false }, { skipEnqueue: true });
+    if (!updated) return false;
+
+    const mutationRoute = isIncome
+      ? "incomeCategories:archiveIncomeCategory"
+      : "expenses:archiveCategory";
+
+    await this.queue.enqueue(mutationRoute, {
+      token: this.userId,
+      categoryName: cat.name,
+      isArchived: false,
+    });
+
+    await this.refresh();
+    return true;
+  }
+
+  async deleteCategory(id: string): Promise<boolean> {
+    const cats = await this.storage.getCategories();
+    const incCats = await this.storage.getIncomeCategories();
+    const allCats = [...cats, ...incCats];
+    const cat = allCats.find((c) => c.id === id);
+    if (!cat) return false;
+
+    const isIncome = cat.type === "income";
+    const deleted = isIncome
+      ? await this.storage.deleteIncomeCategory(id, { skipEnqueue: true })
+      : await this.storage.deleteCategory(id, { skipEnqueue: true });
+    if (!deleted) return false;
+
+    const mutationRoute = isIncome
+      ? "incomeCategories:deleteIncomeCategory"
+      : "expenses:deleteCategory";
+
+    await this.queue.enqueue(mutationRoute, {
+      token: this.userId,
+      categoryName: cat.name,
+    });
+
+    await this.refresh();
+    return true;
+  }
+
+  /** Get all categories including archived ones (for management UI). */
+  async getAllCategories(): Promise<CategoryDoc[]> {
+    const [categories, incomeCategories] = await Promise.all([
+      this.storage.getCategories(),
+      this.storage.getIncomeCategories(),
+    ]);
+
+    return [
+      ...categories.map((c) => ({
+        ...this.toCategoryDoc(c),
+        type: "expense" as const,
+      })),
+      ...incomeCategories.map((c) => ({
+        ...this.toCategoryDoc(c),
+        type: "income" as const,
+      })),
+    ];
+  }
+
+  /** Check how many transactions reference a given category name. */
+  getCategoryUsageCount(categoryName: string, type: "expense" | "income"): number {
+    if (type === "expense") {
+      return this.snapshot.expenses.filter((e) =>
+        e.category.includes(categoryName),
+      ).length;
+    }
+    return this.snapshot.income.filter((i) => i.category === categoryName).length;
   }
 
   async addForValue(value: string): Promise<ForValueDoc> {
@@ -590,6 +706,7 @@ export class LocalDataStore {
     _id: c.cloudId || c.id,
     name: c.name,
     type: c.type,
+    isArchived: c.isArchived,
   });
 
   private toForValueDoc = (f: any): ForValueDoc => ({

@@ -15,6 +15,7 @@ import {
   User,
   TrendingUp,
   Type,
+  Settings2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -25,6 +26,7 @@ import { ExpenseCard } from "@/components/cards/ExpenseCard";
 import { IncomeCard } from "@/components/cards/IncomeCard";
 import { EditExpenseSheet } from "@/components/EditExpenseSheet";
 import { EditIncomeSheet } from "@/components/EditIncomeSheet";
+import { CategoryManagementSheet } from "@/components/categories/CategoryManagementSheet";
 import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import { Input } from "@/components/Input";
@@ -163,6 +165,15 @@ function AddTransactionContent() {
     }
   }, []);
 
+  const createIncomeCategory = useCallback(async (name: string) => {
+    try {
+      await localDataStore.addCategory(name, "income");
+    } catch (e) {
+      toast.error("Failed to create income category.");
+      console.error(e);
+    }
+  }, []);
+
   const forSuggestions = useCallback(
     async (q: string) =>
       forValues
@@ -202,6 +213,7 @@ function AddTransactionContent() {
     null,
   );
   const [editIncomeId, setEditIncomeId] = useState<Id<"income"> | null>(null);
+  const [categorySheetType, setCategorySheetType] = useState<"expense" | "income" | null>(null);
 
   return (
     <div className="min-h-screen bg-white">
@@ -236,6 +248,7 @@ function AddTransactionContent() {
             onNextMonth={nextExpMonth}
             onDelete={deleteExpense}
             onEdit={(id) => setEditExpenseId(id as Id<"expenses">)}
+            onManageCategories={() => setCategorySheetType("expense")}
           />
         ) : (
           <IncomeTab
@@ -246,6 +259,7 @@ function AddTransactionContent() {
             isSubmitting={incomeSubmitting}
             activeCards={activeCards}
             catSuggestions={incomeCatSuggestions}
+            createIncomeCategory={createIncomeCategory}
             offline={offlineIncomeData}
             incomes={shownIncomes}
             cardMap={cardMap}
@@ -255,6 +269,7 @@ function AddTransactionContent() {
             onNextMonth={nextIncMonth}
             onDelete={deleteIncome}
             onEdit={(id) => setEditIncomeId(id as Id<"income">)}
+            onManageCategories={() => setCategorySheetType("income")}
           />
         )}
       </div>
@@ -270,6 +285,11 @@ function AddTransactionContent() {
         open={editIncomeId !== null}
         onClose={() => setEditIncomeId(null)}
         onSuccess={refetchIncome}
+      />
+      <CategoryManagementSheet
+        open={categorySheetType !== null}
+        onClose={() => setCategorySheetType(null)}
+        type={categorySheetType ?? "expense"}
       />
     </div>
   );
@@ -295,6 +315,7 @@ function ExpenseTab({
   onNextMonth,
   onDelete,
   onEdit,
+  onManageCategories,
 }: {
   form: { amount: string; title: string; category: string[]; for: string[]; date: Date; cardId: string };
   setField: (k: string, v: any) => void;
@@ -315,6 +336,7 @@ function ExpenseTab({
   onNextMonth: () => void;
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
+  onManageCategories: () => void;
 }) {
   return (
     <div className="space-y-6 px-4">
@@ -359,6 +381,16 @@ function ExpenseTab({
             onCreateNew={createCategory}
             formatNewItem={capitalizeWords}
             placeholder="Choose category"
+            rightIcon={
+              <button
+                type="button"
+                onClick={onManageCategories}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                aria-label="Manage categories"
+              >
+                <Settings2 size={16} />
+              </button>
+            }
           />
           <SmartSelectInput
             icon={User}
@@ -429,6 +461,7 @@ function IncomeTab({
   isSubmitting,
   activeCards,
   catSuggestions,
+  createIncomeCategory,
   offline,
   incomes,
   cardMap,
@@ -438,6 +471,7 @@ function IncomeTab({
   onNextMonth,
   onDelete,
   onEdit,
+  onManageCategories,
 }: {
   form: { amount: string; source: string; category: string[]; date: Date; cardId: string; notes: string };
   setField: (k: string, v: any) => void;
@@ -446,6 +480,7 @@ function IncomeTab({
   isSubmitting: boolean;
   activeCards: { _id: string; name: string }[];
   catSuggestions: (q: string) => Promise<string[]>;
+  createIncomeCategory: (n: string) => Promise<void>;
   offline: boolean;
   incomes: any[];
   cardMap: Record<string, string>;
@@ -455,6 +490,7 @@ function IncomeTab({
   onNextMonth: () => void;
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
+  onManageCategories: () => void;
 }) {
   return (
     <div className="space-y-6 px-4">
@@ -496,9 +532,19 @@ function IncomeTab({
             value={form.category}
             onChange={(v) => setField("category", v)}
             fetchSuggestions={catSuggestions}
-            onCreateNew={async () => { }}
+            onCreateNew={createIncomeCategory}
             formatNewItem={capitalizeWords}
             placeholder="Choose category"
+            rightIcon={
+              <button
+                type="button"
+                onClick={onManageCategories}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                aria-label="Manage categories"
+              >
+                <Settings2 size={16} />
+              </button>
+            }
           />
           <CustomDatePicker
             label="Date *"

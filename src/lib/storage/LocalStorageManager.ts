@@ -899,6 +899,7 @@ export class LocalStorageManager {
   async updateIncomeCategory(
     id: string,
     updates: Partial<LocalCategory>,
+    options?: { skipEnqueue?: boolean },
   ): Promise<LocalCategory | null> {
     const collection =
       await this.getEntityCollection<LocalCategory>("incomeCategories");
@@ -906,36 +907,49 @@ export class LocalStorageManager {
 
     if (!category) return null;
 
+    const isOnline =
+      typeof navigator !== "undefined" ? navigator.onLine : false;
+    const skipEnqueue = options?.skipEnqueue ?? isOnline;
+
     const updated: LocalCategory = {
       ...category,
       ...updates,
       type: "income", // Ensure it remains an income category
       version: category.version + 1,
       updatedAt: Date.now(),
-      syncStatus: "pending",
+      syncStatus: skipEnqueue ? "synced" : "pending",
     };
 
     collection[id] = updated;
     await this.setEntityCollection("incomeCategories", collection);
 
-    // Enqueue mutation dynamically
-    await this.enqueue("UPDATE", "incomeCategories", updated);
+    if (!skipEnqueue) {
+      await this.enqueue("UPDATE", "incomeCategories", updated);
+    }
 
     return updated;
   }
 
-  async deleteIncomeCategory(id: string): Promise<boolean> {
+  async deleteIncomeCategory(
+    id: string,
+    options?: { skipEnqueue?: boolean },
+  ): Promise<boolean> {
     const collection =
       await this.getEntityCollection<LocalCategory>("incomeCategories");
 
     if (!collection[id]) return false;
 
+    const isOnline =
+      typeof navigator !== "undefined" ? navigator.onLine : false;
+    const skipEnqueue = options?.skipEnqueue ?? isOnline;
+
     const original = collection[id];
     delete collection[id];
     await this.setEntityCollection("incomeCategories", collection);
 
-    // Enqueue mutation dynamically
-    await this.enqueue("DELETE", "incomeCategories", { id, original });
+    if (!skipEnqueue) {
+      await this.enqueue("DELETE", "incomeCategories", { id, original });
+    }
 
     return true;
   }
@@ -944,6 +958,7 @@ export class LocalStorageManager {
   async updateCategory(
     id: string,
     updates: Partial<LocalCategory>,
+    options?: { skipEnqueue?: boolean },
   ): Promise<LocalCategory | null> {
     const collection =
       await this.getEntityCollection<LocalCategory>("categories");
@@ -951,35 +966,48 @@ export class LocalStorageManager {
 
     if (!category) return null;
 
+    const isOnline =
+      typeof navigator !== "undefined" ? navigator.onLine : false;
+    const skipEnqueue = options?.skipEnqueue ?? isOnline;
+
     const updated: LocalCategory = {
       ...category,
       ...updates,
       version: category.version + 1,
       updatedAt: Date.now(),
-      syncStatus: "pending",
+      syncStatus: skipEnqueue ? "synced" : "pending",
     };
 
     collection[id] = updated;
     await this.setEntityCollection("categories", collection);
 
-    // Enqueue mutation dynamically
-    await this.enqueue("UPDATE", "categories", updated);
+    if (!skipEnqueue) {
+      await this.enqueue("UPDATE", "categories", updated);
+    }
 
     return updated;
   }
 
-  async deleteCategory(id: string): Promise<boolean> {
+  async deleteCategory(
+    id: string,
+    options?: { skipEnqueue?: boolean },
+  ): Promise<boolean> {
     const collection =
       await this.getEntityCollection<LocalCategory>("categories");
 
     if (!collection[id]) return false;
 
+    const isOnline =
+      typeof navigator !== "undefined" ? navigator.onLine : false;
+    const skipEnqueue = options?.skipEnqueue ?? isOnline;
+
     const original = collection[id];
     delete collection[id];
     await this.setEntityCollection("categories", collection);
 
-    // Enqueue mutation dynamically
-    await this.enqueue("DELETE", "categories", { id, original });
+    if (!skipEnqueue) {
+      await this.enqueue("DELETE", "categories", { id, original });
+    }
 
     return true;
   }

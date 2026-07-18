@@ -19,6 +19,7 @@ interface SmartSelectInputProps {
   placeholder?: string;
   className?: string;
   rightText?: string;
+  rightIcon?: React.ReactNode;
 }
 
 export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
@@ -34,6 +35,7 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
   placeholder,
   className,
   rightText,
+  rightIcon,
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -174,7 +176,14 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
     <div ref={containerRef} className={`relative ${className || ''}`}>
       <InputContainer
         leftIcon={Icon}
-        rightAdornment={rightText ? <span className="text-gray-400 whitespace-nowrap">{rightText}</span> : undefined}
+        rightAdornment={
+          rightText || rightIcon ? (
+            <div className="flex items-center gap-1">
+              {rightText && <span className="text-gray-400 whitespace-nowrap">{rightText}</span>}
+              {rightIcon}
+            </div>
+          ) : undefined
+        }
         className="h-auto min-h-14 py-3 items-start"
         contentClassName="gap-2 flex-wrap items-start"
       >
@@ -242,4 +251,4 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
     </div>
   );
 }
-;
+  ;

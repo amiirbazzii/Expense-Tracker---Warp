@@ -82,6 +82,7 @@ export interface LocalIncome extends LocalEntity {
 export interface LocalCategory extends LocalEntity {
   name: string;
   type: "expense" | "income";
+  isArchived?: boolean;
 }
 
 // Local storage schema for cards

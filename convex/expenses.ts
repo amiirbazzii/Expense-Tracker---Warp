@@ -214,10 +214,89 @@ export const getCategories = query({
   handler: async (ctx, args) => {
     const user = await getUserByToken(ctx, args.token);
 
+    const categories = await ctx.db
+      .query("categories")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    return categories.filter((c) => c.isArchived !== true);
+  },
+});
+
+export const getAllCategories = query({
+  args: {
+    token: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken(ctx, args.token);
+
     return await ctx.db
       .query("categories")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
+  },
+});
+
+export const archiveCategory = mutation({
+  args: {
+    token: v.string(),
+    categoryName: v.string(),
+    isArchived: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken(ctx, args.token);
+
+    const category = await ctx.db
+      .query("categories")
+      .withIndex("by_user_name", (q) => q.eq("userId", user._id).eq("name", args.categoryName))
+      .first();
+
+    if (!category) {
+      // Category doesn't exist on server yet (created locally only) — nothing to archive
+      return { success: true };
+    }
+
+    await ctx.db.patch(category._id, { isArchived: args.isArchived });
+    return { success: true };
+  },
+});
+
+export const deleteCategory = mutation({
+  args: {
+    token: v.string(),
+    categoryName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken(ctx, args.token);
+
+    const category = await ctx.db
+      .query("categories")
+      .withIndex("by_user_name", (q) => q.eq("userId", user._id).eq("name", args.categoryName))
+      .first();
+
+    if (!category) {
+      // Category doesn't exist on server yet — nothing to delete
+      return { success: true };
+    }
+
+    // Check if any expense uses this category name
+    const expensesUsingCategory = await ctx.db
+      .query("expenses")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const hasTransactions = expensesUsingCategory.some((e) =>
+      e.category.includes(args.categoryName),
+    );
+
+    if (hasTransactions) {
+      throw new ConvexError(
+        "Cannot delete category that is used in transactions. Archive it instead.",
+      );
+    }
+
+    await ctx.db.delete(category._id);
+    return { success: true };
   },
 });
 
@@ -268,6 +347,10 @@ export const createCategory = mutation({
       .first();
 
     if (existingCategory) {
+      // If archived, unarchive it so it becomes active again
+      if (existingCategory.isArchived) {
+        await ctx.db.patch(existingCategory._id, { isArchived: false });
+      }
       return existingCategory._id;
     }
 

@@ -135,7 +135,12 @@ export const createIncome = mutation({
       )
       .first();
 
-    if (!existingCategory) {
+    if (existingCategory) {
+      // If archived, unarchive it so it becomes active again
+      if (existingCategory.isArchived) {
+        await ctx.db.patch(existingCategory._id, { isArchived: false });
+      }
+    } else {
       await ctx.db.insert("incomeCategories", {
         name: args.category,
         userId: user._id,
@@ -197,7 +202,7 @@ export const getUniqueIncomeCategories = query({
       .query("incomeCategories")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
-    return categories.map((c) => c.name);
+    return categories.filter((c) => c.isArchived !== true).map((c) => c.name);
   },
 });
 
@@ -211,10 +216,126 @@ export const getIncomeCategories = query({
       return [];
     }
 
+    const categories = await ctx.db
+      .query("incomeCategories")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    return categories.filter((c) => c.isArchived !== true);
+  },
+});
+
+export const getAllIncomeCategories = query({
+  args: {
+    token: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken(ctx, args.token);
+    if (!user) {
+      return [];
+    }
+
     return await ctx.db
       .query("incomeCategories")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
+  },
+});
+
+export const createIncomeCategory = mutation({
+  args: {
+    token: v.string(),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken(ctx, args.token);
+    const formattedName = args.name
+      .trim()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+
+    if (!formattedName) {
+      throw new ConvexError("Category name cannot be empty.");
+    }
+
+    const existingCategory = await ctx.db
+      .query("incomeCategories")
+      .withIndex("by_user_name", (q) => q.eq("userId", user._id).eq("name", formattedName))
+      .first();
+
+    if (existingCategory) {
+      if (existingCategory.isArchived) {
+        await ctx.db.patch(existingCategory._id, { isArchived: false });
+      }
+      return existingCategory._id;
+    }
+
+    return await ctx.db.insert("incomeCategories", {
+      name: formattedName,
+      userId: user._id,
+    });
+  },
+});
+
+export const archiveIncomeCategory = mutation({
+  args: {
+    token: v.string(),
+    categoryName: v.string(),
+    isArchived: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken(ctx, args.token);
+
+    const category = await ctx.db
+      .query("incomeCategories")
+      .withIndex("by_user_name", (q) => q.eq("userId", user._id).eq("name", args.categoryName))
+      .first();
+
+    if (!category) {
+      return { success: true };
+    }
+
+    await ctx.db.patch(category._id, { isArchived: args.isArchived });
+    return { success: true };
+  },
+});
+
+export const deleteIncomeCategory = mutation({
+  args: {
+    token: v.string(),
+    categoryName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByToken(ctx, args.token);
+
+    const category = await ctx.db
+      .query("incomeCategories")
+      .withIndex("by_user_name", (q) => q.eq("userId", user._id).eq("name", args.categoryName))
+      .first();
+
+    if (!category) {
+      return { success: true };
+    }
+
+    // Check if any income uses this category name
+    const incomeUsingCategory = await ctx.db
+      .query("income")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const hasTransactions = incomeUsingCategory.some(
+      (i) => i.category === args.categoryName,
+    );
+
+    if (hasTransactions) {
+      throw new ConvexError(
+        "Cannot delete category that is used in transactions. Archive it instead.",
+      );
+    }
+
+    await ctx.db.delete(category._id);
+    return { success: true };
   },
 });
 
@@ -271,7 +392,11 @@ export const updateIncome = mutation({
       )
       .first();
 
-    if (!existingCategory) {
+    if (existingCategory) {
+      if (existingCategory.isArchived) {
+        await ctx.db.patch(existingCategory._id, { isArchived: false });
+      }
+    } else {
       await ctx.db.insert("incomeCategories", {
         name: args.category,
         userId: user._id,

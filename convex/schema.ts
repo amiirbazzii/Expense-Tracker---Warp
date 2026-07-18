@@ -25,6 +25,7 @@ export default defineSchema({
   categories: defineTable({
     name: v.string(),
     userId: v.id("users"),
+    isArchived: v.optional(v.boolean()),
   }).index("by_user", ["userId"]).index("by_user_name", ["userId", "name"]),
 
   forValues: defineTable({
@@ -66,6 +67,7 @@ export default defineSchema({
   incomeCategories: defineTable({
     name: v.string(),
     userId: v.id("users"),
+    isArchived: v.optional(v.boolean()),
   }).index("by_user", ["userId"]).index("by_user_name", ["userId", "name"]),
 
   loans: defineTable({

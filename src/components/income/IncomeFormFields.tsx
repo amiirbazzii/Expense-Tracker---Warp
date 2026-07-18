@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { Briefcase, Tag } from "lucide-react";
+import { Briefcase, Tag, Settings2 } from "lucide-react";
 import { SmartSelectInput } from "@/components/SmartSelectInput";
 import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { CurrencyInput } from "@/components/CurrencyInput";
@@ -25,6 +25,7 @@ interface IncomeFormFieldsProps {
   activeCards: { _id: string; name: string }[];
   catSuggestions: (query: string) => Promise<string[]>;
   submitLabel: string;
+  onManageCategories?: () => void;
 }
 
 export function IncomeFormFields({
@@ -36,6 +37,7 @@ export function IncomeFormFields({
   activeCards,
   catSuggestions,
   submitLabel,
+  onManageCategories,
 }: IncomeFormFieldsProps) {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
@@ -68,6 +70,18 @@ export function IncomeFormFields({
         onChange={(v) => setField("category", v)}
         fetchSuggestions={catSuggestions}
         placeholder="Select or add a category"
+        rightIcon={
+          onManageCategories ? (
+            <button
+              type="button"
+              onClick={onManageCategories}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              aria-label="Manage categories"
+            >
+              <Settings2 size={16} />
+            </button>
+          ) : undefined
+        }
       />
       <CustomDatePicker
         label="Date *"

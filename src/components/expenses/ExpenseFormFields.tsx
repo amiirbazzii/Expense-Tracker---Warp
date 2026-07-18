@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { PencilLine, Tag, User } from "lucide-react";
+import { PencilLine, Tag, User, Settings2 } from "lucide-react";
 import { SmartSelectInput } from "@/components/SmartSelectInput";
 import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { CurrencyInput } from "@/components/CurrencyInput";
@@ -29,6 +29,7 @@ interface ExpenseFormFieldsProps {
   createForValue: (value: string) => Promise<void>;
   submitLabel: string;
   requireCard?: boolean;
+  onManageCategories?: () => void;
 }
 
 export function ExpenseFormFields({
@@ -44,6 +45,7 @@ export function ExpenseFormFields({
   createForValue,
   submitLabel,
   requireCard = true,
+  onManageCategories,
 }: ExpenseFormFieldsProps) {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
@@ -78,6 +80,18 @@ export function ExpenseFormFields({
         onCreateNew={createCategory}
         formatNewItem={capitalizeWords}
         placeholder="Select or add categories"
+        rightIcon={
+          onManageCategories ? (
+            <button
+              type="button"
+              onClick={onManageCategories}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              aria-label="Manage categories"
+            >
+              <Settings2 size={16} />
+            </button>
+          ) : undefined
+        }
       />
       <SmartSelectInput
         icon={User}
