@@ -31,6 +31,7 @@ interface ExpenseCardProps {
   onRetry?: (id: string) => void;
   onEdit?: (id: string) => void;
   status?: "pending" | "failed";
+  hideTags?: boolean;
 }
 
 export function ExpenseCard({
@@ -40,6 +41,7 @@ export function ExpenseCard({
   onRetry,
   onEdit,
   status,
+  hideTags,
 }: ExpenseCardProps) {
   const { settings } = useSettings();
   const router = useRouter();
@@ -110,11 +112,10 @@ export function ExpenseCard({
               </h3>
               {status && (
                 <span
-                  className={`px-2 py-0.5 text-xs font-medium rounded ${
-                    status === "pending"
+                  className={`px-2 py-0.5 text-xs font-medium rounded ${status === "pending"
                       ? "bg-yellow-100 text-yellow-800"
                       : "bg-red-100 text-red-800"
-                  }`}
+                    }`}
                 >
                   {status}
                 </span>
@@ -142,28 +143,32 @@ export function ExpenseCard({
             </span>
           </div>
           {/* Divider: full-bleed horizontally, 8px from info row */}
-          <div className="mt-2 -mx-4 h-px bg-[#ECECEC]" />
-          {/* Tags: 12px below divider */}
-          <div className="mt-3 flex flex-wrap gap-2">
-            {expense.category.map((cat) => (
-              <span
-                key={cat}
-                className="px-3 py-1 text-[12px] leading-5 font-medium rounded-lg bg-[#EEEEEE] text-[#434343]"
-              >
-                {cat}
-              </span>
-            ))}
-            {/* Move 'for' items into tags */}
-            {Array.isArray(expense.for) &&
-              expense.for.map((f) => (
-                <span
-                  key={`for-${String(f)}`}
-                  className="px-3 py-1 text-[12px] leading-5 font-medium rounded-lg bg-[#EEEEEE] text-[#434343]"
-                >
-                  {`for ${f}`}
-                </span>
-              ))}
-          </div>
+          {!hideTags && (
+            <>
+              <div className="mt-2 -mx-4 h-px bg-[#ECECEC]" />
+              {/* Tags: 12px below divider */}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {expense.category.map((cat) => (
+                  <span
+                    key={cat}
+                    className="px-3 py-1 text-[12px] leading-5 font-medium rounded-lg bg-[#EEEEEE] text-[#434343]"
+                  >
+                    {cat}
+                  </span>
+                ))}
+                {/* Move 'for' items into tags */}
+                {Array.isArray(expense.for) &&
+                  expense.for.map((f) => (
+                    <span
+                      key={`for-${String(f)}`}
+                      className="px-3 py-1 text-[12px] leading-5 font-medium rounded-lg bg-[#EEEEEE] text-[#434343]"
+                    >
+                      {`for ${f}`}
+                    </span>
+                  ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
       <DropdownMenu isOpen={isMenuOpen}>

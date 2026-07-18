@@ -80,7 +80,8 @@ export function CategoryList({ categoryTotals, expenses = [], income = [], mode 
                     key={String((item as any)._id)}
                     income={item as any}
                     cardName={cardMap[(item as any).cardId] || "Unknown Card"}
-                    onDelete={() => { }}
+                    onDelete={() => {}}
+                    hideTags
                   />
                 ))
             ) : (
@@ -92,7 +93,8 @@ export function CategoryList({ categoryTotals, expenses = [], income = [], mode 
                     key={String((item as any)._id)}
                     expense={item as any}
                     cardName={cardMap[(item as any).cardId] || "Unknown Card"}
-                    onDelete={() => { }}
+                    onDelete={() => {}}
+                    hideTags
                   />
                 ))
             )}

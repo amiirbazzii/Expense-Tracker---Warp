@@ -18,6 +18,7 @@ interface IncomeCardProps {
   status?: "pending" | "failed";
   onRetry?: (itemId: string) => void;
   onEdit?: (id: string) => void;
+  hideTags?: boolean;
 }
 
 export function IncomeCard({
@@ -27,6 +28,7 @@ export function IncomeCard({
   status,
   onRetry,
   onEdit,
+  hideTags,
 }: IncomeCardProps) {
   const { token } = useAuth();
   const { settings } = useSettings();
@@ -86,11 +88,10 @@ export function IncomeCard({
               </h3>
               {status && (
                 <span
-                  className={`px-2 py-0.5 text-xs font-medium rounded ${
-                    status === "pending"
+                  className={`px-2 py-0.5 text-xs font-medium rounded ${status === "pending"
                       ? "bg-yellow-100 text-yellow-800"
                       : "bg-red-100 text-red-800"
-                  }`}
+                    }`}
                 >
                   {status}
                 </span>
@@ -119,24 +120,28 @@ export function IncomeCard({
             </span>
           </div>
           {/* Divider above tags */}
-          <div className="mt-2 -mx-4 h-px bg-[#ECECEC]" />
-          {/* Tags */}
-          <div className="mt-3 flex flex-wrap gap-2">
-            {Array.isArray((income as any).category)
-              ? (income as any).category.map((cat: string) => (
-                  <span
-                    key={cat}
-                    className="px-3 py-1 text-[12px] leading-5 font-medium rounded-lg bg-[#EEEEEE] text-[#434343]"
-                  >
-                    {cat}
-                  </span>
-                ))
-              : income.category && (
-                  <span className="px-3 py-1 text-[12px] leading-5 font-medium rounded-lg bg-[#EEEEEE] text-[#434343]">
-                    {income.category as unknown as string}
-                  </span>
-                )}
-          </div>
+          {!hideTags && (
+            <>
+              <div className="mt-2 -mx-4 h-px bg-[#ECECEC]" />
+              {/* Tags */}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {Array.isArray((income as any).category)
+                  ? (income as any).category.map((cat: string) => (
+                    <span
+                      key={cat}
+                      className="px-3 py-1 text-[12px] leading-5 font-medium rounded-lg bg-[#EEEEEE] text-[#434343]"
+                    >
+                      {cat}
+                    </span>
+                  ))
+                  : income.category && (
+                    <span className="px-3 py-1 text-[12px] leading-5 font-medium rounded-lg bg-[#EEEEEE] text-[#434343]">
+                      {income.category as unknown as string}
+                    </span>
+                  )}
+              </div>
+            </>
+          )}
           {/* Notes (optional) */}
           {hasNotes && (
             <>
