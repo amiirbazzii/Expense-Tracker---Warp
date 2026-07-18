@@ -19,8 +19,9 @@ export function TotalBalanceCard({ className }: TotalBalanceCardProps) {
   const { cards: cardBalances, isLoading } = useLocalData();
   const [isNavigating, setIsNavigating] = useState(false);
 
-  const totalBalance = isLoading ? undefined : cardBalances?.reduce((sum, card) => sum + card.balance, 0);
-  const cardsCount = isLoading ? undefined : cardBalances?.length;
+  const activeCards = cardBalances?.filter((card) => !card.isArchived);
+  const totalBalance = isLoading ? undefined : activeCards?.reduce((sum, card) => sum + card.balance, 0);
+  const cardsCount = isLoading ? undefined : activeCards?.length;
   const cardsLabel = cardsCount === undefined ? '…' : (cardsCount < 10 ? String(cardsCount) : '+9');
 
   const content = (

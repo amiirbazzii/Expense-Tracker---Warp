@@ -7,6 +7,7 @@ import { Chip } from "@/components/Chip";
 interface Card {
   cardId: string;
   cardName: string;
+  isArchived?: boolean;
 }
 
 interface CardFilterProps {
@@ -57,7 +58,7 @@ export const CardFilter = ({ cards, selectedCardId, onSelectCard, leadingSlot }:
               All
             </Chip>
           </motion.div>
-          {cards.map((card) => (
+          {[...cards].sort((a, b) => (a.isArchived ? 1 : 0) - (b.isArchived ? 1 : 0)).map((card) => (
             <motion.div
               key={card.cardId}
               whileTap={{ scale: 0.95 }}
