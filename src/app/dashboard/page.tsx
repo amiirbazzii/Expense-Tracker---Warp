@@ -122,6 +122,16 @@ export default function DashboardPage() {
   const { categoryTotalsForMode, dailyTotalsForMode, totalForMode } =
     useDashboardDerivedData(mode, effExpenses || [], effIncome || [], filters);
 
+  const cardMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    if (cards) {
+      for (const c of cards) {
+        map[c.cardId] = c.cardName;
+      }
+    }
+    return map;
+  }, [cards]);
+
   return (
     <>
       <div className="min-h-screen bg-white">
@@ -200,6 +210,7 @@ export default function DashboardPage() {
                   expenses={effExpenses || []}
                   income={effIncome || []}
                   mode={mode}
+                  cardMap={cardMap}
                 />
               </>
             ) : null}

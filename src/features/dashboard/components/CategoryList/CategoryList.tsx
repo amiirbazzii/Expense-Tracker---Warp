@@ -2,9 +2,11 @@
 
 import { motion } from "framer-motion";
 import { useSettings } from "@/contexts/SettingsContext";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatCurrency } from "@/lib/formatters";
 import { useMemo, useState } from "react";
 import { BottomSheet } from "@/components/BottomSheet";
+import { ExpenseCard } from "@/components/cards/ExpenseCard";
+import { IncomeCard } from "@/components/cards/IncomeCard";
 import type { Expense } from "../../types/expense";
 import type { Income } from "../../types/income";
 
@@ -13,9 +15,10 @@ interface CategoryListProps {
   expenses?: Expense[];
   income?: Income[];
   mode?: 'expenses' | 'income';
+  cardMap?: Record<string, string>;
 }
 
-export function CategoryList({ categoryTotals, expenses = [], income = [], mode = 'expenses' }: CategoryListProps) {
+export function CategoryList({ categoryTotals, expenses = [], income = [], mode = 'expenses', cardMap = {} }: CategoryListProps) {
   const { settings } = useSettings();
   const [openCategory, setOpenCategory] = useState<string | null>(null);
 
@@ -64,30 +67,35 @@ export function CategoryList({ categoryTotals, expenses = [], income = [], mode 
       <BottomSheet
         open={!!openCategory}
         onClose={() => setOpenCategory(null)}
-        title={openCategory ? `${openCategory} • ${settings ? formatCurrency(categoryTotals[openCategory] || 0, settings.currency) : `$${(categoryTotals[openCategory] || 0).toFixed(2)}`}` : undefined}
+        title={openCategory ? `${openCategory} | ${settings ? formatCurrency(categoryTotals[openCategory] || 0, settings.currency) : `$${(categoryTotals[openCategory] || 0).toFixed(2)}`}` : undefined}
       >
         {openCategory && (
           <div className="space-y-3">
-            {filteredByCategory
-              .slice()
-              .sort((a, b) => (b.date as number) - (a.date as number))
-              .map((item) => (
-                <div key={String((item as any)._id)} className="flex justify-between items-start py-2">
-                  <div className="min-w-0 pr-3">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {mode === 'income' ? (item as Income).category : (item as Expense).title}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {settings ? formatDate(item.date as number, settings.calendar, 'MMM d, yyyy') : new Date(item.date as number).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className={`text-sm font-semibold ${mode === 'income' ? 'text-green-600' : 'text-red-500'}`}>
-                      {mode === 'income' ? '' : '-'}{settings ? formatCurrency(item.amount as number, settings.currency) : (item.amount as number).toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-              ))}
+            {mode === 'income' ? (
+              filteredByCategory
+                .slice()
+                .sort((a, b) => (b.date as number) - (a.date as number))
+                .map((item) => (
+                  <IncomeCard
+                    key={String((item as any)._id)}
+                    income={item as any}
+                    cardName={cardMap[(item as any).cardId] || "Unknown Card"}
+                    onDelete={() => {}}
+                  />
+                ))
+            ) : (
+              filteredByCategory
+                .slice()
+                .sort((a, b) => (b.date as number) - (a.date as number))
+                .map((item) => (
+                  <ExpenseCard
+                    key={String((item as any)._id)}
+                    expense={item as any}
+                    cardName={cardMap[(item as any).cardId] || "Unknown Card"}
+                    onDelete={() => {}}
+                  />
+                ))
+            )}
             {filteredByCategory.length === 0 && (
               <p className="text-sm text-gray-500 text-center py-6">No items in this category.</p>
             )}
