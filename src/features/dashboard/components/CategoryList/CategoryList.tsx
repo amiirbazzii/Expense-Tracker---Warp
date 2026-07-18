@@ -67,7 +67,7 @@ export function CategoryList({ categoryTotals, expenses = [], income = [], mode 
       <BottomSheet
         open={!!openCategory}
         onClose={() => setOpenCategory(null)}
-        title={openCategory ? `${openCategory} | ${settings ? formatCurrency(categoryTotals[openCategory] || 0, settings.currency) : `$${(categoryTotals[openCategory] || 0).toFixed(2)}`}` : undefined}
+        title={openCategory || undefined}
       >
         {openCategory && (
           <div className="space-y-3">
@@ -80,7 +80,7 @@ export function CategoryList({ categoryTotals, expenses = [], income = [], mode 
                     key={String((item as any)._id)}
                     income={item as any}
                     cardName={cardMap[(item as any).cardId] || "Unknown Card"}
-                    onDelete={() => {}}
+                    onDelete={() => { }}
                   />
                 ))
             ) : (
@@ -92,7 +92,7 @@ export function CategoryList({ categoryTotals, expenses = [], income = [], mode 
                     key={String((item as any)._id)}
                     expense={item as any}
                     cardName={cardMap[(item as any).cardId] || "Unknown Card"}
-                    onDelete={() => {}}
+                    onDelete={() => { }}
                   />
                 ))
             )}
