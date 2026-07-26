@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { ConvexError } from "convex/values";
@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Shield, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { RECOVERY_CODE_KEY } from "@/lib/recoveryCodeHandoff";
 
 function ResetPasswordForm() {
   const [newPassword, setNewPassword] = useState("");
@@ -17,30 +18,22 @@ function ResetPasswordForm() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [recoveryCode, setRecoveryCode] = useState("");
-  const [username, setUsername] = useState("");
-  
+
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const resetPasswordMutation = useMutation(api.auth.resetPasswordWithRecoveryCode);
 
   useEffect(() => {
-    const codeParam = searchParams.get("code");
-    const usernameParam = searchParams.get("username");
-    
-    if (codeParam) {
-      setRecoveryCode(decodeURIComponent(codeParam));
-    }
-    
-    if (usernameParam) {
-      setUsername(decodeURIComponent(usernameParam));
-    }
-    
-    // If no recovery code in URL, redirect to forgot password
-    if (!codeParam) {
+    // The code is handed over in sessionStorage by /forgot-password, so it
+    // never appears in the URL, history, or referrer headers.
+    const storedCode = sessionStorage.getItem(RECOVERY_CODE_KEY);
+
+    if (storedCode) {
+      setRecoveryCode(storedCode);
+    } else {
       router.push("/forgot-password");
     }
-  }, [searchParams, router]);
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,7 +66,10 @@ function ResetPasswordForm() {
       });
       
       toast.success("Password reset successfully! Logging you in...");
-      
+
+      // The code is single-use server-side; drop our copy too.
+      sessionStorage.removeItem(RECOVERY_CODE_KEY);
+
       // Store the new token and redirect
       localStorage.setItem("auth-token", result.token);
       router.push("/add");
@@ -87,6 +83,7 @@ function ResetPasswordForm() {
       
       // If recovery code is invalid, redirect back to forgot password
       if (message.toLowerCase().includes("invalid recovery code")) {
+        sessionStorage.removeItem(RECOVERY_CODE_KEY);
         setTimeout(() => router.push("/forgot-password"), 2000);
       }
     } finally {
@@ -119,7 +116,7 @@ function ResetPasswordForm() {
             Reset Password
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            {username ? `Reset password for ${username}` : "Set your new password"}
+            Set your new password
           </p>
         </div>
 

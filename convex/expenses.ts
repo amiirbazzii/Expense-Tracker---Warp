@@ -17,6 +17,24 @@ async function getUserByToken(ctx: any, token: string) {
   return user;
 }
 
+// A `v.id("cards")` argument only proves the ID is well-formed, not that the
+// caller owns the card. Without this check a user can attach their records to
+// another user's card and corrupt that user's computed balances.
+async function assertCardOwned(ctx: any, cardId: any, userId: any) {
+  if (cardId === undefined) return;
+
+  const card = await ctx.db.get(cardId);
+  if (!card || card.userId !== userId) {
+    throw new ConvexError("Card not found or not authorized");
+  }
+}
+
+function assertValidAmount(amount: number) {
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new ConvexError("Amount must be a positive number");
+  }
+}
+
 export const createExpense = mutation({
   args: {
     token: v.string(),
@@ -29,6 +47,8 @@ export const createExpense = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getUserByToken(ctx, args.token);
+    assertValidAmount(args.amount);
+    await assertCardOwned(ctx, args.cardId, user._id);
 
     const expense = await ctx.db.insert("expenses", {
       amount: args.amount,
@@ -115,14 +135,17 @@ export const getExpensesByDateRange = query({
   handler: async (ctx, args) => {
     const user = await getUserByToken(ctx, args.token);
 
-    const expenses = await ctx.db
+    // Range-scan the `by_user_date` index instead of collecting the user's
+    // entire history and filtering in JS.
+    return await ctx.db
       .query("expenses")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .withIndex("by_user_date", (q) =>
+        q
+          .eq("userId", user._id)
+          .gte("date", args.startDate)
+          .lte("date", args.endDate),
+      )
       .collect();
-
-    return expenses.filter(expense => 
-      expense.date >= args.startDate && expense.date <= args.endDate
-    );
   },
 });
 
@@ -139,6 +162,8 @@ export const updateExpense = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getUserByToken(ctx, args.token);
+    assertValidAmount(args.amount);
+    await assertCardOwned(ctx, args.cardId, user._id);
 
     // Verify the expense belongs to the user
     const expense = await ctx.db.get(args.expenseId);

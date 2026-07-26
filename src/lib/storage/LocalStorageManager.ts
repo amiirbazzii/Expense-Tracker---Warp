@@ -43,7 +43,16 @@ export class LocalStorageManager {
 
     try {
       // Initialize metadata if it doesn't exist
-      const metadata = await this.getMetadata();
+      let metadata = await this.getMetadata();
+
+      // The entity collections in this store are not partitioned by user, so
+      // data left behind by a previous account would otherwise be readable by
+      // whoever logs in next on this device. Wipe on user change.
+      if (metadata && metadata.userId !== userId) {
+        await this.clearAllData();
+        metadata = null;
+      }
+
       if (!metadata) {
         await this.initializeMetadata(userId);
       }

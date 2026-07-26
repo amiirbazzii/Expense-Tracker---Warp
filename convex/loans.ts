@@ -16,6 +16,24 @@ async function getUserByToken(ctx: any, token: string) {
   return user;
 }
 
+// A `v.id("cards")` argument only proves the ID is well-formed, not that the
+// caller owns the card. Without this check a user can attach their records to
+// another user's card and corrupt that user's computed balances.
+async function assertCardOwned(ctx: any, cardId: any, userId: any) {
+  if (cardId === undefined) return;
+
+  const card = await ctx.db.get(cardId);
+  if (!card || card.userId !== userId) {
+    throw new ConvexError("Card not found or not authorized");
+  }
+}
+
+function assertValidAmount(amount: number) {
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new ConvexError("Amount must be a positive number");
+  }
+}
+
 // ── Mutations ───────────────────────────────────────────────────────────
 
 export const createLoan = mutation({
@@ -128,6 +146,8 @@ export const payInstallment = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getUserByToken(ctx, args.token);
+    assertValidAmount(args.amount);
+    await assertCardOwned(ctx, args.cardId, user._id);
 
     const loan = await ctx.db.get(args.loanId);
     if (!loan || loan.userId !== user._id) {

@@ -9,7 +9,11 @@ export default defineSchema({
     hasSeenOnboarding: v.optional(v.boolean()),
     hashedRecoveryCode: v.optional(v.string()),
     recoveryCodeCreatedAt: v.optional(v.number()),
-  }).index("by_username", ["username"]).index("by_token", ["tokenIdentifier"]),
+  })
+    .index("by_username", ["username"])
+    .index("by_token", ["tokenIdentifier"])
+    // Indexed so recovery-code lookups never scan the whole users table.
+    .index("by_recovery_code", ["hashedRecoveryCode"]),
 
   expenses: defineTable({
     amount: v.number(),

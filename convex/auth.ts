@@ -1,33 +1,24 @@
 import { v } from "convex/values";
-import { mutation, query, internalQuery } from "./_generated/server";
+import { mutation, query, internalQuery, QueryCtx, MutationCtx } from "./_generated/server";
 import { ConvexError } from "convex/values";
 import { Doc, Id } from "./_generated/dataModel";
 
-// Cache for user lookups to reduce database queries
-const userCache = new Map<string, { user: Doc<"users"> | null; timestamp: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-// Helper function to get user with caching
+// Look up a user by session token.
+//
+// Deliberately NOT cached in module scope: Convex spreads execution across many
+// isolates, so a process-local cache can only ever be cleared in one of them.
+// That let revoked tokens keep authenticating from warm isolates, and it hid the
+// `users` read from Convex's dependency tracking, breaking query reactivity.
+// The `by_token` index makes this lookup cheap on its own.
 export const getUserByToken = async ({ ctx, token }: { ctx: any; token: string }): Promise<Doc<"users"> | null> => {
   if (!token) {
     return null;
   }
-  
-  // Check cache first
-  const cached = userCache.get(token);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.user;
-  }
-  
-  const user = await ctx.db
+
+  return await ctx.db
     .query("users")
     .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", token))
     .first();
-    
-  // Cache the result
-  userCache.set(token, { user, timestamp: Date.now() });
-  
-  return user;
 };
 
 // Helper function to hash password (simple version for demo)
@@ -54,12 +45,16 @@ function generateToken(): string {
 // Helper function to generate recovery code with cryptographically secure randomness
 function createRecoveryCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  const array = new Uint8Array(10);
-  crypto.getRandomValues(array);
-  
+  // 256 is not a multiple of 36, so `byte % 36` would bias the first four
+  // letters. Reject bytes in the short tail instead of folding them in.
+  const limit = 256 - (256 % chars.length); // 252
+
   let result = '';
-  for (let i = 0; i < 10; i++) {
-    result += chars.charAt(array[i] % chars.length);
+  const buf = new Uint8Array(1);
+  while (result.length < 10) {
+    crypto.getRandomValues(buf);
+    if (buf[0] >= limit) continue;
+    result += chars.charAt(buf[0] % chars.length);
   }
   // Format as AB12-CD34-EF
   return `${result.slice(0, 4)}-${result.slice(4, 8)}-${result.slice(8)}`;
@@ -70,13 +65,45 @@ function hashRecoveryCode(recoveryCode: string): string {
   return hashPassword(recoveryCode);
 }
 
-// Helper function to clear user cache when user data changes
-function clearUserCache(token?: string) {
-  if (token) {
-    userCache.delete(token);
-  } else {
-    userCache.clear();
+// Constant-time over equal-length inputs, so credential checks don't leak the
+// hash byte-by-byte via response timing. Length is compared up front, which is
+// fine here: both sides are fixed-format base36 hashes.
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
   }
+  return diff === 0;
+}
+
+// Minimum password length, enforced on the server for every path that sets a
+// password. The client checks this too, but the client can be bypassed.
+const MIN_PASSWORD_LENGTH = 6;
+
+function assertPasswordPolicy(password: string) {
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    throw new ConvexError({
+      message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters long`,
+    });
+  }
+}
+
+// Look up a user by recovery code hash using the `by_recovery_code` index.
+// The previous implementation used `.filter()`, which scans the entire users
+// table on every attempt from an unauthenticated endpoint.
+async function findUserByRecoveryCode(
+  ctx: QueryCtx | MutationCtx,
+  recoveryCode: string,
+): Promise<Doc<"users"> | null> {
+  const hashedRecoveryCode = hashRecoveryCode(recoveryCode);
+
+  return await ctx.db
+    .query("users")
+    .withIndex("by_recovery_code", (q) =>
+      q.eq("hashedRecoveryCode", hashedRecoveryCode),
+    )
+    .first();
 }
 
 export const register = mutation({
@@ -86,7 +113,13 @@ export const register = mutation({
   },
   handler: async (ctx, args) => {
     // Normalize username to lowercase
-    const normalizedUsername = args.username.toLowerCase();
+    const normalizedUsername = args.username.trim().toLowerCase();
+
+    if (!normalizedUsername) {
+      throw new ConvexError({ message: "Username cannot be empty" });
+    }
+
+    assertPasswordPolicy(args.password);
 
     // Check if user already exists (case-insensitive because we always store lowercase)
     const existingUser = await ctx.db
@@ -137,27 +170,30 @@ export const login = mutation({
     password: v.string(),
   },
   handler: async (ctx, args) => {
-    const normalizedUsername = args.username.toLowerCase();
+    const normalizedUsername = args.username.trim().toLowerCase();
     const user = await ctx.db
       .query("users")
       .withIndex("by_username", (q) => q.eq("username", normalizedUsername))
       .first();
 
+    // Same error whether the username is unknown or the password is wrong, so
+    // the endpoint can't be used to enumerate which accounts exist.
+    const invalidCredentials = new ConvexError({
+      message: "Invalid username or password",
+    });
+
     if (!user) {
-      throw new ConvexError({ message: "Username not found" });
+      throw invalidCredentials;
     }
 
     const hashedPassword = hashPassword(args.password);
-    if (user.hashedPassword !== hashedPassword) {
-      throw new ConvexError({ message: "Incorrect password" });
+    if (!safeEqual(user.hashedPassword, hashedPassword)) {
+      throw invalidCredentials;
     }
 
     // Generate new token
     const tokenIdentifier = generateToken();
     await ctx.db.patch(user._id, { tokenIdentifier });
-    
-    // Clear cache for old token
-    clearUserCache(user.tokenIdentifier);
 
     return { userId: user._id, token: tokenIdentifier };
   },
@@ -198,9 +234,6 @@ export const logout = mutation({
       // Invalidate token
       const newToken = generateToken();
       await ctx.db.patch(user._id, { tokenIdentifier: newToken });
-      
-      // Clear cache
-      clearUserCache(args.token);
     }
 
     return { success: true };
@@ -226,9 +259,6 @@ export const generateRecoveryCode = mutation({
       hashedRecoveryCode,
       recoveryCodeCreatedAt,
     });
-    
-    // Clear cache since user data changed
-    clearUserCache(args.token);
 
     return { recoveryCode };
   },
@@ -240,19 +270,16 @@ export const validateRecoveryCode = mutation({
     recoveryCode: v.string(),
   },
   handler: async (ctx, args) => {
-    const hashedRecoveryCode = hashRecoveryCode(args.recoveryCode);
-    
-    // Use index for better performance if available, otherwise fall back to collection scan
-    const user = await ctx.db
-      .query("users")
-      .filter((q) => q.eq(q.field("hashedRecoveryCode"), hashedRecoveryCode))
-      .first();
+    const user = await findUserByRecoveryCode(ctx, args.recoveryCode);
 
     if (!user) {
       throw new ConvexError({ message: "Invalid recovery code" });
     }
 
-    return { userId: user._id, username: user.username };
+    // Deliberately does not return the userId or username: this endpoint is
+    // unauthenticated, and echoing back the account it matched turns it into a
+    // user-enumeration oracle.
+    return { valid: true };
   },
 });
 
@@ -263,17 +290,9 @@ export const resetPasswordWithRecoveryCode = mutation({
     newPassword: v.string(),
   },
   handler: async (ctx, args) => {
-    if (args.newPassword.length < 6) {
-      throw new ConvexError({ message: "Password must be at least 6 characters long" });
-    }
+    assertPasswordPolicy(args.newPassword);
 
-    const hashedRecoveryCode = hashRecoveryCode(args.recoveryCode);
-    
-    // Use filter for better performance than collection scan
-    const user = await ctx.db
-      .query("users")
-      .filter((q) => q.eq(q.field("hashedRecoveryCode"), hashedRecoveryCode))
-      .first();
+    const user = await findUserByRecoveryCode(ctx, args.recoveryCode);
 
     if (!user) {
       throw new ConvexError({ message: "Invalid recovery code" });
@@ -285,13 +304,13 @@ export const resetPasswordWithRecoveryCode = mutation({
     await ctx.db.patch(user._id, {
       hashedPassword,
       tokenIdentifier,
-      // Optionally clear recovery code after use for security
-      // hashedRecoveryCode: undefined,
-      // recoveryCodeCreatedAt: undefined,
+      // Recovery codes are single-use. Leaving the code valid after a reset
+      // means anyone who ever saw it keeps a permanent password-reset backdoor,
+      // even once the password has been changed. The user can mint a new one
+      // from Settings at any time.
+      hashedRecoveryCode: undefined,
+      recoveryCodeCreatedAt: undefined,
     });
-    
-    // Clear any cached user data
-    clearUserCache();
 
     return { userId: user._id, token: tokenIdentifier };
   },

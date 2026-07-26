@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Shield, ArrowLeft } from "lucide-react";
+import { RECOVERY_CODE_KEY } from "@/lib/recoveryCodeHandoff";
 
 export default function ForgotPasswordPage() {
   const [recoveryCode, setRecoveryCode] = useState("");
@@ -27,11 +28,14 @@ export default function ForgotPasswordPage() {
 
     setIsLoading(true);
     try {
-      const result = await validateRecoveryMutation({ recoveryCode: recoveryCode.trim() });
+      await validateRecoveryMutation({ recoveryCode: recoveryCode.trim() });
       toast.success("Recovery code verified!");
-      
-      // Navigate to reset password page with the validated user info
-      router.push(`/reset-password?code=${encodeURIComponent(recoveryCode.trim())}&username=${encodeURIComponent(result.username)}`);
+
+      // Hand the code to the reset page via sessionStorage rather than the URL.
+      // A code in the query string leaks into browser history, Referer headers,
+      // server logs and the service worker's page cache.
+      sessionStorage.setItem(RECOVERY_CODE_KEY, recoveryCode.trim());
+      router.push("/reset-password");
     } catch (error: unknown) {
       const message = error instanceof ConvexError 
         ? (error.data as { message: string }).message 

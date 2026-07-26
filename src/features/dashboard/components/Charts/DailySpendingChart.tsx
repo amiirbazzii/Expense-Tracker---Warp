@@ -184,11 +184,22 @@ export function DailySpendingChart({ dailyTotals, mode = 'expenses', title, _col
       const formatted = settings ? formatCurrency(value, settings.currency) : `$${value.toFixed(0)}`;
       const dateLabel = chart.data.labels[dataIndex];
 
-      // Create tooltip content with date above value
-      inner.innerHTML = `
-        <div style="font-size: 10px; color: #D1D5DB; margin-bottom: 2px;">${dateLabel}</div>
-        <div style="font-size: 12px; font-weight: 500;">${formatted}</div>
-      `;
+      // Create tooltip content with date above value.
+      // Built with textContent rather than innerHTML: these values are derived
+      // from user-controlled data, so string-interpolating them into HTML is an
+      // XSS sink waiting for the day a label carries markup.
+      inner.textContent = '';
+
+      const dateEl = document.createElement('div');
+      dateEl.style.cssText = 'font-size:10px;color:#D1D5DB;margin-bottom:2px;';
+      dateEl.textContent = String(dateLabel ?? '');
+
+      const valueEl = document.createElement('div');
+      valueEl.style.cssText = 'font-size:12px;font-weight:500;';
+      valueEl.textContent = String(formatted ?? '');
+
+      inner.appendChild(dateEl);
+      inner.appendChild(valueEl);
 
       // Get tooltip dimensions
       tooltipEl.style.opacity = '1';

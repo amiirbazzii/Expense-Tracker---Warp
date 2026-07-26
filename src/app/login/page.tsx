@@ -59,11 +59,11 @@ export default function LoginPage() {
       router.push("/add");
     } catch (error: unknown) {
       const message = error instanceof ConvexError ? (error.data as { message: string }).message : error instanceof Error ? error.message : "Login failed. Please try again.";
-      if (message.toLowerCase().includes("username not found")) {
-        toast.error("Username not found. Please check your entry or create an account.");
-        router.push("/register");
-      } else if (message.toLowerCase().includes("incorrect password")) {
-        toast.error("The password you entered is incorrect.");
+      // The server intentionally returns one generic error for both an unknown
+      // username and a wrong password, so we can't (and shouldn't) tell the
+      // user which one it was — doing so lets anyone probe for valid accounts.
+      if (message.toLowerCase().includes("invalid username or password")) {
+        toast.error("Invalid username or password. Please try again.");
       } else {
         toast.error(message);
       }

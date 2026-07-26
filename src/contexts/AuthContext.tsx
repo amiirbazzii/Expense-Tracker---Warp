@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { offlineTokenManager } from "@/lib/auth/OfflineTokenManager";
+import { clearLocalUserData } from "@/lib/localDataReset";
 
 interface User {
   _id: string;
@@ -212,6 +213,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("auth-token");
     localStorage.removeItem("cached-user-id");
     await offlineTokenManager.clearToken();
+    // Drop the locally cached financial data too — it is not scoped per user,
+    // so leaving it behind exposes it to the next account signed in on this
+    // device.
+    await clearLocalUserData();
     setIsOfflineMode(false);
     setOfflineGracePeriodWarning(null);
     setOfflineUser(null);

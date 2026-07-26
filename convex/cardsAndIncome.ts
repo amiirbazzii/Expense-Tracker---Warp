@@ -16,6 +16,24 @@ async function getUserByToken(ctx: any, token: string) {
   return user;
 }
 
+// A `v.id("cards")` argument only proves the ID is well-formed, not that the
+// caller owns the card. Without this check a user can attach their records to
+// another user's card and corrupt that user's computed balances.
+async function assertCardOwned(ctx: any, cardId: any, userId: any) {
+  if (cardId === undefined) return;
+
+  const card = await ctx.db.get(cardId);
+  if (!card || card.userId !== userId) {
+    throw new ConvexError("Card not found or not authorized");
+  }
+}
+
+function assertValidAmount(amount: number) {
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new ConvexError("Amount must be a positive number");
+  }
+}
+
 // Card Operations
 export const addCard = mutation({
   args: {
@@ -62,9 +80,13 @@ export const deleteCard = mutation({
       throw new ConvexError("Card not found or not authorized to delete");
     }
 
+    // Only the owner's own records can block deletion. Scanning `by_card`
+    // across all users let anyone permanently block a card from being deleted
+    // by pointing a record of their own at it.
     const expensesUsingCard = await ctx.db
       .query("expenses")
       .withIndex("by_card", (q) => q.eq("cardId", args.cardId))
+      .filter((q) => q.eq(q.field("userId"), user._id))
       .first();
 
     if (expensesUsingCard) {
@@ -74,6 +96,7 @@ export const deleteCard = mutation({
     const incomeUsingCard = await ctx.db
       .query("income")
       .withIndex("by_card", (q) => q.eq("cardId", args.cardId))
+      .filter((q) => q.eq(q.field("userId"), user._id))
       .first();
 
     if (incomeUsingCard) {
@@ -115,6 +138,8 @@ export const createIncome = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getUserByToken(ctx, args.token);
+    assertValidAmount(args.amount);
+    await assertCardOwned(ctx, args.cardId, user._id);
 
     const income = await ctx.db.insert("income", {
       amount: args.amount,
@@ -175,16 +200,17 @@ export const getIncomeByDateRange = query({
   handler: async (ctx, args) => {
     const user = await getUserByToken(ctx, args.token);
 
-    const income = await ctx.db
+    // Range-scan the `by_user_date` index instead of collecting the user's
+    // entire history and filtering in JS.
+    return await ctx.db
       .query("income")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .withIndex("by_user_date", (q) =>
+        q
+          .eq("userId", user._id)
+          .gte("date", args.startDate)
+          .lte("date", args.endDate),
+      )
       .collect();
-
-    return income.filter(
-      (incomeRecord) =>
-        incomeRecord.date >= args.startDate &&
-        incomeRecord.date <= args.endDate,
-    );
   },
 });
 
@@ -369,6 +395,8 @@ export const updateIncome = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getUserByToken(ctx, args.token);
+    assertValidAmount(args.amount);
+    await assertCardOwned(ctx, args.cardId, user._id);
 
     const income = await ctx.db.get(args.incomeId);
     if (!income || income.userId !== user._id) {
@@ -510,14 +538,18 @@ export const transferFunds = mutation({
       throw new ConvexError("One or both cards not found or not authorized.");
     }
 
-    // Calculate balance for the 'from' card
+    // Calculate balance for the 'from' card, counting only this user's records.
+    // Without the userId filter, another user could inflate or deflate the
+    // balance seen here by attaching their own income/expenses to this card.
     const income = await ctx.db
       .query("income")
       .withIndex("by_card", (q) => q.eq("cardId", args.fromCardId))
+      .filter((q) => q.eq(q.field("userId"), user._id))
       .collect();
     const expenses = await ctx.db
       .query("expenses")
       .withIndex("by_card", (q) => q.eq("cardId", args.fromCardId))
+      .filter((q) => q.eq(q.field("userId"), user._id))
       .collect();
 
     const cardIncome = income.reduce((sum, inc) => sum + inc.amount, 0);
