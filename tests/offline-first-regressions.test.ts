@@ -244,6 +244,46 @@ describe("LocalStorageManager record identity", () => {
     expect(await manager.getExpenses()).toHaveLength(0);
   });
 
+  it("bulk-merges a hydration pass in one write with per-doc semantics", async () => {
+    const manager = await newManager();
+
+    // A synced row to update, and a local row whose identity must survive.
+    await manager.insertEntity("cards", "convex_a", {
+      cloudId: "convex_a",
+      name: "Visa",
+      updatedAt: 1,
+    });
+    const localRow = await manager.saveCard({ name: "Cash" } as any);
+
+    await manager.bulkMergeServerDocs(
+      "cards",
+      {
+        convex_a: { cloudId: "convex_a", name: "Visa Gold", updatedAt: 2 },
+        // Update targeting a missing key must be a no-op, not an insert.
+        ghost: { cloudId: "ghost", name: "Ghost", updatedAt: 2 },
+      },
+      {
+        convex_b: { cloudId: "convex_b", name: "Amex", updatedAt: 3 },
+        // Insert colliding with an existing key must not overwrite it.
+        [localRow.id]: { cloudId: "convex_c", name: "Clobber", updatedAt: 9 },
+      },
+    );
+
+    const updatedRow = await manager.getEntityById<any>("cards", "convex_a");
+    expect(updatedRow?.name).toBe("Visa Gold");
+    expect(updatedRow?.syncStatus).toBe("synced");
+
+    expect(await manager.getEntityById("cards", "ghost")).toBeNull();
+
+    const insertedRow = await manager.getEntityById<any>("cards", "convex_b");
+    expect(insertedRow?.name).toBe("Amex");
+    expect(insertedRow?.localId).toBe("hydrated_convex_b");
+
+    const untouched = await manager.getEntityById<any>("cards", localRow.id);
+    expect(untouched?.name).toBe("Cash");
+    expect(untouched?.syncStatus).toBe("pending");
+  });
+
   it("applies server updates without marking the row unsent", async () => {
     const manager = await newManager();
     await manager.insertEntity("cards", "convex_card", {

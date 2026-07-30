@@ -12,6 +12,7 @@ const EXPECTED_CACHES = new Set([
   "workbox-precache-v2",
   // Our versioned runtime caches
   `next-static-chunks-${CACHE_VERSION}`,
+  `rsc-${CACHE_VERSION}`,
   `images-${CACHE_VERSION}`,
   `static-resources-${CACHE_VERSION}`,
   `app-pages-${CACHE_VERSION}`,

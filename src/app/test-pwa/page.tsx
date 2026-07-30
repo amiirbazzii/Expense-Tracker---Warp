@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { notFound } from "next/navigation";
 
 export default function TestPWAPage() {
+  // Debug page for service-worker/cache inspection — dev only.
+  if (process.env.NODE_ENV === "production") notFound();
+
   const [isOnline, setIsOnline] = useState(true);
   const [swRegistered, setSwRegistered] = useState(false);
   const [swStatus, setSwStatus] = useState("Checking...");

@@ -454,6 +454,60 @@ export class LocalStorageManager {
   }
 
   /**
+   * Apply a whole hydration pass onto a collection in ONE read-modify-write.
+   *
+   * The per-document `applyServerUpdate`/`insertEntity` methods each rewrite
+   * the entire collection; calling them in a loop made hydration O(N²) and
+   * visibly froze the UI right after reconnecting. Semantics per entry match
+   * those methods exactly.
+   */
+  async bulkMergeServerDocs(
+    entityType: EntityType,
+    updates: Record<string, Record<string, any>>,
+    inserts: Record<string, Record<string, any>>,
+  ): Promise<void> {
+    const updateKeys = Object.keys(updates);
+    const insertKeys = Object.keys(inserts);
+    if (updateKeys.length === 0 && insertKeys.length === 0) return;
+
+    await runExclusive(async () => {
+      const collection = await this.getEntityCollection<LocalEntity>(entityType);
+
+      for (const key of updateKeys) {
+        const existing = collection[key];
+        if (!existing) continue;
+        collection[key] = {
+          ...existing,
+          ...updates[key],
+          // Never let server data re-key the row or clobber local identity.
+          id: existing.id,
+          localId: existing.localId,
+          version: existing.version,
+          createdAt: existing.createdAt,
+          syncStatus: "synced",
+          lastSyncedAt: Date.now(),
+        };
+      }
+
+      for (const key of insertKeys) {
+        if (collection[key]) continue; // Already exists — don't overwrite
+        const fields = inserts[key];
+        collection[key] = {
+          ...fields,
+          id: key,
+          localId: `hydrated_${key}`,
+          syncStatus: "synced",
+          version: 1,
+          createdAt: fields.createdAt ?? Date.now(),
+          updatedAt: fields.updatedAt ?? Date.now(),
+        } as any;
+      }
+
+      await this.setEntityCollection(entityType, collection);
+    });
+  }
+
+  /**
    * Remove rows that no longer exist on the server.
    * Only ever touches rows that are fully synced — a pending local write or a
    * row that has never reached the server is always kept.

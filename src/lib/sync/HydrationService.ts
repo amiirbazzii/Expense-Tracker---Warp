@@ -221,10 +221,14 @@ class HydrationService {
       if (row.cloudId) keyByCloudId.set(row.cloudId, key);
     }
 
-    let inserted = 0;
-    let updated = 0;
     let skipped = 0;
     const seenKeys = new Set<string>();
+
+    // Accumulate the whole pass, then write each collection ONCE. Writing per
+    // document rewrote the entire collection N times and froze the UI on
+    // reconnect, when hydration and queue drain fire together.
+    const updates: Record<string, Record<string, any>> = {};
+    const inserts: Record<string, Record<string, any>> = {};
 
     for (const doc of serverDocs) {
       const cloudId = doc._id;
@@ -235,9 +239,8 @@ class HydrationService {
 
       if (key === undefined) {
         // Unknown here — insert under the Convex id.
-        await this.storage.insertEntity(collection, cloudId, fields);
+        inserts[cloudId] = fields;
         seenKeys.add(cloudId);
-        inserted++;
         continue;
       }
 
@@ -253,12 +256,15 @@ class HydrationService {
       // Last-write-wins against the local copy.
       const serverUpdatedAt = fields.updatedAt ?? 0;
       if (serverUpdatedAt >= (existing.updatedAt ?? 0)) {
-        await this.storage.applyServerUpdate(collection, key, fields);
-        updated++;
+        updates[key] = fields;
       } else {
         skipped++;
       }
     }
+
+    const inserted = Object.keys(inserts).length;
+    const updated = Object.keys(updates).length;
+    await this.storage.bulkMergeServerDocs(collection, updates, inserts);
 
     // Anything synced that the server no longer returns was deleted elsewhere.
     // Rows that never reached the server are always kept, and collections

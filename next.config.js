@@ -4,6 +4,23 @@ process.env.NEXT_PUBLIC_APP_VERSION = require("./package.json").version;
 
 const CACHE_VERSION = "v3";
 
+// Client code (the app-shell warm-up) writes into the same runtime caches the
+// service worker reads from, so the version has to be visible to both.
+process.env.NEXT_PUBLIC_SW_CACHE_VERSION = CACHE_VERSION;
+
+// Every page in this app is a static client shell — the query string never
+// changes the HTML or the RSC payload (tabs, edit ids etc. are read client
+// side). Cache documents and payloads by pathname only, so `/add?tab=income`
+// hits the cached `/add` instead of missing offline. Applies to both reads
+// and writes, so each route has exactly one cache entry.
+const stripSearchPlugin = {
+  cacheKeyWillBeUsed: async ({ request }) => {
+    const url = new URL(request.url);
+    url.search = "";
+    return url.toString();
+  },
+};
+
 const withPWA = require("next-pwa")({
   dest: "public",
   register: true,
@@ -14,10 +31,14 @@ const withPWA = require("next-pwa")({
   importScripts: ["/background-sync-sw.js"],
   buildExcludes: [/app-build-manifest\.json$/, /middleware-manifest\.json$/],
   publicExcludes: ["!robots.txt", "!sitemap.xml", "!background-sync-sw.js"],
+  // dynamicStartUrl is off, so start_url ("/") is precached as a static
+  // document. (dynamicStartUrlRedirect only applies when it is on.)
   dynamicStartUrl: false,
-  dynamicStartUrlRedirect: "/dashboard",
   fallbacks: {
-    document: "/",
+    // Served for any offline navigation whose HTML is not cached. Must be a
+    // real, static, auth-free page — falling back to "/" (a blank client-side
+    // redirector) sent offline users into a white-screen loop.
+    document: "/offline",
   },
   cacheOnFrontEndNav: true,
   reloadOnOnline: false,
@@ -73,6 +94,40 @@ const withPWA = require("next-pwa")({
         plugins: [],
       },
     },
+    // Documents and RSC payloads use NetworkFirst, NOT StaleWhileRevalidate:
+    // serving a previous build's copy while online makes Next.js detect
+    // version skew and force a full reload, which fetches the same stale copy
+    // — a black-flash reload loop after every deploy. NetworkFirst means
+    // online navigations always match the server's build; offline, the fetch
+    // rejects immediately and the cache answers with no added latency. The
+    // 3s timeout only matters on connections that hang (lie-fi).
+    //
+    // App Router client navigations fetch an RSC payload (`/route?_rsc=…`)
+    // instead of a document, so the page rules below never see them. Handle
+    // them deliberately: without this rule they fell into the general
+    // CacheFirst bucket keyed by the varying `_rsc` token — stale for up to
+    // 7 days online, and mostly cache misses offline.
+    {
+      urlPattern: ({ url, sameOrigin }) =>
+        sameOrigin && url.searchParams.has("_rsc"),
+      handler: "NetworkFirst",
+      options: {
+        cacheName: `rsc-${CACHE_VERSION}`,
+        networkTimeoutSeconds: 3,
+        expiration: {
+          maxEntries: 50,
+          maxAgeSeconds: 24 * 60 * 60,
+        },
+        cacheableResponse: {
+          statuses: [0, 200],
+        },
+        // RSC responses carry a Vary header that would defeat cache.match.
+        matchOptions: { ignoreVary: true },
+        // Drops the whole query — including the varying `_rsc` token — so a
+        // route has one payload entry that every navigation to it can hit.
+        plugins: [stripSearchPlugin],
+      },
+    },
     {
       urlPattern: ({ request, url }) => {
         const pathname = new URL(url).pathname;
@@ -91,9 +146,11 @@ const withPWA = require("next-pwa")({
           appPages.some((page) => pathname.startsWith(page))
         );
       },
-      handler: "StaleWhileRevalidate",
+      handler: "NetworkFirst",
       options: {
         cacheName: `app-pages-${CACHE_VERSION}`,
+        networkTimeoutSeconds: 3,
+        plugins: [stripSearchPlugin],
         expiration: {
           maxEntries: 30,
           maxAgeSeconds: 7 * 24 * 60 * 60,
@@ -113,9 +170,11 @@ const withPWA = require("next-pwa")({
             pathname === "/register")
         );
       },
-      handler: "StaleWhileRevalidate",
+      handler: "NetworkFirst",
       options: {
         cacheName: `root-pages-${CACHE_VERSION}`,
+        networkTimeoutSeconds: 3,
+        plugins: [stripSearchPlugin],
         expiration: {
           maxEntries: 10,
           maxAgeSeconds: 14 * 24 * 60 * 60,
@@ -127,9 +186,11 @@ const withPWA = require("next-pwa")({
     },
     {
       urlPattern: ({ request }) => request.destination === "document",
-      handler: "StaleWhileRevalidate",
+      handler: "NetworkFirst",
       options: {
         cacheName: `pages-${CACHE_VERSION}`,
+        networkTimeoutSeconds: 3,
+        plugins: [stripSearchPlugin],
         expiration: {
           maxEntries: 50,
           maxAgeSeconds: 7 * 24 * 60 * 60,
@@ -169,6 +230,9 @@ const withPWA = require("next-pwa")({
         if (noCache.some((route) => pathname.includes(route))) return false;
         if (request.destination === "document") return false;
         if (request.destination === "manifest") return false;
+        // RSC payloads have their own rule above; belt-and-braces so they can
+        // never land in a CacheFirst bucket again.
+        if (new URL(url).searchParams.has("_rsc")) return false;
         return true;
       },
       handler: "CacheFirst",

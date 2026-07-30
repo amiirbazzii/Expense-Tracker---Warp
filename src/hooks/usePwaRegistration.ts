@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { toast } from "sonner";
+import { warmAppShell } from "@/lib/pwa/warmAppShell";
 
 export function usePwaRegistration() {
   useEffect(() => {
@@ -31,10 +32,20 @@ export function usePwaRegistration() {
       try {
         const registration = await navigator.serviceWorker.register("/sw.js", {
           scope: "/",
-          updateViaCache: "all",
+          // Never let update checks read sw.js from the HTTP cache: a cached
+          // copy that differs from the installed worker makes every check
+          // "discover" an update — including flapping back to an older build —
+          // which fired updatefound (and an update toast) over and over.
+          updateViaCache: "none",
         });
 
         if (!isMounted) return;
+
+        // Once the worker is in control, cache every core route's document so
+        // the whole app can be navigated offline — not just visited screens.
+        navigator.serviceWorker.ready
+          .then(() => warmAppShell())
+          .catch(() => {});
 
         registration.addEventListener("updatefound", () => {
           const newWorker = registration.installing;
@@ -48,6 +59,10 @@ export function usePwaRegistration() {
               navigator.serviceWorker.controller
             ) {
               waitingWorker = newWorker;
+
+              // One sticky toast at a time — repeated update discoveries must
+              // replace the previous prompt, not stack a new one on top.
+              if (toastId !== null) toast.dismiss(toastId);
 
               toastId = toast("Update available", {
                 description: "A new version is ready.",
@@ -72,25 +87,27 @@ export function usePwaRegistration() {
           }
         });
 
-        const handleVisibilityChange = () => {
-          if (document.visibilityState === "visible") {
-            registration.update().catch(() => {});
-          }
-        };
+        // Check for updates when the app returns to the foreground, at most
+        // once per hour. The old version checked on every focus AND every
+        // visibility change — both fire together on each app switch, so the
+        // check ran near-constantly.
+        const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000;
+        let lastUpdateCheck = Date.now();
 
-        const handleFocus = () => {
+        const handleVisibilityChange = () => {
+          if (document.visibilityState !== "visible") return;
+          if (Date.now() - lastUpdateCheck < UPDATE_CHECK_INTERVAL_MS) return;
+          lastUpdateCheck = Date.now();
           registration.update().catch(() => {});
         };
 
         document.addEventListener("visibilitychange", handleVisibilityChange);
-        window.addEventListener("focus", handleFocus);
 
         return () => {
           document.removeEventListener(
             "visibilitychange",
             handleVisibilityChange,
           );
-          window.removeEventListener("focus", handleFocus);
         };
       } catch (error) {
         console.warn("[PWA] SW registration failed, retrying in 5s:", error);

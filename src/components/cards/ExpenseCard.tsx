@@ -58,7 +58,7 @@ export function ExpenseCard({
     if (onEdit) {
       onEdit(expense._id as string);
     } else {
-      router.push(`/expenses/edit/${expense._id}`);
+      router.push(`/expenses/edit?id=${expense._id}`);
     }
   };
 

@@ -48,7 +48,7 @@ export function IncomeCard({
     if (onEdit) {
       onEdit(income._id);
     } else {
-      router.push(`/income/edit/${income._id}`);
+      router.push(`/income/edit?id=${income._id}`);
     }
   };
 

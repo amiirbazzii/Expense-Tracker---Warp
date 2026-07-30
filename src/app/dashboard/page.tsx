@@ -60,7 +60,7 @@ export default function DashboardPage() {
   const handleEditNavigation = (expense: Expense) => {
     const expenseId = handleEdit(expense);
     if (expenseId) {
-      router.push(`/expenses/edit/${expenseId}`);
+      router.push(`/expenses/edit?id=${expenseId}`);
     }
   };
 
