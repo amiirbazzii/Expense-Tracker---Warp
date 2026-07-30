@@ -5,7 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { CirclePlus, ChartPie, Settings } from "lucide-react";
 
-const MotionLink = motion(Link);
+const MotionLink = motion.create(Link);
 
 const navItems = [
   {
