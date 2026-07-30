@@ -9,8 +9,8 @@
  * so UI components need no changes — they just read from a local source.
  */
 
-import { LocalStorageManager } from "../storage/LocalStorageManager";
-import { MutationQueueManager } from "../queue/MutationQueueManager";
+import { localStorageManager } from "../storage/LocalStorageManager";
+import { mutationQueue } from "../queue/MutationQueueManager";
 
 // ── Public types ────────────────────────────────────────────────────────
 
@@ -109,19 +109,27 @@ const EMPTY_SNAPSHOT: LocalDataSnapshot = {
 // ── Store ───────────────────────────────────────────────────────────────
 
 export class LocalDataStore {
-  private storage = new LocalStorageManager();
-  private queue = new MutationQueueManager();
+  private storage = localStorageManager;
+  private queue = mutationQueue;
   private snapshot: LocalDataSnapshot = EMPTY_SNAPSHOT;
   private listeners = new Set<() => void>();
   private initialized = false;
   private initializing: Promise<void> | null = null;
   private userId: string | null = null;
 
+  // Coalescing state for refresh(); see the comment on `refresh`.
+  private refreshChain: Promise<void> = Promise.resolve();
+  private queuedRefresh: Promise<void> | null = null;
+
   /** Load all collections from IndexedDB into memory. Safe to call repeatedly. */
   async init(userId: string): Promise<void> {
-    this.userId = userId;
     if (this.initializing) return this.initializing;
-    if (this.initialized && this.userId === userId) return Promise.resolve();
+    // Compare *before* assigning, otherwise the guard always matches and a
+    // second account never re-initializes (it would keep reading the first
+    // account's in-memory snapshot).
+    if (this.initialized && this.userId === userId) return;
+
+    this.userId = userId;
 
     this.initializing = (async () => {
       try {
@@ -134,6 +142,18 @@ export class LocalDataStore {
     })();
 
     return this.initializing;
+  }
+
+  /**
+   * Forget everything held in memory. Called on logout, after the underlying
+   * IndexedDB databases have been deleted, so no stale rows survive into the
+   * next session in this tab.
+   */
+  reset(): void {
+    this.initialized = false;
+    this.userId = null;
+    this.snapshot = EMPTY_SNAPSHOT;
+    this.emit();
   }
 
   /**
@@ -181,8 +201,29 @@ export class LocalDataStore {
     return deduped;
   }
 
-  /** Re-read every collection from IndexedDB and emit a change event. */
-  async refresh(): Promise<void> {
+  /**
+   * Re-read every collection from IndexedDB and emit a change event.
+   *
+   * Calls are coalesced: a refresh that has been requested but has not started
+   * reading yet is shared by every later caller, so a burst of writes performs
+   * one pass instead of one per write. A caller that arrives while a pass is
+   * already reading gets a fresh pass queued behind it, so the data it just
+   * wrote is always reflected in the promise it awaits.
+   */
+  refresh(): Promise<void> {
+    if (this.queuedRefresh) return this.queuedRefresh;
+
+    const pass = this.refreshChain.then(() => {
+      this.queuedRefresh = null;
+      return this.readAll();
+    });
+
+    this.queuedRefresh = pass;
+    this.refreshChain = pass.catch(() => undefined);
+    return pass;
+  }
+
+  private async readAll(): Promise<void> {
     const [
       expenses,
       income,
@@ -463,6 +504,10 @@ export class LocalDataStore {
         : "expenses:createCategory",
       {
         token: this.userId,
+        // Without __localId the sync engine has nowhere to write the Convex
+        // id back to, and the next hydration inserts the server's copy as a
+        // second row — duplicate entries in every category picker.
+        __localId: saved.id,
         name: saved.name,
       },
     );
@@ -481,8 +526,8 @@ export class LocalDataStore {
 
     const isIncome = cat.type === "income";
     const updated = isIncome
-      ? await this.storage.updateIncomeCategory(id, { isArchived: true }, { skipEnqueue: true })
-      : await this.storage.updateCategory(id, { isArchived: true }, { skipEnqueue: true });
+      ? await this.storage.updateIncomeCategory(id, { isArchived: true })
+      : await this.storage.updateCategory(id, { isArchived: true });
     if (!updated) return false;
 
     const mutationRoute = isIncome
@@ -508,8 +553,8 @@ export class LocalDataStore {
 
     const isIncome = cat.type === "income";
     const updated = isIncome
-      ? await this.storage.updateIncomeCategory(id, { isArchived: false }, { skipEnqueue: true })
-      : await this.storage.updateCategory(id, { isArchived: false }, { skipEnqueue: true });
+      ? await this.storage.updateIncomeCategory(id, { isArchived: false })
+      : await this.storage.updateCategory(id, { isArchived: false });
     if (!updated) return false;
 
     const mutationRoute = isIncome
@@ -535,8 +580,8 @@ export class LocalDataStore {
 
     const isIncome = cat.type === "income";
     const deleted = isIncome
-      ? await this.storage.deleteIncomeCategory(id, { skipEnqueue: true })
-      : await this.storage.deleteCategory(id, { skipEnqueue: true });
+      ? await this.storage.deleteIncomeCategory(id)
+      : await this.storage.deleteCategory(id);
     if (!deleted) return false;
 
     const mutationRoute = isIncome
@@ -586,6 +631,7 @@ export class LocalDataStore {
 
     await this.queue.enqueue("expenses:createForValue", {
       token: this.userId,
+      __localId: saved.id,
       value: saved.value,
     });
 
@@ -677,9 +723,14 @@ export class LocalDataStore {
   }
 
   // ── Shape mappers (local entity → Convex document shape) ──────────────
+  //
+  // `_id` is always the *local* record key, never `cloudId`. The UI hands this
+  // id straight back to the write methods below, which look rows up by key —
+  // exposing the cloud id here means every edit and delete of a row created in
+  // this session silently fails to find its record.
 
   private toExpenseDoc = (e: any): ExpenseDoc => ({
-    _id: e.cloudId || e.id,
+    _id: e.id,
     _creationTime: e.createdAt,
     userId: this.userId ?? "",
     amount: e.amount,
@@ -691,7 +742,7 @@ export class LocalDataStore {
   });
 
   private toIncomeDoc = (i: any): IncomeDoc => ({
-    _id: i.cloudId || i.id,
+    _id: i.id,
     _creationTime: i.createdAt,
     userId: this.userId ?? "",
     amount: i.amount,
@@ -703,19 +754,19 @@ export class LocalDataStore {
   });
 
   private toCategoryDoc = (c: any): CategoryDoc => ({
-    _id: c.cloudId || c.id,
+    _id: c.id,
     name: c.name,
     type: c.type,
     isArchived: c.isArchived,
   });
 
   private toForValueDoc = (f: any): ForValueDoc => ({
-    _id: f.cloudId || f.id,
+    _id: f.id,
     value: f.value,
   });
 
   private toLoanDoc = (l: any): LoanDoc => ({
-    _id: l.cloudId || l.id,
+    _id: l.id,
     _creationTime: l.createdAt,
     name: l.name,
     totalAmount: l.totalAmount,
@@ -739,17 +790,23 @@ export class LocalDataStore {
     expenses: any[],
   ): CardDoc[] {
     return cards.map((card) => {
-      const cardId = card.cloudId || card.id;
+      // Transactions reference a card either by its stable local key or — for
+      // rows hydrated from Convex before the card was linked — by its cloud
+      // id. Both spellings have to count towards the same balance, otherwise
+      // a card created offline shows a zero balance once it syncs.
+      const aliases = new Set<string>([card.id]);
+      if (card.cloudId) aliases.add(card.cloudId);
+
       const cardIncome = income
-        .filter((inc) => inc.cardId === cardId)
+        .filter((inc) => inc.cardId && aliases.has(inc.cardId))
         .reduce((sum, inc) => sum + inc.amount, 0);
 
       const cardExpenses = expenses
-        .filter((exp) => exp.cardId === cardId)
+        .filter((exp) => exp.cardId && aliases.has(exp.cardId))
         .reduce((sum, exp) => sum + exp.amount, 0);
 
       return {
-        cardId,
+        cardId: card.id,
         cardName: card.name,
         totalIncome: cardIncome,
         totalExpenses: cardExpenses,

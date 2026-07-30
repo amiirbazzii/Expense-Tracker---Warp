@@ -38,12 +38,16 @@ export interface PendingMutation {
   id: string;
   /** Mutation action: "CREATE" | "UPDATE" | "DELETE" or a composite route like "expenses:createExpense" */
   action: string;
-  /** Entity store name, e.g. "expenses", "income", "cards" */
-  storeName: string;
   /** Clean payload to send to the mutation */
   payload: any;
   /** FIFO ordering timestamp */
   timestamp: number;
+  /** Failed delivery attempts. Absent until the first failure. */
+  attempts?: number;
+  /** Message from the most recent failure. */
+  lastError?: string;
+  /** Set when the mutation was moved to the dead-letter list. */
+  failedAt?: number;
 }
 
 // Base interface for all local entities

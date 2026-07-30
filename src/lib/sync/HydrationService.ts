@@ -1,31 +1,66 @@
 /**
- * HydrationService — Seeds IndexedDB from Convex on first online login.
+ * HydrationService — Reconciles IndexedDB with Convex.
  *
  * Fetches all primary collections via ConvexClient and merges them into
- * LocalDataStore's IndexedDB. Items with pending mutations in the queue
- * are never overwritten — local writes always win.
+ * LocalDataStore's IndexedDB:
+ *
+ *  • A server document is matched to an existing local row by its `cloudId`,
+ *    never inserted a second time under its Convex id.
+ *  • Rows with unsent local changes are never overwritten — local writes win.
+ *  • References between rows (a transaction's `cardId`) are rewritten to the
+ *    local key of the row they point at, so everything stored locally speaks
+ *    one id vocabulary.
+ *  • Rows that are fully synced but no longer exist on the server are deleted,
+ *    so a deletion made on another device propagates here.
+ *
+ * Unlike the first version this is safe to run repeatedly: `hydrate()` is
+ * cheap to call on reconnect, on tab focus, and on a timer.
  */
 
 import { ConvexClient } from "convex/browser";
 import { api } from "../../../convex/_generated/api";
 import { localDataStore } from "../store/LocalDataStore";
-import { MutationQueueManager } from "../queue/MutationQueueManager";
-import { LocalStorageManager } from "../storage/LocalStorageManager";
-import { EntityType } from "../types/local-storage";
+import { mutationQueue } from "../queue/MutationQueueManager";
+import { localStorageManager } from "../storage/LocalStorageManager";
+import { EntityType, LocalEntity } from "../types/local-storage";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
 interface HydrationState {
   hydrated: boolean;
   inProgress: boolean;
+  lastHydratedAt: number;
 }
+
+/** Ignore refresh requests that arrive within this window of the last run. */
+const MIN_REHYDRATE_INTERVAL_MS = 30_000;
+
+/**
+ * Collections whose Convex query returns the user's complete set, so a row
+ * missing from the response really was deleted upstream.
+ *
+ * `categories` and `incomeCategories` are deliberately absent: their queries
+ * filter out archived rows, so "missing from the response" would wrongly
+ * delete every category the user has archived.
+ */
+const DELETION_AUTHORITATIVE: ReadonlySet<string> = new Set([
+  "expenses",
+  "income",
+  "cards",
+  "forValues",
+  "loans",
+]);
 
 // ── Service ─────────────────────────────────────────────────────────────────
 
 class HydrationService {
-  private state: HydrationState = { hydrated: false, inProgress: false };
-  private queue = new MutationQueueManager();
-  private storage = new LocalStorageManager();
+  private state: HydrationState = {
+    hydrated: false,
+    inProgress: false,
+    lastHydratedAt: 0,
+  };
+  private queue = mutationQueue;
+  private storage = localStorageManager;
 
   isHydrated(): boolean {
     return this.state.hydrated;
@@ -36,23 +71,36 @@ class HydrationService {
   }
 
   /**
-   * Full hydration: fetch all Convex collections and seed IndexedDB.
+   * Pull every Convex collection and reconcile it into IndexedDB.
    *
-   * Safe to call multiple times — skips if already hydrated or in progress.
-   * Must be called after LocalDataStore.init() with a valid userId.
+   * The first call seeds the database. Later calls refresh it — that is how a
+   * change made on another device reaches this one. Concurrent calls collapse,
+   * and repeat calls inside `MIN_REHYDRATE_INTERVAL_MS` are ignored unless
+   * `force` is set.
    */
   async hydrate(
     client: ConvexClient,
     token: string,
+    options: { force?: boolean } = {},
   ): Promise<void> {
-    if (this.state.hydrated || this.state.inProgress) return;
+    if (this.state.inProgress) return;
+
+    const sinceLast = Date.now() - this.state.lastHydratedAt;
+    if (
+      this.state.hydrated &&
+      !options.force &&
+      sinceLast < MIN_REHYDRATE_INTERVAL_MS
+    ) {
+      return;
+    }
 
     this.state.inProgress = true;
     console.log("[HydrationService] Starting hydration");
 
     try {
-      // Snapshot pending mutation IDs so we never overwrite local writes
-      const pendingIds = await this.buildPendingIdsMap();
+      // Rows touched by a queued mutation must not be overwritten by the
+      // server's older copy.
+      const pendingLocalIds = await this.buildPendingIdSet();
 
       // Fetch all collections from Convex in parallel
       const [expenses, income, categories, forValues, cards, incomeCategories, loans] =
@@ -66,28 +114,41 @@ class HydrationService {
           client.query(api.loans.getLoans, { token }),
         ]);
 
-      // Merge into IndexedDB — pending local items are never overwritten
-      await this.mergeCollection("expenses", expenses, pendingIds.expenses);
-      await this.mergeCollection("income", income, pendingIds.income);
-      await this.mergeCollection("categories", categories, pendingIds.categories);
-      await this.mergeCollection("forValues", forValues, pendingIds.forValues);
-      await this.mergeCollection("cards", cards, pendingIds.cards);
+      // Cards first: transactions reference them, and the merges below need a
+      // complete cloudId → local key map to rewrite those references.
+      await this.mergeCollection("cards", cards, pendingLocalIds);
+      const cardKeyByCloudId = await this.storage.getCloudIdIndex("cards");
+
+      await this.mergeCollection("categories", categories, pendingLocalIds);
       await this.mergeCollection(
         "incomeCategories",
         incomeCategories,
-        pendingIds.incomeCategories,
+        pendingLocalIds,
       );
-      await this.mergeCollection("loans", loans, pendingIds.loans);
+      await this.mergeCollection("forValues", forValues, pendingLocalIds);
+      await this.mergeCollection("loans", loans, pendingLocalIds);
+      await this.mergeCollection(
+        "expenses",
+        expenses,
+        pendingLocalIds,
+        cardKeyByCloudId,
+      );
+      await this.mergeCollection(
+        "income",
+        income,
+        pendingLocalIds,
+        cardKeyByCloudId,
+      );
 
       // Re-read all collections into memory and notify subscribers
       await localDataStore.refresh();
 
       this.state.hydrated = true;
+      this.state.lastHydratedAt = Date.now();
       console.log("[HydrationService] Hydration complete");
     } catch (err) {
       console.error("[HydrationService] Hydration failed:", err);
-      // Allow retry on next attempt
-      this.state.hydrated = false;
+      // Leave `hydrated` as it was so a later attempt retries.
     } finally {
       this.state.inProgress = false;
     }
@@ -95,60 +156,38 @@ class HydrationService {
 
   /** Reset state — called on logout so the next login re-hydrates. */
   reset(): void {
-    this.state = { hydrated: false, inProgress: false };
+    this.state = { hydrated: false, inProgress: false, lastHydratedAt: 0 };
   }
 
   // ── Pending-mutation tracking ───────────────────────────────────────────
 
   /**
-   * Build a map of entity IDs that have pending mutations in the queue.
-   * Each mutation's payload contains the entity ID (expenseId, incomeId, etc.).
-   * We extract these so hydration never overwrites a pending local write.
+   * Local keys referenced by anything still sitting in the mutation queue.
+   *
+   * Reading ids straight off the queue payloads — rather than enumerating each
+   * action's shape — means a newly added mutation type cannot accidentally let
+   * hydration clobber an unsent local write.
    */
-  private async buildPendingIdsMap(): Promise<Record<string, Set<string>>> {
+  private async buildPendingIdSet(): Promise<Set<string>> {
     const mutations = await this.queue.getAll();
-    const ids: Record<string, Set<string>> = {
-      expenses: new Set(),
-      income: new Set(),
-      categories: new Set(),
-      forValues: new Set(),
-      cards: new Set(),
-      incomeCategories: new Set(),
-      loans: new Set(),
-    };
+    const ids = new Set<string>();
 
-    for (const m of mutations) {
-      const p = m.payload;
-      switch (m.action) {
-        case "expenses:createExpense":
-        case "expenses:updateExpense":
-        case "expenses:deleteExpense":
-          if (p.expenseId) ids.expenses.add(p.expenseId);
-          break;
-        case "income:createIncome":
-        case "income:updateIncome":
-        case "income:deleteIncome":
-          if (p.incomeId) ids.income.add(p.incomeId);
-          break;
-        case "expenses:createCategory":
-          if (p.name) ids.categories.add(p.name);
-          break;
-        case "expenses:createForValue":
-          if (p.value) ids.forValues.add(p.value);
-          break;
-        case "cards:addCard":
-          if (p.__localId) ids.cards.add(p.__localId);
-          break;
-        case "cards:updateCard":
-        case "cards:deleteCard":
-          if (p.cardId) ids.cards.add(p.cardId);
-          break;
-        case "loans:createLoan":
-        case "loans:updateLoan":
-        case "loans:deleteLoan":
-        case "loans:payInstallment":
-          if (p.loanId) ids.loans.add(p.loanId);
-          break;
+    const ID_FIELDS = [
+      "__localId",
+      "expenseId",
+      "incomeId",
+      "cardId",
+      "loanId",
+      "categoryId",
+      "localExpenseId",
+      "localIncomeId",
+    ];
+
+    for (const mutation of mutations) {
+      const payload = mutation.payload ?? {};
+      for (const field of ID_FIELDS) {
+        const value = payload[field];
+        if (typeof value === "string") ids.add(value);
       }
     }
 
@@ -158,82 +197,123 @@ class HydrationService {
   // ── IndexedDB merge ─────────────────────────────────────────────────────
 
   /**
-   * Merge a single collection of Convex documents into IndexedDB.
+   * Reconcile one collection of Convex documents into IndexedDB.
    *
    * For each server document:
-   *  - If its ID matches a pending mutation → skip (local write wins)
-   *  - If it already exists locally → update
-   *  - If it's new → insert
+   *  - resolve it to an existing local row via `cloudId` (or its own key)
+   *  - skip it if that row has unsent local changes
+   *  - otherwise update in place, or insert when it is new here
+   *
+   * Then remove synced local rows the server no longer has.
    */
   private async mergeCollection(
     collection: EntityType,
     serverDocs: any[],
-    pendingIds: Set<string>,
+    pendingLocalIds: Set<string>,
+    cardKeyByCloudId?: Map<string, string>,
   ): Promise<void> {
-    const localCollection = await this.storage.getEntityCollection(collection);
-    const localById = new Map(Object.entries(localCollection));
+    const localCollection =
+      await this.storage.getEntityCollection<LocalEntity>(collection);
+
+    // cloudId → local key, for rows already linked to the server.
+    const keyByCloudId = new Map<string, string>();
+    for (const [key, row] of Object.entries(localCollection)) {
+      if (row.cloudId) keyByCloudId.set(row.cloudId, key);
+    }
 
     let inserted = 0;
     let updated = 0;
     let skipped = 0;
+    const seenKeys = new Set<string>();
 
     for (const doc of serverDocs) {
-      const docId = doc._id;
+      const cloudId = doc._id;
+      const key =
+        keyByCloudId.get(cloudId) ??
+        (localCollection[cloudId] ? cloudId : undefined);
+      const fields = this.toLocalFields(collection, doc, cardKeyByCloudId);
 
-      // Skip entities with pending mutations — local state wins
-      if (pendingIds.has(docId)) {
+      if (key === undefined) {
+        // Unknown here — insert under the Convex id.
+        await this.storage.insertEntity(collection, cloudId, fields);
+        seenKeys.add(cloudId);
+        inserted++;
+        continue;
+      }
+
+      seenKeys.add(key);
+      const existing = localCollection[key];
+
+      // Never overwrite a row with an unsent local change.
+      if (existing.syncStatus !== "synced" || pendingLocalIds.has(key)) {
         skipped++;
         continue;
       }
 
-      const existing = localById.get(docId);
-      if (existing) {
-        // LWW: only update if server data is newer than local data
-        const serverUpdatedAt = doc.updatedAt || doc._creationTime || Date.now();
-        const localUpdatedAt = existing.updatedAt || 0;
-
-        if (serverUpdatedAt >= localUpdatedAt) {
-          await this.storage.updateEntity(collection, docId, this.toLocalFields(collection, doc));
-          updated++;
-        } else {
-          skipped++;
-        }
+      // Last-write-wins against the local copy.
+      const serverUpdatedAt = fields.updatedAt ?? 0;
+      if (serverUpdatedAt >= (existing.updatedAt ?? 0)) {
+        await this.storage.applyServerUpdate(collection, key, fields);
+        updated++;
       } else {
-        // New entity from server — insert into IndexedDB
-        await this.storage.insertEntity(collection, docId, this.toLocalFields(collection, doc));
-        inserted++;
+        skipped++;
       }
     }
 
+    // Anything synced that the server no longer returns was deleted elsewhere.
+    // Rows that never reached the server are always kept, and collections
+    // whose query is filtered server-side never take part.
+    let removed = 0;
+    if (DELETION_AUTHORITATIVE.has(collection)) {
+      const removable = Object.keys(localCollection).filter(
+        (key) => !seenKeys.has(key) && !pendingLocalIds.has(key),
+      );
+      removed = await this.storage.removeSyncedEntities(collection, removable);
+    }
+
     console.log(
-      `[HydrationService] ${collection}: +${inserted} new, ~${updated} updated, =${skipped} skipped (pending)`,
+      `[HydrationService] ${collection}: +${inserted} new, ~${updated} updated, =${skipped} kept local, -${removed} deleted upstream`,
     );
   }
 
   /**
    * Map Convex document fields to LocalEntity base fields.
-   * The storage layer adds id, localId, syncStatus, version, timestamps.
+   * The storage layer adds id, localId, syncStatus, version.
    */
-  private toLocalFields(collection: string, doc: any): Record<string, any> {
-    const base = { updatedAt: doc.updatedAt || doc._creationTime || Date.now() };
+  private toLocalFields(
+    collection: string,
+    doc: any,
+    cardKeyByCloudId?: Map<string, string>,
+  ): Record<string, any> {
+    // A transaction's cardId arrives as a Convex id; store the local key of
+    // the card row instead, so every local reference uses one vocabulary.
+    const localCardId = (cloudCardId: string | undefined) =>
+      cloudCardId
+        ? (cardKeyByCloudId?.get(cloudCardId) ?? cloudCardId)
+        : cloudCardId;
+
+    const base = {
+      cloudId: doc._id,
+      updatedAt: doc.updatedAt || doc._creationTime || Date.now(),
+      createdAt: doc._creationTime || Date.now(),
+    };
+
     switch (collection) {
       case "expenses":
         return {
           ...base,
-          cloudId: doc._id,
           amount: doc.amount,
           title: doc.title,
           category: doc.category,
           for: doc.for,
           date: doc.date,
-          cardId: doc.cardId,
+          cardId: localCardId(doc.cardId),
         };
       case "income":
         return {
           ...base,
-          cloudId: doc._id,
           amount: doc.amount,
-          cardId: doc.cardId,
+          cardId: localCardId(doc.cardId),
           date: doc.date,
           source: doc.source,
           category: doc.category,
@@ -242,33 +322,31 @@ class HydrationService {
       case "categories":
         return {
           ...base,
-          cloudId: doc._id,
           name: doc.name,
+          type: "expense" as const,
+          isArchived: doc.isArchived,
         };
       case "incomeCategories":
         return {
           ...base,
-          cloudId: doc._id,
           name: doc.name,
           type: "income" as const,
+          isArchived: doc.isArchived,
         };
       case "forValues":
         return {
           ...base,
-          cloudId: doc._id,
           value: doc.value,
         };
       case "cards":
         return {
           ...base,
-          cloudId: doc._id,
           name: doc.name,
           isArchived: doc.isArchived,
         };
       case "loans":
         return {
           ...base,
-          cloudId: doc._id,
           name: doc.name,
           totalAmount: doc.totalAmount,
           totalInstallments: doc.totalInstallments,
@@ -277,9 +355,10 @@ class HydrationService {
           monthlyPaymentDay: doc.monthlyPaymentDay,
           startMonth: doc.startMonth,
           startYear: doc.startYear,
+          userId: doc.userId,
         };
       default:
-        return { ...base, cloudId: doc._id, ...doc };
+        return { ...base, ...doc };
     }
   }
 }

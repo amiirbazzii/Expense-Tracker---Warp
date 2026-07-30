@@ -1,4 +1,5 @@
-import { LocalStorageManager } from "@/lib/storage/LocalStorageManager";
+import { localStorageManager } from "@/lib/storage/LocalStorageManager";
+import { localDataStore } from "@/lib/store";
 
 /**
  * Purge everything about the signed-in account that lives on this device.
@@ -13,8 +14,8 @@ import { LocalStorageManager } from "@/lib/storage/LocalStorageManager";
  */
 export async function clearLocalUserData(): Promise<void> {
   try {
-    const manager = new LocalStorageManager();
-    await manager.clearAllData();
+    await localStorageManager.clearAllData();
+    localDataStore.reset();
   } catch (error) {
     console.error("Failed to clear local data on logout:", error);
   }

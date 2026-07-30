@@ -1,62 +1,70 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useOnlineStatus } from "./useOnlineStatus";
 import { syncEngine } from "@/lib/sync/SyncEngine";
+import { mutationQueue } from "@/lib/queue/MutationQueueManager";
 
-export type SyncStatus = "offline" | "synced" | "syncing";
+export type SyncStatus = "offline" | "synced" | "syncing" | "attention";
 
 /**
  * Reactive hook that exposes the current sync status for the UI status dot.
  *
- * - `offline` → browser reports no connectivity
- * - `synced`  → online, queue is empty, engine is idle
- * - `syncing` → online but either the drain loop is active or mutations
- *                are queued and waiting for the next drain cycle
+ * - `offline`   → browser reports no connectivity
+ * - `synced`    → online, queue is empty, engine is idle
+ * - `syncing`   → online and there is outstanding work
+ * - `attention` → a mutation exhausted its retries, or the session token was
+ *                 rejected; the change is safe locally but needs the user
  *
- * Polls the IndexedDB-backed queue every 1.5 s (the drain interval is 30 s,
- * so 1.5 s gives fast-enough reactivity without being wasteful).
+ * Driven by change events from the queue and the engine — no polling.
  */
 export function useSyncStatus(): SyncStatus {
   const isOnline = useOnlineStatus();
   const [status, setStatus] = useState<SyncStatus>(
     isOnline ? "synced" : "offline",
   );
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    if (!isOnline) {
-      setStatus("offline");
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+    let cancelled = false;
+
+    const update = async () => {
+      if (cancelled) return;
+
+      if (!navigator.onLine) {
+        setStatus("offline");
+        return;
       }
-      return;
-    }
 
-    // Online — start polling queue state.
-    const poll = async () => {
-      const [pendingCount, isDraining] = await Promise.all([
-        syncEngine.getPendingCount(),
-        // isDraining is sync, but we keep the shape consistent
-        Promise.resolve(syncEngine.getIsDraining()),
-      ]);
+      try {
+        const [pending, dead] = await Promise.all([
+          mutationQueue.size(),
+          mutationQueue.getDeadLetters(),
+        ]);
+        if (cancelled) return;
 
-      if (isDraining || pendingCount > 0) {
-        setStatus("syncing");
-      } else {
-        setStatus("synced");
+        const { isDraining, needsAuth } = syncEngine.getStatus();
+
+        if (dead.length > 0 || needsAuth) setStatus("attention");
+        else if (isDraining || pending > 0) setStatus("syncing");
+        else setStatus("synced");
+      } catch {
+        // A failed status read must never break the UI.
       }
     };
 
-    poll(); // Immediate check
-    intervalRef.current = setInterval(poll, 1_500);
+    const unsubscribeQueue = mutationQueue.subscribe(() => {
+      void update();
+    });
+    const unsubscribeEngine = syncEngine.subscribe(() => {
+      void update();
+    });
+
+    void update();
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      cancelled = true;
+      unsubscribeQueue();
+      unsubscribeEngine();
     };
   }, [isOnline]);
 

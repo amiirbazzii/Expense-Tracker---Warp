@@ -104,15 +104,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // Online validation with 2-second timeout
+        // Online validation with a 2-second timeout.
+        //
+        // `user` is captured by this closure, so the interval below can never
+        // observe a newer value — the effect re-runs instead when the query
+        // resolves. Both handles are cleared on every path so repeated runs
+        // don't leak timers.
+        let checkInterval: ReturnType<typeof setInterval> | undefined;
+        let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+
         const validationPromise = new Promise<boolean>((resolve) => {
           if (user !== undefined) {
             resolve(true);
           } else {
-            // Wait for user query to resolve
-            const checkInterval = setInterval(() => {
+            checkInterval = setInterval(() => {
               if (user !== undefined) {
-                clearInterval(checkInterval);
                 resolve(true);
               }
             }, 100);
@@ -120,11 +126,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
         const timeoutPromise = new Promise<boolean>((resolve) => {
-          setTimeout(() => resolve(false), 2000);
+          timeoutHandle = setTimeout(() => resolve(false), 2000);
         });
 
         try {
           const validatedInTime = await Promise.race([validationPromise, timeoutPromise]);
+          if (checkInterval !== undefined) clearInterval(checkInterval);
+          if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
 
           if (validatedInTime && user !== undefined) {
             if (user === null) {
@@ -156,6 +164,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error('Background validation error:', error);
           setIsOfflineMode(true);
         } finally {
+          if (checkInterval !== undefined) clearInterval(checkInterval);
+          if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
           setLoading(false);
         }
       };

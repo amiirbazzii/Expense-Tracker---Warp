@@ -1,35 +1,42 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
-import { LocalStorageManager } from '@/lib/storage/LocalStorageManager';
-import { CloudSyncManager } from '@/lib/sync/CloudSyncManager';
-import { PerformanceOptimizer } from '@/lib/optimization/PerformanceOptimizer';
-import { ConflictDetector } from '@/lib/sync/ConflictDetector';
-import { LocalFirstConvexClient } from '@/lib/client/LocalFirstConvexClient';
-import { SyncStatus, SyncResult, PendingOperation } from '@/lib/types/local-storage';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  ReactNode,
+} from 'react';
+import {
+  LocalStorageManager,
+  localStorageManager,
+} from '@/lib/storage/LocalStorageManager';
+import { mutationQueue } from '@/lib/queue/MutationQueueManager';
+import { syncEngine } from '@/lib/sync/SyncEngine';
+import { localDataStore } from '@/lib/store';
+import { SyncStatus, PendingMutation } from '@/lib/types/local-storage';
 
 interface OfflineFirstContextType {
   // Initialization state
   isInitialized: boolean;
   isOnline: boolean;
-  
-  // Core managers
+
+  // Storage access for callers that need the raw local store
   localStorageManager: LocalStorageManager | null;
-  cloudSyncManager: CloudSyncManager | null;
-  performanceOptimizer: PerformanceOptimizer | null;
-  
+
   // Sync management
   syncStatus: SyncStatus;
   pendingOperationsCount: number;
   lastSyncTime: Date | null;
-  
+
+  /** Mutations that exhausted their retries and need user attention. */
+  failedMutations: PendingMutation[];
+
   // Operations
-  forcSync: () => Promise<SyncResult[]>;
+  forcSync: () => Promise<void>;
+  retryFailedMutations: () => Promise<void>;
   clearLocalData: () => Promise<void>;
-  
-  // Status getters
-  getSyncQueueStatus: () => any;
-  getPerformanceMetrics: () => any;
 }
 
 const OfflineFirstContext = createContext<OfflineFirstContextType | null>(null);
@@ -39,111 +46,56 @@ interface OfflineFirstProviderProps {
   userId?: string;
 }
 
+/**
+ * Exposes the real state of the offline subsystem to the UI.
+ *
+ * Everything here is derived from the two things that actually own that state
+ * — the mutation queue and the sync engine — and updates from their change
+ * events rather than by polling. The previous version reported a hard-coded
+ * "synced" because the managers it read from were never constructed.
+ */
 export function OfflineFirstProvider({ children, userId }: OfflineFirstProviderProps) {
-  // Initialization state
   const [isInitialized, setIsInitialized] = useState(false);
-  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
-  
-  // Core managers
-  const [localStorageManager, setLocalStorageManager] = useState<LocalStorageManager | null>(null);
-  const [cloudSyncManager, setCloudSyncManager] = useState<CloudSyncManager | null>(null);
-  const [performanceOptimizer, setPerformanceOptimizer] = useState<PerformanceOptimizer | null>(null);
-  const [conflictDetector, setConflictDetector] = useState<ConflictDetector | null>(null);
-  
-  // Sync state
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator !== 'undefined' ? navigator.onLine : true,
+  );
+
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('synced');
   const [pendingOperationsCount, setPendingOperationsCount] = useState(0);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [failedMutations, setFailedMutations] = useState<PendingMutation[]>([]);
 
-  // Initialize the offline-first system
-  const initialize = useCallback(async (currentUserId: string) => {
-    try {
-      console.log('OfflineFirstProvider: Initializing for user', currentUserId);
-      
-      // Initialize local storage manager
-      const localManager = new LocalStorageManager();
-      await localManager.initialize(currentUserId);
-      setLocalStorageManager(localManager);
-      
-      // Initialize conflict detector (no parameters needed)
-      const detector = new ConflictDetector();
-      setConflictDetector(detector);
-      
-      // Note: CloudSyncManager needs ConvexClient, not LocalStorageManager
-      // We'll initialize it later when we have proper ConvexClient access
-      // For now, skip CloudSyncManager initialization
-      // const syncManager = new CloudSyncManager(convexClient, detector);
-      // setCloudSyncManager(syncManager);
-      
-      // Skip performance optimizer for now since it depends on sync manager
-      // const optimizer = new PerformanceOptimizer(...);
-      // setPerformanceOptimizer(optimizer);
-      
-      // Get initial sync state
-      const syncState = await localManager.getSyncState();
-      if (syncState) {
-        setPendingOperationsCount(syncState.pendingOperations?.length || 0);
-        if (syncState.lastSync) {
-          setLastSyncTime(new Date(syncState.lastSync));
-        }
-      }
-      
-      // Set sync status based on pending operations
-      setSyncStatus((syncState?.pendingOperations?.length || 0) > 0 ? 'pending' : 'synced');
-      
-      setIsInitialized(true);
-      console.log('OfflineFirstProvider: Initialization complete');
-      
-    } catch (error) {
-      console.error('OfflineFirstProvider: Initialization failed', error);
-      setIsInitialized(true); // Still set to true to allow app to function
-    }
-  }, []);
-
-  // Initialize when userId becomes available
+  // Initialize local storage for the signed-in user.
   useEffect(() => {
-    if (userId && !isInitialized) {
-      initialize(userId);
-    } else if (!userId && !isInitialized) {
-      // If no userId provided, still mark as initialized to prevent blocking
-      // This allows the app to function even when offline without user data
-      console.log('OfflineFirstProvider: No userId provided, initializing in limited mode');
-      
-      // Set initialized immediately to prevent blocking the UI
+    let cancelled = false;
+
+    if (!userId) {
+      // No user yet — do not block the UI; storage initializes as soon as
+      // authentication resolves.
       setIsInitialized(true);
-      
-      // Try to get userId from localStorage as fallback for offline mode
-      const storedToken = localStorage.getItem('auth-token');
-      if (storedToken) {
-        // Try to extract userId from stored data or use a fallback
-        const storedUserId = localStorage.getItem('cached-user-id');
-        if (storedUserId) {
-          console.log('OfflineFirstProvider: Found cached userId, initializing with it');
-          initialize(storedUserId);
-        }
-      }
+      return;
     }
-  }, [userId, isInitialized, initialize]);
 
-  // Set up online/offline event listeners
+    localStorageManager
+      .initialize(userId)
+      .catch((error) => {
+        console.error('OfflineFirstProvider: Initialization failed', error);
+      })
+      .finally(() => {
+        if (!cancelled) setIsInitialized(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  // Track connectivity.
   useEffect(() => {
-    const handleOnline = () => {
-      console.log('OfflineFirstProvider: Online detected');
-      setIsOnline(true);
-      
-      // Skip auto-sync for now since CloudSyncManager is not initialized
-      // TODO: Implement proper sync when CloudSyncManager is available
-    };
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
 
-    const handleOffline = () => {
-      console.log('OfflineFirstProvider: Offline detected');
-      setIsOnline(false);
-    };
-
-    // Set initial state
     setIsOnline(navigator.onLine);
-
-    // Add event listeners
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
@@ -151,143 +103,90 @@ export function OfflineFirstProvider({ children, userId }: OfflineFirstProviderP
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [cloudSyncManager, pendingOperationsCount]);
+  }, []);
 
-  // Set up service worker message handling
+  // Mirror the queue and the engine. Both emit on every change, so there is
+  // nothing to poll.
   useEffect(() => {
-    const handleServiceWorkerMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'BACKGROUND_SYNC') {
-        console.log('OfflineFirstProvider: Background sync triggered by service worker');
-        // Skip processing since CloudSyncManager is not initialized
-        // TODO: Implement when CloudSyncManager is properly set up
-      }
-    };
+    let cancelled = false;
+    let previousPending = 0;
 
-    navigator.serviceWorker?.addEventListener('message', handleServiceWorkerMessage);
-
-    return () => {
-      navigator.serviceWorker?.removeEventListener('message', handleServiceWorkerMessage);
-    };
-  }, [cloudSyncManager]);
-
-  // Monitor sync state changes
-  useEffect(() => {
-    if (!localStorageManager) return;
-
-    const monitorSyncState = async () => {
+    const readQueue = async () => {
       try {
-        const syncState = await localStorageManager.getSyncState();
-        if (syncState) {
-          setPendingOperationsCount(syncState.pendingOperations.length);
-          setSyncStatus(syncState.pendingOperations.length > 0 ? 'pending' : 'synced');
-          
-          if (syncState.lastSync) {
-            setLastSyncTime(new Date(syncState.lastSync));
-          }
-        }
+        const [pending, dead] = await Promise.all([
+          mutationQueue.size(),
+          mutationQueue.getDeadLetters(),
+        ]);
+        if (cancelled) return;
+
+        // Going from "work outstanding" to "queue empty" is a completed sync.
+        if (previousPending > 0 && pending === 0) setLastSyncTime(new Date());
+        previousPending = pending;
+
+        setPendingOperationsCount(pending);
+        setFailedMutations(dead);
       } catch (error) {
-        console.error('OfflineFirstProvider: Failed to monitor sync state', error);
+        console.error('OfflineFirstProvider: Failed to read queue state', error);
       }
     };
 
-    // Monitor sync state every 10 seconds
-    const interval = setInterval(monitorSyncState, 10000);
+    const unsubscribeQueue = mutationQueue.subscribe(() => {
+      void readQueue();
+    });
+    const unsubscribeEngine = syncEngine.subscribe(() => {
+      void readQueue();
+    });
 
-    return () => clearInterval(interval);
-  }, [localStorageManager]);
+    void readQueue();
 
-  // Force sync all pending operations
-  const forcSync = useCallback(async (): Promise<SyncResult[]> => {
-    if (!cloudSyncManager) {
-      throw new Error('Sync manager not initialized');
-    }
-
-    try {
-      setSyncStatus('syncing');
-      // Note: processQueue expects (operations, token) parameters
-      // For now, return empty result since CloudSyncManager is not properly initialized
-      const results: SyncResult[] = [];
-      
-      setSyncStatus('synced');
-      setPendingOperationsCount(0);
-      setLastSyncTime(new Date());
-      
-      return results;
-    } catch (error) {
-      console.error('OfflineFirstProvider: Force sync failed', error);
-      setSyncStatus('failed');
-      throw error;
-    }
-  }, [cloudSyncManager]);
-
-  // Clear all local data
-  const clearLocalData = useCallback(async (): Promise<void> => {
-    if (!localStorageManager) {
-      throw new Error('Storage manager not initialized');
-    }
-
-    try {
-      await localStorageManager.clearAllData();
-      setPendingOperationsCount(0);
-      setSyncStatus('synced');
-      setLastSyncTime(null);
-      console.log('OfflineFirstProvider: Local data cleared');
-    } catch (error) {
-      console.error('OfflineFirstProvider: Failed to clear local data', error);
-      throw error;
-    }
-  }, [localStorageManager]);
-
-  // Get sync queue status
-  const getSyncQueueStatus = useCallback(() => {
-    return performanceOptimizer?.getSyncQueueStatus() || {
-      total: 0,
-      active: 0,
-      byPriority: { high: 0, medium: 0, low: 0 }
-    };
-  }, [performanceOptimizer]);
-
-  // Get performance metrics
-  const getPerformanceMetrics = useCallback(() => {
-    return performanceOptimizer?.getMetrics() || {
-      syncOperations: 0,
-      successfulSyncs: 0,
-      failedSyncs: 0,
-      averageSyncTime: 0,
-      cacheHitRate: 0,
-      pendingOperations: 0
-    };
-  }, [performanceOptimizer]);
-
-  // Cleanup on unmount
-  useEffect(() => {
     return () => {
-      performanceOptimizer?.cleanup();
+      cancelled = true;
+      unsubscribeQueue();
+      unsubscribeEngine();
     };
-  }, [performanceOptimizer]);
+  }, []);
+
+  // Derive the coarse status the UI shows.
+  useEffect(() => {
+    if (!isOnline) {
+      setSyncStatus(pendingOperationsCount > 0 ? 'pending' : 'synced');
+      return;
+    }
+    if (failedMutations.length > 0) {
+      setSyncStatus('failed');
+      return;
+    }
+    setSyncStatus(pendingOperationsCount > 0 ? 'syncing' : 'synced');
+  }, [isOnline, pendingOperationsCount, failedMutations.length]);
+
+  const forcSync = useCallback(async () => {
+    await syncEngine.drainNow();
+  }, []);
+
+  const retryFailedMutations = useCallback(async () => {
+    await mutationQueue.retryDeadLetters();
+    await syncEngine.drainNow();
+  }, []);
+
+  const clearLocalData = useCallback(async () => {
+    await localStorageManager.clearAllData();
+    localDataStore.reset();
+    setPendingOperationsCount(0);
+    setFailedMutations([]);
+    setLastSyncTime(null);
+  }, []);
 
   const contextValue: OfflineFirstContextType = {
-    // Initialization state
     isInitialized,
     isOnline,
-    
-    // Core managers
     localStorageManager,
-    cloudSyncManager,
-    performanceOptimizer,
-    
-    // Sync management
     syncStatus,
     pendingOperationsCount,
     lastSyncTime,
-    
-    // Operations
+    failedMutations,
     forcSync,
+    retryFailedMutations,
     clearLocalData,
-    
-    // Status getters
-    getSyncQueueStatus,
-    getPerformanceMetrics
   };
 
   return (
@@ -300,18 +199,18 @@ export function OfflineFirstProvider({ children, userId }: OfflineFirstProviderP
 // Hook to use the offline-first context
 export function useOfflineFirst(): OfflineFirstContextType {
   const context = useContext(OfflineFirstContext);
-  
+
   if (!context) {
     throw new Error('useOfflineFirst must be used within an OfflineFirstProvider');
   }
-  
+
   return context;
 }
 
 // Utility hook for checking if the app can function offline
 export function useOfflineCapability() {
   const context = useContext(OfflineFirstContext);
-  
+
   if (!context) {
     // Fallback for when provider is not available
     console.warn('useOfflineCapability: Context not available, returning defaults');
@@ -320,21 +219,21 @@ export function useOfflineCapability() {
       shouldShowOfflineMessage: false,
       isFullyFunctional: true, // Assume functional to prevent blocking
       isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
-      isInitialized: true // Prevent blocking when context is unavailable
+      isInitialized: true, // Prevent blocking when context is unavailable
     };
   }
-  
-  const { isInitialized, isOnline, localStorageManager } = context;
-  
-  const canFunctionOffline = isInitialized && localStorageManager !== null;
+
+  const { isInitialized, isOnline, localStorageManager: storage } = context;
+
+  const canFunctionOffline = isInitialized && storage !== null;
   const shouldShowOfflineMessage = !isOnline && !canFunctionOffline;
   const isFullyFunctional = isOnline || canFunctionOffline;
-  
+
   return {
     canFunctionOffline,
     shouldShowOfflineMessage,
     isFullyFunctional,
     isOnline,
-    isInitialized
+    isInitialized,
   };
 }

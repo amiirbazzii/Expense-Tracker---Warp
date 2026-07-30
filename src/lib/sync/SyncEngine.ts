@@ -2,7 +2,7 @@
  * SyncEngine — Silent Background Sync
  *
  * Responsibilities:
- *  1. Listen for `window.online` events to drain the queue immediately.
+ *  1. Listen for `window.online` / tab-visibility events to drain the queue.
  *  2. Run a 30-second periodic fallback drain while online.
  *  3. Process mutations from MutationQueueManager in strict FIFO order.
  *  4. Stamp the current auth token onto every mutation payload right before
@@ -10,17 +10,19 @@
  *     authentication state (the Convex backend resolves the user via
  *     `args.token`, not `ctx.auth`).
  *  5. On success: atomically dequeue the item.
- *  6. On failure: halt and wait for the next trigger.
+ *  6. On failure: halt and wait for the next trigger. A mutation is *never*
+ *     discarded — after `MAX_ATTEMPTS` it moves to the dead-letter list where
+ *     the UI can surface it and the user can retry.
  *  7. On logout (clearAndStop): wipe all IndexedDB data, then stop.
  *
  * This class is completely decoupled from the React tree.
- * It does NOT share state with OfflineFirstProvider.
  */
 
 import { ConvexClient } from "convex/browser";
 import { api } from "../../../convex/_generated/api";
-import { MutationQueueManager } from "../queue/MutationQueueManager";
-import { LocalStorageManager } from "../storage/LocalStorageManager";
+import { mutationQueue } from "../queue/MutationQueueManager";
+import { localStorageManager } from "../storage/LocalStorageManager";
+import { localDataStore } from "../store/LocalDataStore";
 
 // ── Action router ─────────────────────────────────────────────────────────────
 // Maps the opaque `action` string stored in the queue to the correct
@@ -56,24 +58,91 @@ const ACTION_MAP: Record<string, any> = {
   "loans:deleteLoan": api.loans.deleteLoan,
   "loans:payInstallment": api.loans.payInstallment,
 
+  // Settings
+  "userSettings:update": api.userSettings.update,
+
   // Transfers
   "transferFunds": api.cardsAndIncome.transferFunds,
 };
+
+/**
+ * Which local collection a create-action's row lives in.
+ *
+ * This cannot be derived from the action prefix: `expenses:createCategory`
+ * writes to `categories`, not `expenses`. Getting it wrong means the cloud id
+ * is never written back and the row duplicates on the next hydration.
+ */
+const CREATE_TARGET_COLLECTION: Record<string, string> = {
+  "expenses:createExpense": "expenses",
+  "expenses:createCategory": "categories",
+  "expenses:createForValue": "forValues",
+  "income:createIncome": "income",
+  "incomeCategories:createIncomeCategory": "incomeCategories",
+  "cards:addCard": "cards",
+  "loans:createLoan": "loans",
+};
+
+/**
+ * Which local row an update-action refers to, so it can be flipped back to
+ * `synced` once the server has accepted it. A row left permanently `pending`
+ * is never refreshed from the server again.
+ */
+/**
+ * Which payload field names the row a delete-action removes, so its durable
+ * id mapping can be dropped once the document is gone from both sides.
+ */
+const DELETE_TARGET_ID_FIELD: Record<string, string> = {
+  "expenses:deleteExpense": "expenseId",
+  "income:deleteIncome": "incomeId",
+  "cards:deleteCard": "cardId",
+  "loans:deleteLoan": "loanId",
+};
+
+const UPDATE_TARGET: Record<string, { collection: string; idField: string }> = {
+  "expenses:updateExpense": { collection: "expenses", idField: "expenseId" },
+  "income:updateIncome": { collection: "income", idField: "incomeId" },
+  "cards:updateCard": { collection: "cards", idField: "cardId" },
+  "loans:updateLoan": { collection: "loans", idField: "loanId" },
+  "loans:payInstallment": { collection: "loans", idField: "loanId" },
+};
+
+/** Local id fields that must be translated to Convex ids before sending. */
+const ID_REFERENCE_FIELDS = [
+  "cardId",
+  "incomeId",
+  "expenseId",
+  "fromCardId",
+  "toCardId",
+  "loanId",
+  "categoryId",
+] as const;
 
 // ── Names of all IndexedDB databases created by localforage in this app ──────
 // These are deleted wholesale on logout.
 const IDB_DATABASES_TO_WIPE = ["ExpenseTrackerV2"];
 
+export type SyncEngineStatus = {
+  isOnline: boolean;
+  isDraining: boolean;
+  /** Set when the queue is stalled waiting for a valid auth token. */
+  needsAuth: boolean;
+};
+
 // ── SyncEngine ────────────────────────────────────────────────────────────────
 
 export class SyncEngine {
   private client: ConvexClient | null = null;
-  private queue = new MutationQueueManager();
-  private storage = new LocalStorageManager();
+  private queue = mutationQueue;
+  private storage = localStorageManager;
 
   // The auth token (tokenIdentifier) used to authenticate every mutation.
   // Updated via `setAuthToken` when the session token refreshes.
   private authToken: string | null = null;
+
+  // Set when the server rejected our token. The queue holds its position and
+  // resumes as soon as a fresh token arrives — mutations are never discarded
+  // because a session expired.
+  private needsAuth = false;
 
   // Maps local IDs (e.g. "local_...") to their Convex document IDs.
   // Populated when a create mutation succeeds and returns a Convex ID.
@@ -87,19 +156,46 @@ export class SyncEngine {
   // True while a drain pass is in flight — prevents concurrent runs.
   private isDraining = false;
 
+  // The pass in flight, so callers can await a drain someone else started.
+  private drainPromise: Promise<void> | null = null;
+
+  // Set when a trigger fires mid-pass; schedules exactly one follow-up pass.
+  private drainRequested = false;
+
+  // Bumped on every start(). A logout wipe that is still running when the next
+  // session starts must not tear that new session's engine down.
+  private epoch = 0;
+
   // Interval handle for the 30-second periodic fallback.
   private intervalId: ReturnType<typeof setInterval> | null = null;
+
+  private listeners = new Set<(status: SyncEngineStatus) => void>();
 
   // Named handler references so addEventListener/removeEventListener are paired.
   private handleOnline = () => {
     this.isOnline = true;
     console.log("[SyncEngine] Online — triggering drain");
+    this.emit();
     this.drain();
   };
 
   private handleOffline = () => {
     this.isOnline = false;
     console.log("[SyncEngine] Offline — pausing sync");
+    this.emit();
+  };
+
+  // Returning to a backgrounded tab is the most common moment for a phone to
+  // have regained connectivity without having fired an `online` event.
+  private handleVisibility = () => {
+    if (
+      typeof document !== "undefined" &&
+      document.visibilityState === "visible"
+    ) {
+      this.isOnline =
+        typeof navigator !== "undefined" ? navigator.onLine : this.isOnline;
+      this.drain();
+    }
   };
 
   /** Return the active ConvexClient instance, or null if the engine isn't running. */
@@ -110,6 +206,35 @@ export class SyncEngine {
   /** Return the engine's own online state (mirrors window online/offline events). */
   getIsOnline(): boolean {
     return this.isOnline;
+  }
+
+  // ── Status ────────────────────────────────────────────────────────────────
+
+  getStatus(): SyncEngineStatus {
+    return {
+      isOnline: this.isOnline,
+      isDraining: this.isDraining,
+      needsAuth: this.needsAuth,
+    };
+  }
+
+  /** Subscribe to engine status changes. Returns an unsubscribe function. */
+  subscribe(listener: (status: SyncEngineStatus) => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private emit(): void {
+    const status = this.getStatus();
+    this.listeners.forEach((listener) => {
+      try {
+        listener(status);
+      } catch (err) {
+        console.error("[SyncEngine] listener threw:", err);
+      }
+    });
   }
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -124,6 +249,8 @@ export class SyncEngine {
    *                   and a drain is triggered.
    */
   start(convexUrl: string, authToken: string): void {
+    this.epoch++;
+
     // Always keep the freshest token, even on re-entry.
     this.setAuthToken(authToken);
 
@@ -140,6 +267,7 @@ export class SyncEngine {
     // Register connectivity listeners.
     window.addEventListener("online", this.handleOnline);
     window.addEventListener("offline", this.handleOffline);
+    document.addEventListener("visibilitychange", this.handleVisibility);
 
     // 30-second periodic fallback.
     this.intervalId = setInterval(() => {
@@ -148,9 +276,35 @@ export class SyncEngine {
       }
     }, 30_000);
 
+    // Recover anything parked for a reason that has since been reclassified as
+    // recoverable — a write that was dead-lettered against a backend missing
+    // its function comes back on its own once that backend is deployed.
+    void this.rehabilitateDeadLetters();
+
     // Drain immediately in case there are queued items from offline sessions.
     if (this.isOnline) {
       this.drain();
+    }
+  }
+
+  /**
+   * Return dead letters whose recorded failure is now considered transient to
+   * the live queue. Runs once per `start()`, so a fixed backend heals the
+   * queue without the user having to find a retry button.
+   */
+  private async rehabilitateDeadLetters(): Promise<void> {
+    try {
+      const recovered = await this.queue.retryDeadLetters((mutation) =>
+        isTransientError(mutation.lastError ?? ""),
+      );
+      if (recovered > 0) {
+        console.log(
+          `[SyncEngine] Recovered ${recovered} parked mutation(s) for retry`,
+        );
+        this.drain();
+      }
+    } catch (err) {
+      console.warn("[SyncEngine] Could not rehabilitate dead letters:", err);
     }
   }
 
@@ -165,11 +319,18 @@ export class SyncEngine {
     if (!authToken) return;
     if (this.authToken === authToken) return;
     this.authToken = authToken;
+    this.needsAuth = false;
     console.log("[SyncEngine] Auth token updated");
+    this.emit();
     // If the engine is live, retry anything that may have been waiting.
     if (this.client) {
       this.drain();
     }
+  }
+
+  /** Trigger a drain on demand (manual "retry now" affordances). */
+  async drainNow(): Promise<void> {
+    await this.drain();
   }
 
   /**
@@ -184,6 +345,7 @@ export class SyncEngine {
 
     window.removeEventListener("online", this.handleOnline);
     window.removeEventListener("offline", this.handleOffline);
+    document.removeEventListener("visibilitychange", this.handleVisibility);
 
     if (this.client) {
       this.client.close();
@@ -191,8 +353,10 @@ export class SyncEngine {
     }
 
     this.authToken = null;
+    this.needsAuth = false;
 
     console.log("[SyncEngine] Stopped");
+    this.emit();
   }
 
   /**
@@ -203,6 +367,7 @@ export class SyncEngine {
    */
   async clearAndStop(): Promise<void> {
     console.log("[SyncEngine] Wiping local data for logout");
+    const epoch = this.epoch;
 
     // 1. Clear the mutation queue first so nothing leaks across sessions.
     await this.queue.clear();
@@ -236,7 +401,17 @@ export class SyncEngine {
       await Promise.all(deletePromises);
     }
 
-    // 3. Stop timers and listeners.
+    // A new session may have signed in while the wipe was running. Tearing
+    // the engine down now would leave that session with no sync at all.
+    if (this.epoch !== epoch) {
+      console.warn("[SyncEngine] Restarted during wipe — leaving engine running");
+      return;
+    }
+
+    // 3. Drop the in-memory snapshot so the next account cannot read it.
+    localDataStore.reset();
+
+    // 4. Stop timers and listeners.
     this.stop();
   }
 
@@ -258,18 +433,53 @@ export class SyncEngine {
    * Drain the pending mutation queue in strict FIFO order.
    *
    * - Only one drain runs at a time (re-entrant guard).
-   * - Halts immediately on the first network failure.
+   * - Halts on the first failure so ordering is preserved.
    * - Each mutation is removed from the queue only after Convex confirms success.
    * - The current auth token is stamped onto every payload at execution time,
    *   so a refreshed token applies to items enqueued with a stale one.
    */
-  private async drain(): Promise<void> {
-    if (this.isDraining || !this.client || !this.isOnline) return;
+  private drain(): Promise<void> {
+    if (this.isDraining) {
+      // Work may have been queued after the running pass last looked; make
+      // sure one more pass follows it. Callers await the pass in flight.
+      this.drainRequested = true;
+      return this.drainPromise ?? Promise.resolve();
+    }
+    if (!this.client || !this.isOnline) return Promise.resolve();
     // Without a token, mutations will be rejected — wait for one to be set.
-    if (!this.authToken) return;
+    if (!this.authToken) return Promise.resolve();
 
     this.isDraining = true;
+    this.drainRequested = false;
+
+    const pass = this.runDrain()
+      .catch((err) => {
+        console.error("[SyncEngine] Drain crashed:", err);
+      })
+      .then(() => {
+        this.isDraining = false;
+        this.drainPromise = null;
+        if (this.drainRequested) {
+          this.drainRequested = false;
+          return this.drain();
+        }
+        return undefined;
+      });
+
+    this.drainPromise = pass;
+    return pass;
+  }
+
+  private async runDrain(): Promise<void> {
+    // Captured once: `stop()` can null the field mid-pass, and each mutation
+    // must go to the client this pass started with.
+    const client = this.client;
+    if (!client) return;
+
+    this.emit();
     console.log("[SyncEngine] Drain started");
+
+    let syncedAny = false;
 
     try {
       // eslint-disable-next-line no-constant-condition
@@ -279,11 +489,17 @@ export class SyncEngine {
 
         const fn = ACTION_MAP[mutation.action];
         if (!fn) {
-          // Unknown action — skip it permanently to unblock the queue.
+          // Unknown action — park it rather than dropping the user's data.
           console.warn(
-            `[SyncEngine] Unknown action "${mutation.action}" — discarding`,
+            `[SyncEngine] Unknown action "${mutation.action}" — dead-lettering`,
           );
-          await this.queue.dequeue();
+          const attempts = await this.queue.recordFailure(
+            mutation.id,
+            `Unknown action: ${mutation.action}`,
+          );
+          // 0 means the item is no longer in the queue; without this the loop
+          // would peek the same head forever.
+          if (attempts === 0) break;
           continue;
         }
 
@@ -291,173 +507,295 @@ export class SyncEngine {
           // ── Build payload ─────────────────────────────────────────────
           // 1. Stamp the current auth token.
           // 2. Translate any local ID references to Convex IDs.
-          // 3. Strip internal fields (__localId, localExpenseId, localIncomeId) before sending to Convex.
-          const { __localId: _localId, localExpenseId: _lei, localIncomeId: _lii, ...rest } = mutation.payload;
+          // 3. Strip internal fields before sending to Convex.
+          const {
+            __localId: _localId,
+            localExpenseId: _lei,
+            localIncomeId: _lii,
+            ...rest
+          } = mutation.payload;
           const payload: Record<string, unknown> = {
             ...rest,
             token: this.authToken,
           };
 
-          // Translate local IDs to Convex IDs for cardId, incomeId, expenseId, and transfer fields
-          for (const idField of ["cardId", "incomeId", "expenseId", "fromCardId", "toCardId", "loanId", "categoryId"]) {
-            if (
-              typeof payload[idField] === "string" &&
-              (payload[idField] as string).startsWith("local_")
-            ) {
-              // 1. Check in-memory map first (for entities created this session)
-              const mapped = this.localToConvexId.get(payload[idField] as string);
-              if (mapped) {
-                payload[idField] = mapped;
-              } else {
-                // 2. Fall back to IndexedDB cloudId (for hydrated/existing entities)
-                try {
-                  const entityType = idField === "categoryId"
-                    ? (mutation.action.includes("incomeCategories") ? "incomeCategories" : "categories")
-                    : idField === "cardId" ? "cards"
-                    : idField === "expenseId" ? "expenses"
-                    : idField === "incomeId" ? "income"
-                    : idField === "loanId" ? "loans"
-                    : null;
-                  if (entityType) {
-                    const entity = await this.storage.getEntityById(entityType, payload[idField] as string);
-                    if (entity?.cloudId) {
-                      this.localToConvexId.set(payload[idField] as string, entity.cloudId);
-                      payload[idField] = entity.cloudId;
-                    }
-                  }
-                } catch {
-                  // Ignore lookup failures — will fail on server side
-                }
-              }
-            }
-          }
+          await this.resolveIdReferences(payload, mutation.action);
 
           // Execute the Convex mutation.
-          const result = await this.client.mutation(fn, payload);
+          const result = await client.mutation(fn, payload);
 
-          // ── Capture ID mapping and persist to IndexedDB ────────────
-          if (_localId && result) {
-            const convexId = typeof result === "string" ? result : (result as any)._id ?? (result as any).id;
-            if (convexId) {
-              this.localToConvexId.set(_localId, convexId);
-              console.log(`[SyncEngine] 📍 mapped ${mutation.action} ${_localId} → ${convexId}`);
-
-              // Persist cloudId to IndexedDB so the read layer can deduplicate
-              const entityType = mutation.action.split(":")[0];
-              const collectionMap: Record<string, string> = {
-                expenses: "expenses",
-                income: "income",
-                cards: "cards",
-                categories: "categories",
-                forValues: "forValues",
-                loans: "loans",
-              };
-              const collection = collectionMap[entityType] || entityType;
-              try {
-                await this.storage.markEntityAsSynced(collection, _localId, convexId);
-              } catch (err) {
-                console.warn(`[SyncEngine] Failed to persist cloudId for ${_localId}:`, err);
-              }
-            }
-          }
-
-          // ── Special: link local transfer records to cloud IDs ──────
-          if (mutation.action === "transferFunds" && result) {
-            const { localExpenseId, localIncomeId } = mutation.payload;
-            const res = result as any;
-            const cloudExpenseId = res.expenseId;
-            const cloudIncomeId = res.incomeId;
-
-            console.log("[SyncEngine] transferFunds response:", res);
-            console.log("[SyncEngine] local IDs:", { localExpenseId, localIncomeId });
-
-            if (localExpenseId && cloudExpenseId) {
-              await this.storage.markEntityAsSynced("expenses", localExpenseId, cloudExpenseId);
-              console.log(`[SyncEngine] 📍 transferFunds: expense ${localExpenseId} → ${cloudExpenseId}`);
-            } else {
-              console.warn("[SyncEngine] ⚠ Could not link expense:", { localExpenseId, cloudExpenseId });
-            }
-
-            if (localIncomeId && cloudIncomeId) {
-              await this.storage.markEntityAsSynced("income", localIncomeId, cloudIncomeId);
-              console.log(`[SyncEngine] 📍 transferFunds: income ${localIncomeId} → ${cloudIncomeId}`);
-            } else {
-              console.warn("[SyncEngine] ⚠ Could not link income:", { localIncomeId, cloudIncomeId });
-            }
-
-            // Refresh the store so deduplicateEntities() picks up the cloudId links
-            try {
-              const { localDataStore } = await import("../store");
-              await localDataStore.refresh();
-            } catch (err) {
-              console.warn("[SyncEngine] Failed to refresh store after transferFunds:", err);
-            }
-          }
-
-          // ── Special: link local installment expense to cloud ID ──────
-          if (mutation.action === "loans:payInstallment" && result) {
-            const { localExpenseId } = mutation.payload;
-            const res = result as any;
-            const cloudExpenseId = res.expenseId;
-
-            console.log("[SyncEngine] payInstallment response:", res);
-
-            if (localExpenseId && cloudExpenseId) {
-              await this.storage.markEntityAsSynced("expenses", localExpenseId, cloudExpenseId);
-              console.log(`[SyncEngine] 📍 payInstallment: expense ${localExpenseId} → ${cloudExpenseId}`);
-            } else {
-              console.warn("[SyncEngine] ⚠ Could not link installment expense:", { localExpenseId, cloudExpenseId });
-            }
-
-            try {
-              const { localDataStore } = await import("../store");
-              await localDataStore.refresh();
-            } catch (err) {
-              console.warn("[SyncEngine] Failed to refresh store after payInstallment:", err);
-            }
-          }
+          await this.linkCloudIds(mutation, result, _localId);
 
           // ✓ Success — atomically remove the head item.
           await this.queue.dequeue();
+          syncedAny = true;
           console.log(
             `[SyncEngine] ✓ synced: ${mutation.action} (${mutation.id})`,
           );
         } catch (err) {
-          // Distinguish auth errors from transient network/server errors.
-          const isAuthError =
-            err instanceof Error &&
-            (err.message.includes("Authentication required") ||
-              err.message.includes("Unauthorized") ||
-              err.message.includes("Invalid token"));
+          const message = err instanceof Error ? err.message : String(err);
 
-          if (isAuthError) {
-            // Authentication failed — the token is invalid/expired.
-            // 1. Invalidate the local token so we don't retry with it.
-            // 2. Dequeue this mutation (it's poisoned with a bad token).
-            // 3. Continue to next mutation — if a fresh token arrives via
-            //    setAuthToken, subsequent mutations will use it.
+          if (isAuthError(message)) {
+            // The session token is invalid or expired. Hold the queue exactly
+            // where it is: discarding the item here would silently destroy
+            // whatever the user entered while offline. It resumes the moment
+            // `setAuthToken` supplies a working token.
             console.warn(
-              `[SyncEngine] ✗ Auth error on ${mutation.action} (${mutation.id}) — dequeuing poisoned item`,
+              `[SyncEngine] ✗ auth rejected on ${mutation.action} (${mutation.id}) — pausing until a fresh token arrives`,
               err,
             );
-            this.authToken = null;
-            await this.queue.dequeue();
-            continue;
+            this.needsAuth = true;
+            break;
           }
 
-          // ✗ Network / server error (non-auth) — halt and retry on
-          //   next trigger. The item stays at the head.
+          if (isTransientError(message)) {
+            // Network / server blip — retry on the next trigger without
+            // burning an attempt.
+            console.warn(
+              `[SyncEngine] ✗ halted (transient) on: ${mutation.action} (${mutation.id})`,
+              err,
+            );
+            break;
+          }
+
+          // A genuine rejection (validation, missing document, …). Count it;
+          // after MAX_ATTEMPTS the item moves to the dead-letter list so one
+          // bad mutation cannot block the queue forever.
+          const attempts = await this.queue.recordFailure(mutation.id, message);
           console.warn(
-            `[SyncEngine] ✗ halted on: ${mutation.action} (${mutation.id})`,
+            attempts === -1
+              ? `[SyncEngine] ✗ dead-lettered after repeated failures: ${mutation.action} (${mutation.id})`
+              : `[SyncEngine] ✗ attempt ${attempts} failed: ${mutation.action} (${mutation.id})`,
             err,
           );
           break;
         }
       }
     } finally {
-      this.isDraining = false;
+      // `isDraining` is cleared by drain(), which owns the pass lifecycle.
       console.log("[SyncEngine] Drain complete");
+
+      if (syncedAny) {
+        // Cloud ids were written back — re-read so the UI reflects them.
+        try {
+          await localDataStore.refresh();
+        } catch (err) {
+          console.warn("[SyncEngine] Failed to refresh store after drain:", err);
+        }
+      }
+
+      this.emit();
     }
+  }
+
+  /**
+   * Replace `local_…` references in a payload with the Convex ids they now
+   * map to, looking first in the in-session map and then in IndexedDB.
+   */
+  private async resolveIdReferences(
+    payload: Record<string, unknown>,
+    action: string,
+  ): Promise<void> {
+    for (const field of ID_REFERENCE_FIELDS) {
+      const value = payload[field];
+      if (typeof value !== "string") continue;
+
+      const mapped = this.localToConvexId.get(value);
+      if (mapped) {
+        payload[field] = mapped;
+        continue;
+      }
+
+      const entityType = entityTypeForField(field, action);
+      if (!entityType) continue;
+
+      let cloudId: string | null | undefined;
+      try {
+        const entity = await this.storage.getEntityById(entityType, value);
+        cloudId = entity?.cloudId;
+
+        // The row may be gone — a queued delete removes it before this
+        // mutation drains — so fall back to the durable mapping, which
+        // outlives both the row and the page.
+        if (!cloudId) {
+          cloudId = await this.storage.getCloudIdForLocalId(value);
+        }
+      } catch {
+        // Fall through to the unresolved check below.
+      }
+
+      if (cloudId) {
+        this.localToConvexId.set(value, cloudId);
+        payload[field] = cloudId;
+      } else if (value.startsWith("local_")) {
+        // Nothing knows this id: no in-memory mapping, no row, no durable
+        // entry. Its create has not run yet (FIFO should have prevented that)
+        // or never succeeded. Fail rather than send an id Convex cannot parse.
+        throw new Error(
+          `Unresolved local reference ${field}=${value} for ${action}`,
+        );
+      }
+    }
+  }
+
+  /**
+   * Persist the Convex ids returned by a successful mutation so that later
+   * updates, deletes and hydrations resolve to the same row.
+   */
+  private async linkCloudIds(
+    mutation: { action: string; payload: any },
+    result: unknown,
+    localId: string | undefined,
+  ): Promise<void> {
+    if (localId && result) {
+      const convexId =
+        typeof result === "string"
+          ? result
+          : ((result as any)._id ?? (result as any).id);
+
+      if (convexId) {
+        this.localToConvexId.set(localId, convexId);
+
+        const collection = CREATE_TARGET_COLLECTION[mutation.action];
+        if (collection) {
+          try {
+            await this.storage.markEntityAsSynced(collection, localId, convexId);
+          } catch (err) {
+            console.warn(
+              `[SyncEngine] Failed to persist cloudId for ${localId}:`,
+              err,
+            );
+          }
+        }
+      }
+    }
+
+    // The document is now gone from both sides; nothing can reference it
+    // again, so its mapping is no longer worth keeping.
+    const deletedIdField = DELETE_TARGET_ID_FIELD[mutation.action];
+    if (deletedIdField) {
+      const deletedKey = mutation.payload[deletedIdField];
+      if (typeof deletedKey === "string") {
+        this.localToConvexId.delete(deletedKey);
+        try {
+          await this.storage.forgetCloudIdMapping(deletedKey);
+        } catch (err) {
+          console.warn(`[SyncEngine] Failed to prune mapping for ${deletedKey}:`, err);
+        }
+      }
+    }
+
+    // An accepted update means the local row matches the server again.
+    const updateTarget = UPDATE_TARGET[mutation.action];
+    if (updateTarget) {
+      const rowKey = mutation.payload[updateTarget.idField];
+      if (typeof rowKey === "string") {
+        try {
+          await this.storage.markEntityAsSynced(updateTarget.collection, rowKey);
+        } catch (err) {
+          console.warn(`[SyncEngine] Failed to mark ${rowKey} synced:`, err);
+        }
+      }
+    }
+
+    // transferFunds and payInstallment create rows on the server that were
+    // already written locally under their own ids; link both sides.
+    const res = result as any;
+    if (mutation.action === "transferFunds" && res) {
+      await this.linkLocalRow(
+        "expenses",
+        mutation.payload.localExpenseId,
+        res.expenseId,
+      );
+      await this.linkLocalRow(
+        "income",
+        mutation.payload.localIncomeId,
+        res.incomeId,
+      );
+    }
+
+    if (mutation.action === "loans:payInstallment" && res) {
+      await this.linkLocalRow(
+        "expenses",
+        mutation.payload.localExpenseId,
+        res.expenseId,
+      );
+    }
+  }
+
+  private async linkLocalRow(
+    collection: string,
+    localId: unknown,
+    cloudId: unknown,
+  ): Promise<void> {
+    if (typeof localId !== "string" || typeof cloudId !== "string") return;
+    try {
+      this.localToConvexId.set(localId, cloudId);
+      await this.storage.markEntityAsSynced(collection, localId, cloudId);
+    } catch (err) {
+      console.warn(`[SyncEngine] Failed to link ${localId} → ${cloudId}:`, err);
+    }
+  }
+}
+
+// ── Error classification ──────────────────────────────────────────────────────
+
+function isAuthError(message: string): boolean {
+  return (
+    message.includes("Authentication required") ||
+    message.includes("Unauthorized") ||
+    message.includes("Invalid token")
+  );
+}
+
+function isTransientError(message: string): boolean {
+  const lower = message.toLowerCase();
+
+  // Deployment skew: the client is calling a function the backend has not
+  // received yet. The mutation and its data are perfectly valid — they just
+  // arrived before `convex deploy` did — so this must not burn retries and
+  // must never cost the user their write. It resolves itself the moment the
+  // backend catches up. (An action we genuinely no longer support is not in
+  // ACTION_MAP at all, and takes the dead-letter path above instead.)
+  if (
+    lower.includes("could not find public function") ||
+    lower.includes("could not find function")
+  ) {
+    return true;
+  }
+
+  return (
+    lower.includes("network") ||
+    lower.includes("failed to fetch") ||
+    lower.includes("timeout") ||
+    lower.includes("timed out") ||
+    lower.includes("connection") ||
+    lower.includes("offline") ||
+    lower.includes("aborted") ||
+    lower.includes("websocket") ||
+    lower.includes("503") ||
+    lower.includes("502")
+  );
+}
+
+function entityTypeForField(field: string, action: string): string | null {
+  switch (field) {
+    case "categoryId":
+      return action.includes("incomeCategories")
+        ? "incomeCategories"
+        : "categories";
+    case "cardId":
+    case "fromCardId":
+    case "toCardId":
+      return "cards";
+    case "expenseId":
+      return "expenses";
+    case "incomeId":
+      return "income";
+    case "loanId":
+      return "loans";
+    default:
+      return null;
   }
 }
 

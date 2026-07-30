@@ -96,7 +96,9 @@ export function useDashboardData(token: string | null, selectedCardId: string | 
 
   // Navigation functions
   const goToPreviousMonth = () => {
-    setCurrentDate(currentDate.subtract(1, "month"));
+    // moment mutates in place — without the clone this hands React the same
+    // object reference back and the view never updates.
+    setCurrentDate(currentDate.clone().subtract(1, "month"));
   };
 
   const goToNextMonth = () => {

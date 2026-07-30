@@ -7,6 +7,7 @@ import { api } from "../../convex/_generated/api";
 import { Doc } from "../../convex/_generated/dataModel";
 import { offlineTokenManager, OfflineUserSettings } from "@/lib/auth/OfflineTokenManager";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { mutationQueue } from "@/lib/queue/MutationQueueManager";
 
 export type Currency = Doc<"userSettings">["currency"];
 export type Calendar = Doc<"userSettings">["calendar"];
@@ -26,6 +27,34 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const isOnline = useOnlineStatus();
   const [offlineSettings, setOfflineSettings] = useState<OfflineUserSettings | null>(null);
   const [isUsingOfflineSettings, setIsUsingOfflineSettings] = useState(false);
+  const [hasPendingSettings, setHasPendingSettings] = useState(false);
+
+  // Track whether a settings change is still waiting in the sync queue.
+  useEffect(() => {
+    let cancelled = false;
+
+    const check = async () => {
+      try {
+        const queued = await mutationQueue.getAll();
+        if (cancelled) return;
+        setHasPendingSettings(
+          queued.some((m) => m.action === "userSettings:update"),
+        );
+      } catch {
+        // Non-fatal: fall back to treating the server copy as authoritative.
+      }
+    };
+
+    const unsubscribe = mutationQueue.subscribe(() => {
+      void check();
+    });
+    void check();
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
   
   // Fetch settings from Convex (online)
   let onlineSettings;
@@ -58,7 +87,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   // Save settings to offline storage when online settings change
   useEffect(() => {
     const saveOfflineSettings = async () => {
-      if (onlineSettings) {
+      // Don't overwrite a change that hasn't been delivered yet.
+      if (onlineSettings && !hasPendingSettings) {
         const settingsToCache: OfflineUserSettings = {
           currency: onlineSettings.currency as OfflineUserSettings['currency'],
           calendar: onlineSettings.calendar as OfflineUserSettings['calendar'],
@@ -91,10 +121,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     };
 
     saveOfflineSettings();
-  }, [onlineSettings]);
+  }, [onlineSettings, hasPendingSettings]);
 
-  // Determine which settings to use
-  const effectiveSettings = (onlineSettings || (offlineSettings ? {
+  // Determine which settings to use.
+  //
+  // While a settings change is still queued, the local copy is the truth: the
+  // server has not seen the change yet, so preferring `onlineSettings` here
+  // would visibly revert the user's choice on reconnect.
+  const preferLocal = hasPendingSettings && offlineSettings !== null;
+  const effectiveSettings = ((preferLocal ? null : onlineSettings) || (offlineSettings ? {
     _id: 'offline' as any,
     _creationTime: Date.now(),
     updatedAt: Date.now(),
@@ -116,11 +151,25 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     }
     
     try {
-      // Update online if possible
+      // Send it now when we can; otherwise hand it to the same FIFO queue the
+      // rest of the app uses so the change actually reaches the server later.
+      // Previously an offline change was only cached locally and was silently
+      // reverted by the server's copy on the next reconnect.
+      let delivered = false;
       if (isOnline) {
-        await updateMutation({ ...args, token });
+        try {
+          await updateMutation({ ...args, token });
+          delivered = true;
+        } catch (error) {
+          console.warn("Settings update failed, queueing for background sync", error);
+        }
       }
-      
+
+      if (!delivered) {
+        await mutationQueue.enqueue("userSettings:update", { token, ...args });
+        setHasPendingSettings(true);
+      }
+
       // Always update offline cache
       const currentSettings = offlineSettings || {
         currency: 'USD' as Currency,

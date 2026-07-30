@@ -19,8 +19,8 @@ import { useOfflineFirstData } from "@/hooks/useOfflineFirstData";
 import { useLocalData } from "@/hooks/useLocalData";
 import { localDataStore } from "@/lib/store";
 import { Id } from "../../../../convex/_generated/dataModel";
-import { MutationQueueManager } from "@/lib/queue/MutationQueueManager";
-import { LocalStorageManager } from "@/lib/storage/LocalStorageManager";
+import { mutationQueue } from "@/lib/queue/MutationQueueManager";
+import { localStorageManager } from "@/lib/storage/LocalStorageManager";
 
 interface PayInstallmentSheetProps {
   open: boolean;
@@ -89,8 +89,6 @@ export function PayInstallmentSheet({
 
   const createCategoryMutation = useMutation(api.expenses.createCategory);
   const createForValueMutation = useMutation(api.expenses.createForValue);
-
-  const localStorageManager = new LocalStorageManager();
 
   // Form state
   const [amount, setAmount] = useState("");
@@ -175,7 +173,7 @@ export function PayInstallmentSheet({
         for: paidFor,
         date: date.getTime(),
         cardId,
-      }, { skipEnqueue: true });
+      });
 
       // 2. Update loan locally
       await localStorageManager.updateEntity("loans", loan._id, {
@@ -183,8 +181,7 @@ export function PayInstallmentSheet({
       } as any);
 
       // 3. Enqueue payInstallment with localExpenseId for post-sync linking
-      const queue = new MutationQueueManager();
-      await queue.enqueue("loans:payInstallment", {
+      await mutationQueue.enqueue("loans:payInstallment", {
         token,
         loanId: loan._id,
         amount: parsedAmount,

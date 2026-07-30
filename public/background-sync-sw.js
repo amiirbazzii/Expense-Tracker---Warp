@@ -5,7 +5,7 @@
 // ── Cache versioning ──────────────────────────────────────────────────────────
 // Bump CACHE_VERSION when you want to invalidate all existing caches.
 // The SW's activate handler will purge anything not in the expected set.
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v3";
 
 const EXPECTED_CACHES = new Set([
   // Workbox internal precache (version suffix managed by Workbox itself)
@@ -14,7 +14,6 @@ const EXPECTED_CACHES = new Set([
   `next-static-chunks-${CACHE_VERSION}`,
   `images-${CACHE_VERSION}`,
   `static-resources-${CACHE_VERSION}`,
-  `api-cache-${CACHE_VERSION}`,
   `app-pages-${CACHE_VERSION}`,
   `root-pages-${CACHE_VERSION}`,
   `pages-${CACHE_VERSION}`,

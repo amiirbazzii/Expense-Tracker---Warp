@@ -2,7 +2,7 @@ process.env.NEXT_PUBLIC_APP_VERSION = require("./package.json").version;
 
 /** @type {import('next').NextConfig} */
 
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v3";
 
 const withPWA = require("next-pwa")({
   dest: "public",
@@ -58,38 +58,19 @@ const withPWA = require("next-pwa")({
         },
       },
     },
+    // Backend calls are never cached. Offline reads come from IndexedDB and
+    // offline writes from the mutation queue; replaying a cached POST response
+    // would make a mutation look like it succeeded when it never ran.
     {
-      urlPattern: ({ request, url }) => {
-        return (
-          request.method === "POST" &&
-          (url.pathname.includes("/api/") ||
-            url.hostname.includes("convex") ||
-            url.pathname.includes("/_convex/"))
-        );
-      },
-      handler: "NetworkFirst",
+      urlPattern: ({ url }) =>
+        url.hostname.includes("convex") ||
+        url.pathname.includes("/_convex/") ||
+        url.pathname.includes("/api/"),
+      handler: "NetworkOnly",
       options: {
-        cacheName: `api-cache-${CACHE_VERSION}`,
-        networkTimeoutSeconds: 10,
-        expiration: {
-          maxEntries: 50,
-          maxAgeSeconds: 5 * 60,
-        },
-        cacheableResponse: {
-          statuses: [0, 200],
-        },
-        plugins: [
-          {
-            cacheWillUpdate: async ({ response }) => {
-              return response.status === 200 ? response : null;
-            },
-            requestWillFetch: async ({ request }) => {
-              const url = new URL(request.url);
-              url.searchParams.set("offline-capable", "true");
-              return new Request(url.toString(), request);
-            },
-          },
-        ],
+        // next-pwa reads `options` while wiring up precache fallbacks, so the
+        // key has to be present even when there is nothing to configure.
+        plugins: [],
       },
     },
     {

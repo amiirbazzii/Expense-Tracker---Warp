@@ -14,7 +14,6 @@ import {
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LanguageWrapper } from "@/components/LanguageWrapper";
 import { InstallPrompt } from "@/components/InstallPrompt";
-import { SyncEngine } from "@/components/SyncEngine";
 import { PwaRegistration } from "@/components/PwaRegistration";
 
 const geistMono = localFont({
@@ -130,7 +129,6 @@ export default function RootLayout({
           <ConvexProvider>
             <AuthProvider>
               <OfflineFirstWrapper>
-                <SyncEngine />
                 <SettingsProvider>
                   <LanguageWrapper>
                     {children}

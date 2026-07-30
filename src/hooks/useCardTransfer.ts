@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { localDataStore } from "@/lib/store";
-import { LocalStorageManager } from "@/lib/storage/LocalStorageManager";
-import { MutationQueueManager } from "@/lib/queue/MutationQueueManager";
+import { localStorageManager } from "@/lib/storage/LocalStorageManager";
+import { mutationQueue } from "@/lib/queue/MutationQueueManager";
 import type { CardDoc } from "@/lib/store/LocalDataStore";
 
 interface UseCardTransferResult {
@@ -49,7 +49,6 @@ export function useCardTransfer(): UseCardTransferResult {
     }
 
     setIsTransferring(true);
-    const localStorageManager = new LocalStorageManager();
     try {
       const fromCardName =
         cards.find((c) => c.cardId === fromCard)?.cardName || "Source";
@@ -57,31 +56,24 @@ export function useCardTransfer(): UseCardTransferResult {
         cards.find((c) => c.cardId === toCard)?.cardName || "Destination";
       const now = Date.now();
 
-      const localExpense = await localStorageManager.saveExpense(
-        {
-          amount: transferAmount,
-          title: `Transfer to ${toCardName}`,
-          category: ["Card Transfer"],
-          for: [],
-          date: now,
-          cardId: fromCard,
-        },
-        { skipEnqueue: true },
-      );
+      const localExpense = await localStorageManager.saveExpense({
+        amount: transferAmount,
+        title: `Transfer to ${toCardName}`,
+        category: ["Card Transfer"],
+        for: [],
+        date: now,
+        cardId: fromCard,
+      });
 
-      const localIncome = await localStorageManager.saveIncome(
-        {
-          amount: transferAmount,
-          source: `Transfer from ${fromCardName}`,
-          category: "Card Transfer",
-          date: now,
-          cardId: toCard,
-        },
-        { skipEnqueue: true },
-      );
+      const localIncome = await localStorageManager.saveIncome({
+        amount: transferAmount,
+        source: `Transfer from ${fromCardName}`,
+        category: "Card Transfer",
+        date: now,
+        cardId: toCard,
+      });
 
-      const queue = new MutationQueueManager();
-      await queue.enqueue("transferFunds", {
+      await mutationQueue.enqueue("transferFunds", {
         token,
         fromCardId: fromCard,
         toCardId: toCard,

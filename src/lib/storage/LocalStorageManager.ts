@@ -14,18 +14,33 @@ import {
   PendingOperation,
   SyncState,
   LocalMetadata,
-  PendingMutation,
-  MutationAction,
 } from "../types/local-storage";
+import { createAsyncLock } from "./asyncLock";
+import { migrateLocalData, CURRENT_SCHEMA_VERSION } from "./migrations";
+
+/**
+ * Every instance addresses the same object store, so the lock is module-scoped:
+ * a per-instance lock would not serialize a write made by LocalDataStore
+ * against one made by the SyncEngine.
+ */
+const runExclusive = createAsyncLock();
+
+/** Storage key for the durable local-key → Convex-id map. */
+const CLOUD_ID_MAP_KEY = "cloud_id_map";
 
 /**
  * LocalStorageManager provides a comprehensive interface for local data operations
  * using IndexedDB via localforage abstraction. Handles all CRUD operations,
  * data export/import, and storage management for the local-first architecture.
+ *
+ * Records are keyed by a **stable** id that never changes once assigned. For
+ * locally created rows that is a `local_…` id; the Convex document id lands in
+ * the separate `cloudId` field after the mutation syncs. Nothing may re-key a
+ * record, because the UI holds ids across renders.
  */
 export class LocalStorageManager {
   private storage: typeof localforage;
-  private initialized = false;
+  private initializedFor: string | null = null;
 
   constructor() {
     this.storage = localforage.createInstance({
@@ -39,7 +54,9 @@ export class LocalStorageManager {
    * Initialize the storage manager and set up the database structure
    */
   async initialize(userId: string): Promise<void> {
-    if (this.initialized) return;
+    // Re-run whenever the account changes, otherwise the wipe below is skipped
+    // and the previous user's rows stay readable for the whole session.
+    if (this.initializedFor === userId) return;
 
     try {
       // Initialize metadata if it doesn't exist
@@ -55,6 +72,11 @@ export class LocalStorageManager {
 
       if (!metadata) {
         await this.initializeMetadata(userId);
+      } else if ((metadata.schemaVersion ?? 0) < CURRENT_SCHEMA_VERSION) {
+        // Existing install: repair rows written by earlier versions before any
+        // read path sees them.
+        await runExclusive(() => migrateLocalData(this.storage));
+        await this.updateMetadata({ schemaVersion: CURRENT_SCHEMA_VERSION });
       }
 
       // Initialize sync state if it doesn't exist
@@ -63,11 +85,16 @@ export class LocalStorageManager {
         await this.initializeSyncState();
       }
 
-      this.initialized = true;
+      this.initializedFor = userId;
     } catch (error) {
       console.error("Failed to initialize LocalStorageManager:", error);
       throw error;
     }
+  }
+
+  /** True once `initialize()` has completed for the given user. */
+  isInitializedFor(userId: string): boolean {
+    return this.initializedFor === userId;
   }
 
   private async initializeMetadata(userId: string): Promise<void> {
@@ -77,7 +104,7 @@ export class LocalStorageManager {
       userId,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      schemaVersion: 2,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
     };
 
     await this.storage.setItem("metadata", metadata);
@@ -129,74 +156,108 @@ export class LocalStorageManager {
   }
 
   // ==========================================
-  // Dynamic Mutation Queue Operations (Task 1)
+  // Cloud id resolution
   // ==========================================
 
   /**
-   * Enqueue: Push a new mutation dynamically into the pending queue.
+   * Resolve a record by its Convex document id.
+   *
+   * The UI and the local store address rows by their stable local key; the
+   * server only knows the `cloudId`. This is the bridge between the two.
    */
-  async enqueue(
-    action: MutationAction,
-    storeName: string,
-    payload: any,
-  ): Promise<PendingMutation> {
-    const result =
-      await this.storage.getItem<PendingMutation[]>("pending_mutations");
-    const mutations = Array.isArray(result) ? result : [];
-    const newMutation: PendingMutation = {
-      id: `mut_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      action,
-      storeName,
-      payload,
-      timestamp: Date.now(),
-    };
-    mutations.push(newMutation);
-    await this.storage.setItem("pending_mutations", mutations);
-    return newMutation;
+  async findByCloudId<T extends LocalEntity>(
+    entityType: EntityType,
+    cloudId: string,
+  ): Promise<T | null> {
+    const collection = await this.getEntityCollection<T>(entityType);
+    const direct = collection[cloudId];
+    if (direct) return direct;
+
+    for (const entity of Object.values(collection)) {
+      if (entity.cloudId === cloudId) return entity;
+    }
+    return null;
   }
 
-  /**
-   * Fetch Ordered: Retrieve all pending operations, strictly ordered by FIFO (First-In, First-Out).
-   */
-  async fetchOrdered(): Promise<PendingMutation[]> {
-    const result =
-      await this.storage.getItem<PendingMutation[]>("pending_mutations");
-    const mutations = Array.isArray(result) ? result : [];
-    return mutations.sort((a, b) => a.timestamp - b.timestamp);
-  }
-
-  /**
-   * Dequeue: Remove a mutation by its ID once it has been successfully synced.
-   */
-  async dequeue(id: string): Promise<boolean> {
-    const result =
-      await this.storage.getItem<PendingMutation[]>("pending_mutations");
-    const mutations = Array.isArray(result) ? result : [];
-    const index = mutations.findIndex((mut) => mut.id === id);
-    if (index === -1) return false;
-    mutations.splice(index, 1);
-    await this.storage.setItem("pending_mutations", mutations);
-    return true;
+  /** Map of cloudId → stable local key for a whole collection. */
+  async getCloudIdIndex(
+    entityType: EntityType,
+  ): Promise<Map<string, string>> {
+    const collection = await this.getEntityCollection<LocalEntity>(entityType);
+    const index = new Map<string, string>();
+    for (const [key, entity] of Object.entries(collection)) {
+      if (entity.cloudId) index.set(entity.cloudId, key);
+      // A hydrated row is keyed by its own cloud id.
+      index.set(key, key);
+    }
+    return index;
   }
 
   /**
    * Mark an entity as synced after a successful Convex mutation.
-   * Updates syncStatus, optionally sets the cloudId, and clears lastSyncedAt
-   * without enqueuing a new mutation.
+   *
+   * Records the `cloudId` mapping without ever re-keying the row — the UI is
+   * holding the existing key, so changing it would orphan every reference.
    */
   async markEntityAsSynced(
     entityType: string,
     id: string,
     cloudId?: string,
   ): Promise<void> {
-    const collection = await this.getEntityCollection<any>(entityType);
-    const entity = collection[id];
-    if (!entity) return;
-    entity.syncStatus = "synced";
-    if (cloudId) entity.cloudId = cloudId;
-    entity.lastSyncedAt = Date.now();
-    collection[id] = entity;
-    await this.setEntityCollection(entityType, collection);
+    await runExclusive(async () => {
+      if (cloudId) {
+        // Record the mapping durably *before* touching the row. The row is not
+        // a safe place to keep it: a later delete removes the row while its
+        // delete mutation is still queued, and an in-memory map dies with the
+        // page — leaving the queued mutation with no way to name the document.
+        const map = await this.getCloudIdMap();
+        if (map[id] !== cloudId) {
+          map[id] = cloudId;
+          await this.storage.setItem(CLOUD_ID_MAP_KEY, map);
+        }
+      }
+
+      const collection = await this.getEntityCollection<any>(entityType);
+      const entity = collection[id];
+      if (!entity) return;
+      collection[id] = {
+        ...entity,
+        syncStatus: "synced",
+        ...(cloudId ? { cloudId } : {}),
+        lastSyncedAt: Date.now(),
+      };
+      await this.setEntityCollection(entityType, collection);
+    });
+  }
+
+  /** The durable local-key → Convex-id map. */
+  private async getCloudIdMap(): Promise<Record<string, string>> {
+    const map = await this.storage.getItem<Record<string, string>>(
+      CLOUD_ID_MAP_KEY,
+    );
+    return map && typeof map === "object" ? map : {};
+  }
+
+  /**
+   * Convex id for a local key, from the durable map.
+   *
+   * Survives both a page reload and deletion of the row itself, which is the
+   * whole point: a queued delete has to be able to name a document whose local
+   * copy is already gone.
+   */
+  async getCloudIdForLocalId(localId: string): Promise<string | null> {
+    const map = await this.getCloudIdMap();
+    return map[localId] ?? null;
+  }
+
+  /** Drop a mapping once the document it names no longer exists anywhere. */
+  async forgetCloudIdMapping(localId: string): Promise<void> {
+    await runExclusive(async () => {
+      const map = await this.getCloudIdMap();
+      if (!(localId in map)) return;
+      delete map[localId];
+      await this.storage.setItem(CLOUD_ID_MAP_KEY, map);
+    });
   }
 
   // ==========================================
@@ -212,54 +273,53 @@ export class LocalStorageManager {
     entityType: string,
     data: any,
   ): Promise<T> {
-    const collection = await this.getEntityCollection<T>(entityType);
+    return runExclusive(async () => {
+      const collection = await this.getEntityCollection<T>(entityType);
 
-    const id = data.id || data.cloudId || data._id;
-    if (!id) throw new Error("seedEntity requires an id, cloudId, or _id");
+      const id = data.id || data.cloudId || data._id;
+      if (!id) throw new Error("seedEntity requires an id, cloudId, or _id");
 
-    const localEntity: T = {
-      ...data,
-      id,
-      localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      syncStatus: "synced",
-      version: 1,
-      createdAt: data.createdAt || Date.now(),
-      updatedAt: Date.now(),
-    } as unknown as T;
+      const localEntity: T = {
+        ...data,
+        id,
+        localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        syncStatus: "synced",
+        version: 1,
+        createdAt: data.createdAt || Date.now(),
+        updatedAt: Date.now(),
+      } as unknown as T;
 
-    collection[id] = localEntity;
-    await this.setEntityCollection(entityType, collection);
-    // No enqueue — this is a silent seed
-    return localEntity;
+      collection[id] = localEntity;
+      await this.setEntityCollection(entityType, collection);
+      return localEntity;
+    });
   }
 
   async saveEntity<T extends LocalEntity>(
     entityType: string,
     data: any,
   ): Promise<T> {
-    const collection = await this.getEntityCollection<T>(entityType);
+    return runExclusive(async () => {
+      const collection = await this.getEntityCollection<T>(entityType);
 
-    const id =
-      data.id ||
-      data.cloudId ||
-      `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const localEntity: T = {
-      ...data,
-      id,
-      localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      syncStatus: "pending",
-      version: 1,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    } as unknown as T;
+      const id =
+        data.id ||
+        data.cloudId ||
+        `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const localEntity: T = {
+        ...data,
+        id,
+        localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        syncStatus: "pending",
+        version: 1,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      } as unknown as T;
 
-    collection[id] = localEntity;
-    await this.setEntityCollection(entityType, collection);
-
-    // Enqueue the CREATE mutation
-    await this.enqueue("CREATE", entityType, localEntity);
-
-    return localEntity;
+      collection[id] = localEntity;
+      await this.setEntityCollection(entityType, collection);
+      return localEntity;
+    });
   }
 
   async getEntities<T extends LocalEntity>(entityType: string): Promise<T[]> {
@@ -280,41 +340,37 @@ export class LocalStorageManager {
     id: string,
     updates: Partial<T>,
   ): Promise<T | null> {
-    const collection = await this.getEntityCollection<T>(entityType);
-    const entity = collection[id];
+    return runExclusive(async () => {
+      const collection = await this.getEntityCollection<T>(entityType);
+      const entity = collection[id];
 
-    if (!entity) return null;
+      if (!entity) return null;
 
-    const updated: T = {
-      ...entity,
-      ...updates,
-      version: entity.version + 1,
-      updatedAt: Date.now(),
-      syncStatus: "pending",
-    };
+      const updated: T = {
+        ...entity,
+        ...updates,
+        version: entity.version + 1,
+        updatedAt: Date.now(),
+        syncStatus: "pending",
+      };
 
-    collection[id] = updated;
-    await this.setEntityCollection(entityType, collection);
-
-    // Enqueue the UPDATE mutation
-    await this.enqueue("UPDATE", entityType, updated);
-
-    return updated;
+      collection[id] = updated;
+      await this.setEntityCollection(entityType, collection);
+      return updated;
+    });
   }
 
   async deleteEntity(entityType: string, id: string): Promise<boolean> {
-    const collection = await this.getEntityCollection<LocalEntity>(entityType);
+    return runExclusive(async () => {
+      const collection =
+        await this.getEntityCollection<LocalEntity>(entityType);
 
-    if (!collection[id]) return false;
+      if (!collection[id]) return false;
 
-    const original = collection[id];
-    delete collection[id];
-    await this.setEntityCollection(entityType, collection);
-
-    // Enqueue the DELETE mutation
-    await this.enqueue("DELETE", entityType, { id, original });
-
-    return true;
+      delete collection[id];
+      await this.setEntityCollection(entityType, collection);
+      return true;
+    });
   }
 
   // Generic entity operations
@@ -346,21 +402,93 @@ export class LocalStorageManager {
     id: string,
     fields: Record<string, any>,
   ): Promise<void> {
-    const collection = await this.getEntityCollection(entityType);
-    if (collection[id]) return; // Already exists — don't overwrite
+    await runExclusive(async () => {
+      const collection = await this.getEntityCollection(entityType);
+      if (collection[id]) return; // Already exists — don't overwrite
 
-    collection[id] = {
-      ...fields,
-      id,
-      localId: `hydrated_${id}`,
-      syncStatus: "synced",
-      version: 1,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    } as any;
+      collection[id] = {
+        ...fields,
+        id,
+        localId: `hydrated_${id}`,
+        syncStatus: "synced",
+        version: 1,
+        createdAt: fields.createdAt ?? Date.now(),
+        updatedAt: fields.updatedAt ?? Date.now(),
+      } as any;
 
-    await this.setEntityCollection(entityType, collection);
+      await this.setEntityCollection(entityType, collection);
+    });
   }
+
+  /**
+   * Apply authoritative server fields onto an existing local row.
+   *
+   * Unlike `updateEntity` this does not bump the version or flip the row back
+   * to `pending` — the data came *from* the server, so the row is synced by
+   * definition and must not look like an unsent local edit.
+   */
+  async applyServerUpdate(
+    entityType: EntityType,
+    key: string,
+    fields: Record<string, any>,
+  ): Promise<void> {
+    await runExclusive(async () => {
+      const collection = await this.getEntityCollection<LocalEntity>(entityType);
+      const existing = collection[key];
+      if (!existing) return;
+
+      collection[key] = {
+        ...existing,
+        ...fields,
+        // Never let server data re-key the row or clobber local identity.
+        id: existing.id,
+        localId: existing.localId,
+        version: existing.version,
+        createdAt: existing.createdAt,
+        syncStatus: "synced",
+        lastSyncedAt: Date.now(),
+      };
+
+      await this.setEntityCollection(entityType, collection);
+    });
+  }
+
+  /**
+   * Remove rows that no longer exist on the server.
+   * Only ever touches rows that are fully synced — a pending local write or a
+   * row that has never reached the server is always kept.
+   */
+  async removeSyncedEntities(
+    entityType: EntityType,
+    keys: string[],
+  ): Promise<number> {
+    if (keys.length === 0) return 0;
+
+    return runExclusive(async () => {
+      const collection = await this.getEntityCollection<LocalEntity>(entityType);
+      let removed = 0;
+
+      for (const key of keys) {
+        const entity = collection[key];
+        if (!entity) continue;
+        if (entity.syncStatus !== "synced" || !entity.cloudId) continue;
+        delete collection[key];
+        removed++;
+      }
+
+      if (removed > 0) await this.setEntityCollection(entityType, collection);
+      return removed;
+    });
+  }
+
+  // ==========================================
+  // Entity-specific CRUD
+  // ==========================================
+  //
+  // These are thin, typed wrappers over the generic operations above. They all
+  // go through the same locked read-modify-write path, and none of them talks
+  // to a queue: enqueuing the matching Convex mutation is LocalDataStore's job,
+  // so a single user action can never produce two outbound mutations.
 
   // Expense operations
   async saveExpense(
@@ -368,35 +496,8 @@ export class LocalStorageManager {
       LocalExpense,
       "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
     >,
-    options?: { skipEnqueue?: boolean },
   ): Promise<LocalExpense> {
-    const collection = await this.getEntityCollection<LocalExpense>("expenses");
-
-    const isOnline =
-      typeof navigator !== "undefined" ? navigator.onLine : false;
-    const skipEnqueue = options?.skipEnqueue ?? isOnline;
-
-    const localExpense: LocalExpense = {
-      ...expense,
-      id:
-        expense.cloudId ||
-        `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      syncStatus: skipEnqueue ? "synced" : "pending",
-      version: 1,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-
-    collection[localExpense.id] = localExpense;
-    await this.setEntityCollection("expenses", collection);
-
-    // Only enqueue when the change needs to be synced later
-    if (!skipEnqueue) {
-      await this.enqueue("CREATE", "expenses", localExpense);
-    }
-
-    return localExpense;
+    return this.saveEntity<LocalExpense>("expenses", expense);
   }
 
   async getExpenses(filters?: DataFilters): Promise<LocalExpense[]> {
@@ -411,63 +512,18 @@ export class LocalStorageManager {
   }
 
   async getExpenseById(id: string): Promise<LocalExpense | null> {
-    const collection = await this.getEntityCollection<LocalExpense>("expenses");
-    return collection[id] || null;
+    return this.getEntityById<LocalExpense>("expenses", id);
   }
 
   async updateExpense(
     id: string,
     updates: Partial<LocalExpense>,
-    options?: { skipEnqueue?: boolean },
   ): Promise<LocalExpense | null> {
-    const collection = await this.getEntityCollection<LocalExpense>("expenses");
-    const expense = collection[id];
-
-    if (!expense) return null;
-
-    const isOnline =
-      typeof navigator !== "undefined" ? navigator.onLine : false;
-    const skipEnqueue = options?.skipEnqueue ?? isOnline;
-
-    const updated: LocalExpense = {
-      ...expense,
-      ...updates,
-      version: expense.version + 1,
-      updatedAt: Date.now(),
-      syncStatus: skipEnqueue ? "synced" : "pending",
-    };
-
-    collection[id] = updated;
-    await this.setEntityCollection("expenses", collection);
-
-    if (!skipEnqueue) {
-      await this.enqueue("UPDATE", "expenses", updated);
-    }
-
-    return updated;
+    return this.updateEntity<LocalExpense>("expenses", id, updates);
   }
 
-  async deleteExpense(
-    id: string,
-    options?: { skipEnqueue?: boolean },
-  ): Promise<boolean> {
-    const collection = await this.getEntityCollection<LocalExpense>("expenses");
-
-    if (!collection[id]) return false;
-
-    const isOnline =
-      typeof navigator !== "undefined" ? navigator.onLine : false;
-    const skipEnqueue = options?.skipEnqueue ?? isOnline;
-
-    const original = collection[id];
-    delete collection[id];
-    await this.setEntityCollection("expenses", collection);
-
-    if (!skipEnqueue) {
-      await this.enqueue("DELETE", "expenses", { id, original });
-    }
-
-    return true;
+  async deleteExpense(id: string): Promise<boolean> {
+    return this.deleteEntity("expenses", id);
   }
 
   // Income operations
@@ -476,34 +532,8 @@ export class LocalStorageManager {
       LocalIncome,
       "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
     >,
-    options?: { skipEnqueue?: boolean },
   ): Promise<LocalIncome> {
-    const collection = await this.getEntityCollection<LocalIncome>("income");
-
-    const isOnline =
-      typeof navigator !== "undefined" ? navigator.onLine : false;
-    const skipEnqueue = options?.skipEnqueue ?? isOnline;
-
-    const localIncome: LocalIncome = {
-      ...income,
-      id:
-        income.cloudId ||
-        `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      syncStatus: skipEnqueue ? "synced" : "pending",
-      version: 1,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-
-    collection[localIncome.id] = localIncome;
-    await this.setEntityCollection("income", collection);
-
-    if (!skipEnqueue) {
-      await this.enqueue("CREATE", "income", localIncome);
-    }
-
-    return localIncome;
+    return this.saveEntity<LocalIncome>("income", income);
   }
 
   async getIncome(filters?: DataFilters): Promise<LocalIncome[]> {
@@ -520,56 +550,12 @@ export class LocalStorageManager {
   async updateIncome(
     id: string,
     updates: Partial<LocalIncome>,
-    options?: { skipEnqueue?: boolean },
   ): Promise<LocalIncome | null> {
-    const collection = await this.getEntityCollection<LocalIncome>("income");
-    const income = collection[id];
-
-    if (!income) return null;
-
-    const isOnline =
-      typeof navigator !== "undefined" ? navigator.onLine : false;
-    const skipEnqueue = options?.skipEnqueue ?? isOnline;
-
-    const updated: LocalIncome = {
-      ...income,
-      ...updates,
-      version: income.version + 1,
-      updatedAt: Date.now(),
-      syncStatus: skipEnqueue ? "synced" : "pending",
-    };
-
-    collection[id] = updated;
-    await this.setEntityCollection("income", collection);
-
-    if (!skipEnqueue) {
-      await this.enqueue("UPDATE", "income", updated);
-    }
-
-    return updated;
+    return this.updateEntity<LocalIncome>("income", id, updates);
   }
 
-  async deleteIncome(
-    id: string,
-    options?: { skipEnqueue?: boolean },
-  ): Promise<boolean> {
-    const collection = await this.getEntityCollection<LocalIncome>("income");
-
-    if (!collection[id]) return false;
-
-    const isOnline =
-      typeof navigator !== "undefined" ? navigator.onLine : false;
-    const skipEnqueue = options?.skipEnqueue ?? isOnline;
-
-    const original = collection[id];
-    delete collection[id];
-    await this.setEntityCollection("income", collection);
-
-    if (!skipEnqueue) {
-      await this.enqueue("DELETE", "income", { id, original });
-    }
-
-    return true;
+  async deleteIncome(id: string): Promise<boolean> {
+    return this.deleteEntity("income", id);
   }
 
   // Category operations
@@ -578,35 +564,11 @@ export class LocalStorageManager {
       LocalCategory,
       "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
     >,
-    options?: { skipEnqueue?: boolean },
   ): Promise<LocalCategory> {
-    const collection =
-      await this.getEntityCollection<LocalCategory>("categories");
-
-    const isOnline =
-      typeof navigator !== "undefined" ? navigator.onLine : false;
-    const skipEnqueue = options?.skipEnqueue ?? isOnline;
-
-    const localCategory: LocalCategory = {
+    return this.saveEntity<LocalCategory>("categories", {
       ...category,
-      id:
-        category.cloudId ||
-        `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      syncStatus: skipEnqueue ? "synced" : "pending",
-      version: 1,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-
-    collection[localCategory.id] = localCategory;
-    await this.setEntityCollection("categories", collection);
-
-    if (!skipEnqueue) {
-      await this.enqueue("CREATE", "categories", localCategory);
-    }
-
-    return localCategory;
+      type: category.type ?? "expense",
+    });
   }
 
   async getCategories(type?: "expense" | "income"): Promise<LocalCategory[]> {
@@ -621,40 +583,60 @@ export class LocalStorageManager {
     return categories.sort((a, b) => a.name.localeCompare(b.name));
   }
 
+  async updateCategory(
+    id: string,
+    updates: Partial<LocalCategory>,
+  ): Promise<LocalCategory | null> {
+    return this.updateEntity<LocalCategory>("categories", id, updates);
+  }
+
+  async deleteCategory(id: string): Promise<boolean> {
+    return this.deleteEntity("categories", id);
+  }
+
+  // Income category operations (separate collection from expense categories)
+  async saveIncomeCategory(
+    category: Omit<
+      LocalCategory,
+      "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
+    >,
+  ): Promise<LocalCategory> {
+    return this.saveEntity<LocalCategory>("incomeCategories", {
+      ...category,
+      type: "income",
+    });
+  }
+
+  async getIncomeCategories(): Promise<LocalCategory[]> {
+    const collection =
+      await this.getEntityCollection<LocalCategory>("incomeCategories");
+    return Object.values(collection).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+  }
+
+  async updateIncomeCategory(
+    id: string,
+    updates: Partial<LocalCategory>,
+  ): Promise<LocalCategory | null> {
+    return this.updateEntity<LocalCategory>("incomeCategories", id, {
+      ...updates,
+      type: "income", // Ensure it remains an income category
+    });
+  }
+
+  async deleteIncomeCategory(id: string): Promise<boolean> {
+    return this.deleteEntity("incomeCategories", id);
+  }
+
   // Card operations
   async saveCard(
     card: Omit<
       LocalCard,
       "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
     >,
-    options?: { skipEnqueue?: boolean },
   ): Promise<LocalCard> {
-    const collection = await this.getEntityCollection<LocalCard>("cards");
-
-    const isOnline =
-      typeof navigator !== "undefined" ? navigator.onLine : false;
-    const skipEnqueue = options?.skipEnqueue ?? isOnline;
-
-    const localCard: LocalCard = {
-      ...card,
-      id:
-        card.cloudId ||
-        `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      syncStatus: skipEnqueue ? "synced" : "pending",
-      version: 1,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-
-    collection[localCard.id] = localCard;
-    await this.setEntityCollection("cards", collection);
-
-    if (!skipEnqueue) {
-      await this.enqueue("CREATE", "cards", localCard);
-    }
-
-    return localCard;
+    return this.saveEntity<LocalCard>("cards", card);
   }
 
   async getCards(): Promise<LocalCard[]> {
@@ -668,41 +650,11 @@ export class LocalStorageManager {
     id: string,
     updates: Partial<LocalCard>,
   ): Promise<LocalCard | null> {
-    const collection = await this.getEntityCollection<LocalCard>("cards");
-    const card = collection[id];
-
-    if (!card) return null;
-
-    const updated: LocalCard = {
-      ...card,
-      ...updates,
-      version: card.version + 1,
-      updatedAt: Date.now(),
-      syncStatus: "pending",
-    };
-
-    collection[id] = updated;
-    await this.setEntityCollection("cards", collection);
-
-    // Enqueue mutation dynamically
-    await this.enqueue("UPDATE", "cards", updated);
-
-    return updated;
+    return this.updateEntity<LocalCard>("cards", id, updates);
   }
 
   async deleteCard(id: string): Promise<boolean> {
-    const collection = await this.getEntityCollection<LocalCard>("cards");
-
-    if (!collection[id]) return false;
-
-    const original = collection[id];
-    delete collection[id];
-    await this.setEntityCollection("cards", collection);
-
-    // Enqueue mutation dynamically
-    await this.enqueue("DELETE", "cards", { id, original });
-
-    return true;
+    return this.deleteEntity("cards", id);
   }
 
   // For Values operations
@@ -711,35 +663,8 @@ export class LocalStorageManager {
       LocalForValue,
       "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
     >,
-    options?: { skipEnqueue?: boolean },
   ): Promise<LocalForValue> {
-    const collection =
-      await this.getEntityCollection<LocalForValue>("forValues");
-
-    const isOnline =
-      typeof navigator !== "undefined" ? navigator.onLine : false;
-    const skipEnqueue = options?.skipEnqueue ?? isOnline;
-
-    const localForValue: LocalForValue = {
-      ...forValue,
-      id:
-        forValue.cloudId ||
-        `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      syncStatus: skipEnqueue ? "synced" : "pending",
-      version: 1,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-
-    collection[localForValue.id] = localForValue;
-    await this.setEntityCollection("forValues", collection);
-
-    if (!skipEnqueue) {
-      await this.enqueue("CREATE", "forValues", localForValue);
-    }
-
-    return localForValue;
+    return this.saveEntity<LocalForValue>("forValues", forValue);
   }
 
   async getForValues(): Promise<LocalForValue[]> {
@@ -754,43 +679,11 @@ export class LocalStorageManager {
     id: string,
     updates: Partial<LocalForValue>,
   ): Promise<LocalForValue | null> {
-    const collection =
-      await this.getEntityCollection<LocalForValue>("forValues");
-    const forValue = collection[id];
-
-    if (!forValue) return null;
-
-    const updated: LocalForValue = {
-      ...forValue,
-      ...updates,
-      version: forValue.version + 1,
-      updatedAt: Date.now(),
-      syncStatus: "pending",
-    };
-
-    collection[id] = updated;
-    await this.setEntityCollection("forValues", collection);
-
-    // Enqueue mutation dynamically
-    await this.enqueue("UPDATE", "forValues", updated);
-
-    return updated;
+    return this.updateEntity<LocalForValue>("forValues", id, updates);
   }
 
   async deleteForValue(id: string): Promise<boolean> {
-    const collection =
-      await this.getEntityCollection<LocalForValue>("forValues");
-
-    if (!collection[id]) return false;
-
-    const original = collection[id];
-    delete collection[id];
-    await this.setEntityCollection("forValues", collection);
-
-    // Enqueue mutation dynamically
-    await this.enqueue("DELETE", "forValues", { id, original });
-
-    return true;
+    return this.deleteEntity("forValues", id);
   }
 
   // Loan operations
@@ -800,24 +693,7 @@ export class LocalStorageManager {
       "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
     >,
   ): Promise<LocalLoan> {
-    const collection = await this.getEntityCollection<LocalLoan>("loans");
-
-    const localLoan: LocalLoan = {
-      ...loan,
-      id:
-        loan.cloudId ||
-        `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      syncStatus: "pending",
-      version: 1,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-
-    collection[localLoan.id] = localLoan;
-    await this.setEntityCollection("loans", collection);
-
-    return localLoan;
+    return this.saveEntity<LocalLoan>("loans", loan);
   }
 
   async getLoans(): Promise<LocalLoan[]> {
@@ -829,196 +705,11 @@ export class LocalStorageManager {
     id: string,
     updates: Partial<LocalLoan>,
   ): Promise<LocalLoan | null> {
-    const collection = await this.getEntityCollection<LocalLoan>("loans");
-    const loan = collection[id];
-
-    if (!loan) return null;
-
-    const updated: LocalLoan = {
-      ...loan,
-      ...updates,
-      version: loan.version + 1,
-      updatedAt: Date.now(),
-      syncStatus: "pending",
-    };
-
-    collection[id] = updated;
-    await this.setEntityCollection("loans", collection);
-
-    return updated;
+    return this.updateEntity<LocalLoan>("loans", id, updates);
   }
 
   async deleteLoan(id: string): Promise<boolean> {
-    const collection = await this.getEntityCollection<LocalLoan>("loans");
-
-    if (!collection[id]) return false;
-
-    delete collection[id];
-    await this.setEntityCollection("loans", collection);
-
-    return true;
-  }
-
-  // Income Categories operations (separate from regular categories)
-  async saveIncomeCategory(
-    category: Omit<
-      LocalCategory,
-      "id" | "localId" | "syncStatus" | "version" | "createdAt" | "updatedAt"
-    >,
-    options?: { skipEnqueue?: boolean },
-  ): Promise<LocalCategory> {
-    const collection =
-      await this.getEntityCollection<LocalCategory>("incomeCategories");
-
-    const isOnline =
-      typeof navigator !== "undefined" ? navigator.onLine : false;
-    const skipEnqueue = options?.skipEnqueue ?? isOnline;
-
-    const localCategory: LocalCategory = {
-      ...category,
-      type: "income",
-      id:
-        category.cloudId ||
-        `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      localId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      syncStatus: skipEnqueue ? "synced" : "pending",
-      version: 1,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-
-    collection[localCategory.id] = localCategory;
-    await this.setEntityCollection("incomeCategories", collection);
-
-    if (!skipEnqueue) {
-      await this.enqueue("CREATE", "incomeCategories", localCategory);
-    }
-
-    return localCategory;
-  }
-
-  async getIncomeCategories(): Promise<LocalCategory[]> {
-    const collection =
-      await this.getEntityCollection<LocalCategory>("incomeCategories");
-    return Object.values(collection).sort((a, b) =>
-      a.name.localeCompare(b.name),
-    );
-  }
-
-  async updateIncomeCategory(
-    id: string,
-    updates: Partial<LocalCategory>,
-    options?: { skipEnqueue?: boolean },
-  ): Promise<LocalCategory | null> {
-    const collection =
-      await this.getEntityCollection<LocalCategory>("incomeCategories");
-    const category = collection[id];
-
-    if (!category) return null;
-
-    const isOnline =
-      typeof navigator !== "undefined" ? navigator.onLine : false;
-    const skipEnqueue = options?.skipEnqueue ?? isOnline;
-
-    const updated: LocalCategory = {
-      ...category,
-      ...updates,
-      type: "income", // Ensure it remains an income category
-      version: category.version + 1,
-      updatedAt: Date.now(),
-      syncStatus: skipEnqueue ? "synced" : "pending",
-    };
-
-    collection[id] = updated;
-    await this.setEntityCollection("incomeCategories", collection);
-
-    if (!skipEnqueue) {
-      await this.enqueue("UPDATE", "incomeCategories", updated);
-    }
-
-    return updated;
-  }
-
-  async deleteIncomeCategory(
-    id: string,
-    options?: { skipEnqueue?: boolean },
-  ): Promise<boolean> {
-    const collection =
-      await this.getEntityCollection<LocalCategory>("incomeCategories");
-
-    if (!collection[id]) return false;
-
-    const isOnline =
-      typeof navigator !== "undefined" ? navigator.onLine : false;
-    const skipEnqueue = options?.skipEnqueue ?? isOnline;
-
-    const original = collection[id];
-    delete collection[id];
-    await this.setEntityCollection("incomeCategories", collection);
-
-    if (!skipEnqueue) {
-      await this.enqueue("DELETE", "incomeCategories", { id, original });
-    }
-
-    return true;
-  }
-
-  // Enhanced category operations with update/delete
-  async updateCategory(
-    id: string,
-    updates: Partial<LocalCategory>,
-    options?: { skipEnqueue?: boolean },
-  ): Promise<LocalCategory | null> {
-    const collection =
-      await this.getEntityCollection<LocalCategory>("categories");
-    const category = collection[id];
-
-    if (!category) return null;
-
-    const isOnline =
-      typeof navigator !== "undefined" ? navigator.onLine : false;
-    const skipEnqueue = options?.skipEnqueue ?? isOnline;
-
-    const updated: LocalCategory = {
-      ...category,
-      ...updates,
-      version: category.version + 1,
-      updatedAt: Date.now(),
-      syncStatus: skipEnqueue ? "synced" : "pending",
-    };
-
-    collection[id] = updated;
-    await this.setEntityCollection("categories", collection);
-
-    if (!skipEnqueue) {
-      await this.enqueue("UPDATE", "categories", updated);
-    }
-
-    return updated;
-  }
-
-  async deleteCategory(
-    id: string,
-    options?: { skipEnqueue?: boolean },
-  ): Promise<boolean> {
-    const collection =
-      await this.getEntityCollection<LocalCategory>("categories");
-
-    if (!collection[id]) return false;
-
-    const isOnline =
-      typeof navigator !== "undefined" ? navigator.onLine : false;
-    const skipEnqueue = options?.skipEnqueue ?? isOnline;
-
-    const original = collection[id];
-    delete collection[id];
-    await this.setEntityCollection("categories", collection);
-
-    if (!skipEnqueue) {
-      await this.enqueue("DELETE", "categories", { id, original });
-    }
-
-    return true;
+    return this.deleteEntity("loans", id);
   }
 
   // Data validation and corruption recovery
@@ -1767,7 +1458,7 @@ export class LocalStorageManager {
   // Utility operations
   async clearAllData(): Promise<void> {
     await this.storage.clear();
-    this.initialized = false;
+    this.initializedFor = null;
   }
 
   async getAllKeys(): Promise<string[]> {
@@ -1882,5 +1573,12 @@ export class LocalStorageManager {
 
     return total;
   }
-
 }
+
+/**
+ * Shared instance. Everything in the app should use this one so that
+ * `initialize()` (and its wipe-on-user-change) runs exactly once per session
+ * and the in-memory state is consistent across the store, the sync engine and
+ * hydration.
+ */
+export const localStorageManager = new LocalStorageManager();

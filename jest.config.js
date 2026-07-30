@@ -16,6 +16,10 @@ module.exports = {
       {
         tsconfig: {
           jsx: "react-jsx",
+          // TypeScript 6 rejects the inherited `baseUrl` and infers a
+          // `rootDir` of ./tests when compiling the suites in isolation.
+          ignoreDeprecations: "6.0",
+          rootDir: ".",
         },
       },
     ],
