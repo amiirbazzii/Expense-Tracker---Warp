@@ -25,6 +25,8 @@ export interface ExpenseDoc {
   for: string[];
   date: number;
   cardId?: string;
+  loanId?: string;
+  installmentIndex?: number;
 }
 
 /** Shape of an income record as the UI expects it (mirrors the Convex document). */
@@ -702,20 +704,63 @@ export class LocalDataStore {
     return true;
   }
 
-  /** Increment paid installments and enqueue the cloud mutation. */
-  async payInstallment(loanId: string): Promise<LoanDoc | null> {
+  /**
+   * Pay the next unpaid installment — THE single payment path.
+   *
+   * Reads the loan fresh from IndexedDB (never a frozen UI prop), writes the
+   * payment expense and the counter locally, and enqueues one idempotent
+   * Convex mutation carrying the exact `installmentIndex` being paid, so a
+   * double submission or queue redelivery can never charge two months.
+   *
+   * Returns null when the loan is missing or already fully paid.
+   */
+  async payInstallment(
+    loanId: string,
+    payment: {
+      amount: number;
+      title: string;
+      category: string[];
+      for: string[];
+      date: number;
+      cardId?: string;
+    },
+  ): Promise<LoanDoc | null> {
     const loans = await this.storage.getLoans();
     const loan = loans.find((l) => l.id === loanId);
     if (!loan) return null;
+    if (loan.paidInstallments >= loan.totalInstallments) return null;
+
+    // The installment this payment covers — the server refuses to apply the
+    // same index twice.
+    const installmentIndex = loan.paidInstallments;
+
+    const expense = await this.storage.saveExpense({
+      amount: payment.amount,
+      title: payment.title,
+      category: payment.category,
+      for: payment.for,
+      date: payment.date,
+      cardId: payment.cardId,
+      loanId,
+      installmentIndex,
+    });
 
     const updated = await this.storage.updateLoan(loanId, {
-      paidInstallments: loan.paidInstallments + 1,
+      paidInstallments: installmentIndex + 1,
     });
     if (!updated) return null;
 
     await this.queue.enqueue("loans:payInstallment", {
       token: this.userId,
       loanId,
+      installmentIndex,
+      amount: payment.amount,
+      title: payment.title,
+      category: payment.category,
+      for: payment.for,
+      date: payment.date,
+      cardId: payment.cardId,
+      localExpenseId: expense.id,
     });
 
     await this.refresh();
@@ -739,6 +784,8 @@ export class LocalDataStore {
     for: e.for,
     date: e.date,
     cardId: e.cardId,
+    loanId: e.loanId,
+    installmentIndex: e.installmentIndex,
   });
 
   private toIncomeDoc = (i: any): IncomeDoc => ({

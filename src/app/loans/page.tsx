@@ -15,6 +15,7 @@ import { Button } from "@/components/Button";
 
 // Import loan components
 import { LoanCard } from "@/features/loans/components/LoanCard";
+import { LoanDetailsSheet } from "@/features/loans/components/LoanDetailsSheet";
 import { LoanForm } from "@/features/loans/components/LoanForm";
 
 import { LoanSummaryCards } from "@/features/loans/components/LoanSummaryCards";
@@ -38,7 +39,6 @@ export default function LoansPage() {
     createLoan,
     updateLoan,
     deleteLoan,
-    payInstallment,
   } = useLoanData();
 
   // UI state
@@ -49,6 +49,13 @@ export default function LoansPage() {
   >(null);
 
   const [showPaySheet, setShowPaySheet] = useState(false);
+
+  // Details view: the card's primary action shows this read-only sheet;
+  // editing is an explicit step from inside it.
+  const [detailsLoan, setDetailsLoan] = useState<
+    (Loan & { isCurrentMonthPaid?: boolean }) | null
+  >(null);
+  const [showDetails, setShowDetails] = useState(false);
 
   // Handle month navigation
   const handleNextMonth = () => {
@@ -121,7 +128,13 @@ export default function LoansPage() {
     setShowPaySheet(true);
   };
 
+  const handleViewDetails = (loan: Loan & { isCurrentMonthPaid?: boolean }) => {
+    setDetailsLoan(loan);
+    setShowDetails(true);
+  };
+
   const handleEditLoan = (loan: Loan) => {
+    setShowDetails(false);
     setEditingLoan(loan);
     setShowForm(true);
   };
@@ -219,7 +232,7 @@ export default function LoansPage() {
                       key={loan._id}
                       loan={loan}
                       onPayInstallment={handlePayInstallment}
-                      onEdit={handleEditLoan}
+                      onViewDetails={handleViewDetails}
                       onDelete={handleDeleteLoan}
                     />
                   ))
@@ -269,6 +282,14 @@ export default function LoansPage() {
             }}
             onSubmit={handleFormSubmit}
             editingLoan={editingLoan}
+          />
+
+          {/* Loan Details Sheet */}
+          <LoanDetailsSheet
+            open={showDetails}
+            onClose={() => setShowDetails(false)}
+            loan={detailsLoan}
+            onEdit={handleEditLoan}
           />
 
           {/* Pay Installment Sheet */}

@@ -340,6 +340,154 @@ describe("create → sync → edit", () => {
     expect(await mutationQueue.getDeadLetters()).toHaveLength(1);
   });
 
+  it("pays a loan installment idempotently with a stamped index", async () => {
+    mutationImpl = async (fn) =>
+      fn === "loans:createLoan"
+        ? "cloud_loan_1"
+        : { expenseId: "cloud_expense_9", alreadyPaid: false };
+
+    const loan = await localDataStore.createLoan({
+      name: "Car",
+      totalAmount: 1200,
+      totalInstallments: 12,
+      paidInstallments: 0,
+      installmentAmount: 100,
+      monthlyPaymentDay: 5,
+      startMonth: 1,
+      startYear: 2026,
+    });
+    await syncEngine.drainNow();
+
+    const paid = await localDataStore.payInstallment(loan._id, {
+      amount: 100,
+      title: "Car",
+      category: ["Installment"],
+      for: [],
+      date: Date.now(),
+    });
+
+    // Fresh-state read: the counter comes from the store, and the enqueued
+    // mutation carries the exact installment being paid.
+    expect(paid?.paidInstallments).toBe(1);
+    const [queued] = await mutationQueue.getAll();
+    expect(queued.action).toBe("loans:payInstallment");
+    expect(queued.payload.installmentIndex).toBe(0);
+
+    await syncEngine.drainNow();
+    const call = calls.find((c) => c.fn === "loans:payInstallment");
+    expect(call!.args.installmentIndex).toBe(0);
+    expect(call!.args.loanId).toBe("cloud_loan_1");
+
+    // The local payment expense linked to the server's document.
+    const expense = localDataStore
+      .getSnapshot()
+      .expenses.find((e) => e.loanId === loan._id);
+    expect(expense).toBeDefined();
+
+    // A fully paid loan refuses further payments at the store level.
+    for (let i = 1; i < 12; i++) {
+      await localDataStore.payInstallment(loan._id, {
+        amount: 100,
+        title: "Car",
+        category: ["Installment"],
+        for: [],
+        date: Date.now(),
+      });
+    }
+    const overpay = await localDataStore.payInstallment(loan._id, {
+      amount: 100,
+      title: "Car",
+      category: ["Installment"],
+      for: [],
+      date: Date.now(),
+    });
+    expect(overpay).toBeNull();
+  });
+
+  it("rolls back the local payment when the mutation dead-letters", async () => {
+    mutationImpl = async (fn) => {
+      if (fn === "loans:createLoan") return "cloud_loan_1";
+      throw new Error("ArgumentValidationError: boom");
+    };
+
+    const loan = await localDataStore.createLoan({
+      name: "Car",
+      totalAmount: 1200,
+      totalInstallments: 12,
+      paidInstallments: 0,
+      installmentAmount: 100,
+      monthlyPaymentDay: 5,
+      startMonth: 1,
+      startYear: 2026,
+    });
+    await syncEngine.drainNow(); // loan creation succeeds
+
+    mutationImpl = async () => {
+      throw new Error("ArgumentValidationError: boom");
+    };
+    await localDataStore.payInstallment(loan._id, {
+      amount: 100,
+      title: "Car",
+      category: ["Installment"],
+      for: [],
+      date: Date.now(),
+    });
+
+    // Optimistic state is visible…
+    expect(
+      localDataStore.getSnapshot().loans.find((l) => l._id === loan._id)
+        ?.paidInstallments,
+    ).toBe(1);
+
+    // …until the mutation permanently fails.
+    for (let i = 0; i < 5; i++) await syncEngine.drainNow();
+    expect(await mutationQueue.getDeadLetters()).toHaveLength(1);
+
+    // Rollback: counter reverted, phantom expense removed, month not "paid".
+    const after = localDataStore.getSnapshot();
+    expect(
+      after.loans.find((l) => l._id === loan._id)?.paidInstallments,
+    ).toBe(0);
+    expect(after.expenses.filter((e) => e.loanId === loan._id)).toHaveLength(0);
+  });
+
+  it("removes the duplicate expense when the server says already paid", async () => {
+    mutationImpl = async (fn) =>
+      fn === "loans:createLoan"
+        ? "cloud_loan_1"
+        : // Paid elsewhere: server applied nothing and has no expense for us.
+          { expenseId: null, alreadyPaid: true };
+
+    const loan = await localDataStore.createLoan({
+      name: "Car",
+      totalAmount: 1200,
+      totalInstallments: 12,
+      paidInstallments: 0,
+      installmentAmount: 100,
+      monthlyPaymentDay: 5,
+      startMonth: 1,
+      startYear: 2026,
+    });
+    await syncEngine.drainNow();
+
+    await localDataStore.payInstallment(loan._id, {
+      amount: 100,
+      title: "Car",
+      category: ["Installment"],
+      for: [],
+      date: Date.now(),
+    });
+    await syncEngine.drainNow();
+
+    // The mutation is acknowledged (dequeued, not dead-lettered) and the
+    // orphan local expense is gone — no double-charged month.
+    expect(await mutationQueue.size()).toBe(0);
+    expect(await mutationQueue.getDeadLetters()).toHaveLength(0);
+    expect(
+      localDataStore.getSnapshot().expenses.filter((e) => e.loanId === loan._id),
+    ).toHaveLength(0);
+  });
+
   it("links a locally created card so its balance still adds up", async () => {
     mutationImpl = async (fn) =>
       fn === "cards:addCard" ? "cloud_card_1" : "cloud_expense_1";

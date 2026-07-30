@@ -143,6 +143,11 @@ export const payInstallment = mutation({
     for: v.array(v.string()),
     date: v.number(),
     cardId: v.optional(v.id("cards")),
+    // 0-based installment this payment covers. When present, the mutation is
+    // idempotent: delivery is at-least-once (the client queue retries after a
+    // lost response), and a bare "+1" double-charged a month per redelivery.
+    // Optional only for mutations queued by older clients.
+    installmentIndex: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const user = await getUserByToken(ctx, args.token);
@@ -152,6 +157,28 @@ export const payInstallment = mutation({
     const loan = await ctx.db.get(args.loanId);
     if (!loan || loan.userId !== user._id) {
       throw new ConvexError("Loan not found or not authorized.");
+    }
+
+    if (args.installmentIndex !== undefined) {
+      // Redelivery of an already-applied payment? The (loanId,
+      // installmentIndex) pair on the expense is the idempotency key.
+      const payments = await ctx.db
+        .query("expenses")
+        .withIndex("by_loan", (q) => q.eq("loanId", args.loanId))
+        .collect();
+      const existing = payments.find(
+        (p) => p.installmentIndex === args.installmentIndex,
+      );
+      if (existing) {
+        return { expenseId: existing._id, alreadyPaid: true };
+      }
+
+      // The counter has moved past this index without a matching tagged
+      // expense (paid from another device, or by a legacy mutation). Applying
+      // it anyway would charge the month twice — acknowledge instead.
+      if (loan.paidInstallments !== args.installmentIndex) {
+        return { expenseId: null, alreadyPaid: true };
+      }
     }
 
     if (loan.paidInstallments >= loan.totalInstallments) {
@@ -171,9 +198,11 @@ export const payInstallment = mutation({
       cardId: args.cardId,
       userId: user._id,
       createdAt: Date.now(),
+      loanId: args.loanId,
+      installmentIndex: args.installmentIndex,
     });
 
-    return { expenseId };
+    return { expenseId, alreadyPaid: false };
   },
 });
 

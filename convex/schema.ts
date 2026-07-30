@@ -24,7 +24,12 @@ export default defineSchema({
     createdAt: v.number(),
     userId: v.id("users"),
     cardId: v.optional(v.id("cards")),
-  }).index("by_user", ["userId"]).index("by_user_date", ["userId", "date"]).index("by_card", ["cardId"]),
+    // Set only on loan-installment expenses: which loan and which installment
+    // (0-based) this payment covers. The pair is the idempotency key that
+    // lets payInstallment retries detect an already-applied payment.
+    loanId: v.optional(v.id("loans")),
+    installmentIndex: v.optional(v.number()),
+  }).index("by_user", ["userId"]).index("by_user_date", ["userId", "date"]).index("by_card", ["cardId"]).index("by_loan", ["loanId"]),
 
   categories: defineTable({
     name: v.string(),

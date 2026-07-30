@@ -66,9 +66,19 @@ export function useLoanData() {
     return await localDataStore.deleteLoan(loanId);
   };
 
-  const payInstallment = async (loanId: Loan["_id"]) => {
+  const payInstallment = async (
+    loanId: Loan["_id"],
+    payment: {
+      amount: number;
+      title: string;
+      category: string[];
+      for: string[];
+      date: number;
+      cardId?: string;
+    },
+  ) => {
     if (!user) throw new Error("Authentication required");
-    return await localDataStore.payInstallment(loanId);
+    return await localDataStore.payInstallment(loanId, payment);
   };
 
   return {

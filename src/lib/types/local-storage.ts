@@ -70,6 +70,10 @@ export interface LocalExpense extends LocalEntity {
   for: string[];
   date: number;
   cardId?: string;
+  /** Set only on loan-installment payments: the loan this expense pays. */
+  loanId?: string;
+  /** 0-based installment covered by this payment (idempotency key). */
+  installmentIndex?: number;
 }
 
 // Local storage schema for income

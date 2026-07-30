@@ -314,6 +314,8 @@ class HydrationService {
           for: doc.for,
           date: doc.date,
           cardId: localCardId(doc.cardId),
+          loanId: doc.loanId,
+          installmentIndex: doc.installmentIndex,
         };
       case "income":
         return {

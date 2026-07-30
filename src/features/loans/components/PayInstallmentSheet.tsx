@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { BottomSheet } from "@/components/BottomSheet";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import { Input } from "@/components/Input";
@@ -12,15 +12,8 @@ import { Type, CreditCard, Tag, User } from "lucide-react";
 import { Loan } from "../types";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { useAuth } from "@/contexts/AuthContext";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../../convex/_generated/api";
-import { useOfflineFirstData } from "@/hooks/useOfflineFirstData";
 import { useLocalData } from "@/hooks/useLocalData";
 import { localDataStore } from "@/lib/store";
-import { Id } from "../../../../convex/_generated/dataModel";
-import { mutationQueue } from "@/lib/queue/MutationQueueManager";
-import { localStorageManager } from "@/lib/storage/LocalStorageManager";
 
 interface PayInstallmentSheetProps {
   open: boolean;
@@ -42,53 +35,21 @@ export function PayInstallmentSheet({
   loan,
   onPaid,
 }: PayInstallmentSheetProps) {
-  const { user, token } = useAuth();
-
-  // All reference data from the reactive local store
+  // All reference data comes from the reactive local store — the previous
+  // Convex-query fallback stack changed the `cards` identity every time a
+  // query resolved, which re-fired the prefill effect and wiped user input.
   const {
     categories: localCats,
     forValues: localForVals,
     cards: localCards,
   } = useLocalData();
 
-  // Cards, categories, forValues from Convex
-  const cardsQuery = useQuery(
-    api.cardsAndIncome.getMyCards,
-    token ? { token } : "skip",
-  );
-  const categoriesQuery = useQuery(
-    api.expenses.getCategories,
-    token ? { token } : "skip",
-  );
-  const forValuesQuery = useQuery(
-    api.expenses.getForValues,
-    token ? { token } : "skip",
-  );
+  const cards = (localCards || [])
+    .filter((c) => !c.isArchived)
+    .map((c) => ({ _id: c.cardId, name: c.cardName }));
 
-  const {
-    cards: offlineCards,
-    categories: offlineCategories,
-    forValues: offlineForValues,
-  } = useOfflineFirstData();
-
-  const cards =
-    cardsQuery !== undefined
-      ? cardsQuery
-      : (offlineCards as any[])?.map((c: any) => ({
-          _id: c.cardId,
-          name: c.cardName,
-          userId: "",
-          createdAt: 0,
-          _creationTime: 0,
-        }));
-
-  const categories =
-    categoriesQuery !== undefined ? categoriesQuery : offlineCategories;
-  const forValues =
-    forValuesQuery !== undefined ? forValuesQuery : offlineForValues;
-
-  const createCategoryMutation = useMutation(api.expenses.createCategory);
-  const createForValueMutation = useMutation(api.expenses.createForValue);
+  const categories = localCats;
+  const forValues = localForVals;
 
   // Form state
   const [amount, setAmount] = useState("");
@@ -99,21 +60,29 @@ export function PayInstallmentSheet({
   const [date, setDate] = useState(new Date());
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Pre-fill when loan changes
+  // Pre-fill ONLY when the sheet opens (or opens for a different loan).
+  // Scoping to [open, loan?._id] is deliberate: with `loan`/`cards` in the
+  // deps, every background store refresh re-ran this and wiped whatever the
+  // user was typing mid-edit.
+  const loanId = loan?._id;
   useEffect(() => {
-    if (loan && open) {
-      setAmount(String(loan.installmentAmount));
-      setTitle(loan.name);
-      setCategory(["Installment"]);
-      // Pre-fill with today's date
-      setDate(new Date());
-      setPaidFor([]);
-      // Auto-select first card
-      if (cards && cards.length > 0 && !cardId) {
-        setCardId(cards[0]._id);
-      }
+    if (!open || !loan) return;
+    setAmount(String(loan.installmentAmount));
+    setTitle(loan.name);
+    setCategory(["Installment"]);
+    setDate(new Date());
+    setPaidFor([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, loanId]);
+
+  // Card auto-select, isolated from the prefill: it only ever fills an EMPTY
+  // selection, so it can safely react to cards loading in without touching
+  // anything the user chose.
+  useEffect(() => {
+    if (open && !cardId && cards.length > 0) {
+      setCardId(cards[0]._id);
     }
-  }, [loan, open, cards, cardId]);
+  }, [open, cardId, cards]);
 
   const fetchCategorySuggestions = async (query: string) => {
     if (!categories) return [];
@@ -147,6 +116,10 @@ export function PayInstallmentSheet({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Re-entrancy guard: `disabled={isSubmitting}` only takes effect after a
+    // re-render, so a double-tap (or tap + Enter) used to run this twice and
+    // charge two months.
+    if (isSubmitting) return;
     if (!loan) return;
 
     const parsedAmount = parseFloat(amount);
@@ -165,36 +138,23 @@ export function PayInstallmentSheet({
 
     setIsSubmitting(true);
     try {
-      // 1. Write expense locally — NO enqueue (payInstallment handles server creation)
-      const localExpense = await localStorageManager.saveExpense({
+      // Single consolidated payment path. It re-reads the loan from the
+      // store (never this component's frozen prop), stamps the exact
+      // installment index being paid, and enqueues one idempotent mutation.
+      const paid = await localDataStore.payInstallment(loan._id, {
         amount: parsedAmount,
         title: title || loan.name,
         category,
         for: paidFor,
         date: date.getTime(),
-        cardId,
+        cardId: cardId || undefined,
       });
 
-      // 2. Update loan locally
-      await localStorageManager.updateEntity("loans", loan._id, {
-        paidInstallments: loan.paidInstallments + 1,
-      } as any);
-
-      // 3. Enqueue payInstallment with localExpenseId for post-sync linking
-      await mutationQueue.enqueue("loans:payInstallment", {
-        token,
-        loanId: loan._id,
-        amount: parsedAmount,
-        title: title || loan.name,
-        category,
-        for: paidFor,
-        date: date.getTime(),
-        cardId,
-        localExpenseId: localExpense.id,
-      });
-
-      // 4. Refresh → 0ms UI update
-      await localDataStore.refresh();
+      if (!paid) {
+        toast.error("This loan has no unpaid installments left.");
+        onClose();
+        return;
+      }
 
       toast.success("Installment paid successfully!");
       onPaid();

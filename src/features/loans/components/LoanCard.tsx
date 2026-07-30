@@ -9,7 +9,7 @@ import {
   Landmark,
   CalendarIcon,
   CreditCard,
-  Pencil,
+  Eye,
   Trash2,
 } from "lucide-react";
 import { DropdownMenu } from "@/components/DropdownMenu";
@@ -17,14 +17,14 @@ import { DropdownMenu } from "@/components/DropdownMenu";
 interface LoanCardProps {
   loan: Loan & { isCurrentMonthPaid?: boolean };
   onPayInstallment: (loan: Loan) => void;
-  onEdit: (loan: Loan) => void;
+  onViewDetails: (loan: Loan) => void;
   onDelete: (loan: Loan) => void;
 }
 
 export function LoanCard({
   loan,
   onPayInstallment,
-  onEdit,
+  onViewDetails,
   onDelete,
 }: LoanCardProps) {
   const { settings } = useSettings();
@@ -171,13 +171,13 @@ export function LoanCard({
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            onEdit(loan);
+            onViewDetails(loan);
             setIsMenuOpen(false);
           }}
           className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
         >
-          <Pencil size={14} className="mr-2" />
-          Edit Loan
+          <Eye size={14} className="mr-2" />
+          View Details
         </button>
 
         <button
