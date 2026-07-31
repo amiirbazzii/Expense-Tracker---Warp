@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { ConvexError } from "convex/values";
@@ -17,8 +17,20 @@ export default function RegisterPage() {
   const { register, user } = useAuth();
   const router = useRouter();
 
+  // Set the moment registration starts, so the "already signed in" redirect
+  // below cannot fire for the account we are in the middle of creating.
+  // A ref, not state: it has to be readable synchronously by an effect that
+  // may run before any re-render.
+  const headingToOnboarding = useRef(false);
+
+  // Someone who is already signed in has no business on this page — send them
+  // into the app. Skipped right after registering, because that flow owns the
+  // navigation (to /onboarding) and this would otherwise race it: `register()`
+  // sets the token, the getCurrentUser query resolves `user` a moment later,
+  // and this effect replaced the onboarding route with /add before it ever
+  // rendered. That is why new users never saw onboarding.
   useEffect(() => {
-    if (user) {
+    if (user && !headingToOnboarding.current) {
       router.replace("/add");
     }
   }, [user, router]);
@@ -42,11 +54,16 @@ export default function RegisterPage() {
     }
 
     setIsLoading(true);
+    headingToOnboarding.current = true;
     try {
       await register(username.trim(), password);
       toast.success("Welcome! Your account has been created successfully.");
-      router.push("/onboarding");
+      // replace, not push: signing up should not leave the register form in
+      // history behind the onboarding screen.
+      router.replace("/onboarding");
     } catch (error: unknown) {
+      // Registration failed — this page is live again, so re-arm the redirect.
+      headingToOnboarding.current = false;
       const message = error instanceof ConvexError ? (error.data as { message: string }).message : error instanceof Error ? error.message : "Account creation failed. Please try again.";
       if (message.toLowerCase().includes("username already exists")) {
         toast.error("This username is already taken. Please choose another or sign in.");
@@ -58,7 +75,7 @@ export default function RegisterPage() {
     }
   };
 
-  if (user) {
+  if (user && !headingToOnboarding.current) {
     return null;
   }
 
