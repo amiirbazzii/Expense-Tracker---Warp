@@ -22,6 +22,7 @@ import { ConvexClient } from "convex/browser";
 import { api } from "../../../convex/_generated/api";
 import { mutationQueue } from "../queue/MutationQueueManager";
 import { localStorageManager } from "../storage/LocalStorageManager";
+import { clearAllStores } from "../storage/idb";
 import { LocalLoan } from "../types/local-storage";
 import { localDataStore } from "../store/LocalDataStore";
 
@@ -117,10 +118,6 @@ const ID_REFERENCE_FIELDS = [
   "loanId",
   "categoryId",
 ] as const;
-
-// ── Names of all IndexedDB databases created by localforage in this app ──────
-// These are deleted wholesale on logout.
-const IDB_DATABASES_TO_WIPE = ["ExpenseTrackerV2"];
 
 export type SyncEngineStatus = {
   isOnline: boolean;
@@ -370,36 +367,21 @@ export class SyncEngine {
     console.log("[SyncEngine] Wiping local data for logout");
     const epoch = this.epoch;
 
-    // 1. Clear the mutation queue first so nothing leaks across sessions.
-    await this.queue.clear();
     this.localToConvexId.clear();
 
-    // 2. Delete every IndexedDB database belonging to this app.
-    if (typeof indexedDB !== "undefined") {
-      const deletePromises = IDB_DATABASES_TO_WIPE.map(
-        (name) =>
-          new Promise<void>((resolve) => {
-            const req = indexedDB.deleteDatabase(name);
-            req.onsuccess = () => {
-              console.log(`[SyncEngine] Deleted IndexedDB: ${name}`);
-              resolve();
-            };
-            req.onerror = () => {
-              console.warn(
-                `[SyncEngine] Could not delete IndexedDB: ${name}`,
-                req.error,
-              );
-              resolve(); // Non-fatal — proceed regardless.
-            };
-            req.onblocked = () => {
-              // Another tab has the DB open; it will be deleted when that tab closes.
-              console.warn(`[SyncEngine] IndexedDB deletion blocked: ${name}`);
-              resolve();
-            };
-          }),
-      );
-
-      await Promise.all(deletePromises);
+    // Empty every store rather than deleting the database.
+    //
+    // `indexedDB.deleteDatabase()` removed the database out from under the
+    // live localforage instances, which keep the schema version they last
+    // saw. Their next open then asked for a version the recreated database
+    // had already moved past — "can't be downgraded from version 6 to 5",
+    // and a VersionError that broke queue reads. Clearing the stores wipes
+    // exactly the same data and keeps the schema (and cached versions) valid.
+    try {
+      await clearAllStores();
+      console.log("[SyncEngine] Local stores cleared");
+    } catch (err) {
+      console.warn("[SyncEngine] Could not clear local stores:", err);
     }
 
     // A new session may have signed in while the wipe was running. Tearing

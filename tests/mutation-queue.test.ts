@@ -20,6 +20,7 @@ jest.mock('localforage', () => ({
       return Promise.resolve();
     }),
     keys: jest.fn(() => Promise.resolve(Array.from(mockStore.keys()))),
+    ready: jest.fn(() => Promise.resolve()),
   })),
 }));
 

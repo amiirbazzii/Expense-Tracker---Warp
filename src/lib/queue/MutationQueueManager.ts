@@ -1,6 +1,6 @@
-import * as localforage from 'localforage';
 import { PendingMutation } from '../types/local-storage';
 import { createAsyncLock } from '../storage/asyncLock';
+import { queueStore, idbReady } from '../storage/idb';
 
 const STORE_KEY = 'pending_mutations';
 const DEAD_LETTER_KEY = 'failed_mutations';
@@ -37,14 +37,14 @@ function notify(): void {
  * • Subscribers are notified on every change so the UI never has to poll.
  */
 export class MutationQueueManager {
-  private storage: typeof localforage;
+  private storage: typeof queueStore;
 
   constructor() {
-    this.storage = localforage.createInstance({
-      name: 'ExpenseTrackerV2',
-      storeName: 'mutation_queue',
-      description: 'FIFO queue of pending Convex mutations for offline-first sync',
-    });
+    // Shared handle. Every method below awaits `idbReady` so this store is
+    // never opened while the sibling store is still negotiating its own
+    // IndexedDB version upgrade — that race is what produced
+    // "requested version (6) is less than the existing version (7)".
+    this.storage = queueStore;
   }
 
   // ── Change notification ─────────────────────────────────────────────────
@@ -87,6 +87,7 @@ export class MutationQueueManager {
 
   /** Raw read. Callers that go on to write must hold the lock. */
   private async readQueue(): Promise<PendingMutation[]> {
+    await idbReady;
     const queue: PendingMutation[] | null = await this.storage.getItem(STORE_KEY);
     if (!Array.isArray(queue)) return [];
 
@@ -197,6 +198,7 @@ export class MutationQueueManager {
 
   /** Mutations that exhausted their retries. Surfaced in the UI, never dropped. */
   async getDeadLetters(): Promise<PendingMutation[]> {
+    await idbReady;
     const dead: PendingMutation[] | null =
       await this.storage.getItem(DEAD_LETTER_KEY);
     return Array.isArray(dead) ? dead : [];
@@ -239,6 +241,7 @@ export class MutationQueueManager {
   }
 
   async clearDeadLetters(): Promise<void> {
+    await idbReady;
     await runExclusive(async () => {
       await this.storage.setItem(DEAD_LETTER_KEY, []);
     });
@@ -249,6 +252,7 @@ export class MutationQueueManager {
    * Clear the entire queue (including dead letters).
    */
   async clear(): Promise<void> {
+    await idbReady;
     await runExclusive(async () => {
       await this.storage.setItem(STORE_KEY, []);
       await this.storage.setItem(DEAD_LETTER_KEY, []);

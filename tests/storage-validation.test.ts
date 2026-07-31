@@ -9,6 +9,7 @@ const mockStorage = {
   removeItem: jest.fn().mockResolvedValue(undefined),
   clear: jest.fn().mockResolvedValue(undefined),
   keys: jest.fn().mockResolvedValue([]),
+  ready: jest.fn(() => Promise.resolve()),
 };
 
 jest.mock("localforage", () => ({

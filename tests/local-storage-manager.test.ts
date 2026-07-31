@@ -15,6 +15,7 @@ jest.mock("localforage", () => ({
     removeItem: jest.fn(),
     clear: jest.fn(),
     keys: jest.fn(() => Promise.resolve([])),
+    ready: jest.fn(() => Promise.resolve()),
   })),
 }));
 

@@ -26,6 +26,7 @@ function getMockLocalforage(): any {
       removeItem: jest.fn(),
       clear: jest.fn(),
       keys: jest.fn(),
+      ready: jest.fn(() => Promise.resolve()),
       createInstance: jest.fn(() => getMockLocalforage()),
     };
   }
@@ -41,6 +42,7 @@ jest.mock("localforage", () => ({
   removeItem: jest.fn((...args: any[]) => getMockLocalforage().removeItem(...args)),
   clear: jest.fn((...args: any[]) => getMockLocalforage().clear(...args)),
   keys: jest.fn((...args: any[]) => getMockLocalforage().keys(...args)),
+  ready: jest.fn(() => Promise.resolve()),
   createInstance: jest.fn(() => getMockLocalforage()),
 }));
 

@@ -16,6 +16,7 @@ import {
   LocalMetadata,
 } from "../types/local-storage";
 import { createAsyncLock } from "./asyncLock";
+import { dataStore } from "./idb";
 import { migrateLocalData, CURRENT_SCHEMA_VERSION } from "./migrations";
 
 /**
@@ -43,11 +44,9 @@ export class LocalStorageManager {
   private initializedFor: string | null = null;
 
   constructor() {
-    this.storage = localforage.createInstance({
-      name: "ExpenseTrackerV2",
-      storeName: "local_first_data",
-      description: "Local-first data storage with cloud sync capabilities",
-    });
+    // Shared handle — see src/lib/storage/idb.ts for why the two stores in
+    // this database must not be opened concurrently.
+    this.storage = dataStore;
   }
 
   /**
