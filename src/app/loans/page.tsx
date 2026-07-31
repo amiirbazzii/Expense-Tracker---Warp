@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { BottomNav } from "@/components/BottomNav";
@@ -8,7 +8,8 @@ import AppHeader from "@/components/AppHeader";
 import { Plus, ChevronRight } from "lucide-react";
 import { DateFilterHeader } from "@/components/DateFilterHeader";
 import { FullScreenLoader } from "@/components/FullScreenLoader";
-import { format } from "date-fns";
+import moment from "jalali-moment";
+import { useSettings } from "@/contexts/SettingsContext";
 import { toast } from "sonner";
 import { Button } from "@/components/Button";
 
@@ -25,11 +26,29 @@ import { Loan } from "@/features/loans/types";
 
 export default function LoansPage() {
   const { token } = useAuth();
+  const { settings } = useSettings();
+  const isJalali = settings?.calendar === "jalali";
   const [navigating, setNavigating] = useState(false);
 
-  // Get current month/year for date filter
-  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1); // 1-12
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  // The month being viewed. Held as a date (not raw month/year numbers) so
+  // the header can present it in the user's calendar — Jalali or Gregorian —
+  // while the loan-schedule math below keeps using Gregorian months, the
+  // space loan.startMonth/startYear are stored in (mirrors the dashboard).
+  const [currentDate, setCurrentDate] = useState(() => moment());
+
+  useEffect(() => {
+    moment.locale(isJalali ? "fa" : "en");
+  }, [isJalali]);
+
+  // Gregorian month/year of the viewed date — the loan schedule's space.
+  //
+  // NOT currentDate.month()/.year(): under the "fa" locale jalali-moment
+  // returns *Jalali* values from those (e.g. year 1405), which put the
+  // schedule comparison in the wrong calendar and filtered out every loan.
+  // Date() is calendar-agnostic, so this stays Gregorian in both modes.
+  const gregorianDate = new Date(currentDate.valueOf());
+  const currentMonth = gregorianDate.getMonth() + 1; // 1-12
+  const currentYear = gregorianDate.getFullYear();
 
   // Loan data hook
   const {
@@ -61,24 +80,14 @@ export default function LoansPage() {
   const handleNextMonth = () => {
     if (isLoading) return;
     setNavigating(true);
-    if (currentMonth === 12) {
-      setCurrentMonth(1);
-      setCurrentYear(currentYear + 1);
-    } else {
-      setCurrentMonth(currentMonth + 1);
-    }
+    setCurrentDate((d) => d.clone().add(1, "month"));
     setTimeout(() => setNavigating(false), 100);
   };
 
   const handlePreviousMonth = () => {
     if (isLoading) return;
     setNavigating(true);
-    if (currentMonth === 1) {
-      setCurrentMonth(12);
-      setCurrentYear(currentYear - 1);
-    } else {
-      setCurrentMonth(currentMonth - 1);
-    }
+    setCurrentDate((d) => d.clone().subtract(1, "month"));
     setTimeout(() => setNavigating(false), 100);
   };
 
@@ -119,8 +128,13 @@ export default function LoansPage() {
       });
   }, [loans, currentMonth, currentYear]);
 
-  // Month name for display
-  const monthName = format(new Date(currentYear, currentMonth - 1), "MMMM");
+  // Header text in the user's calendar (Jalali month/year for Jalali users).
+  const monthName = isJalali
+    ? currentDate.format("jMMMM")
+    : currentDate.format("MMMM");
+  const displayYear = isJalali
+    ? currentDate.format("jYYYY")
+    : currentDate.format("YYYY");
 
   // Handlers
   const handlePayInstallment = (loan: Loan) => {
@@ -215,7 +229,7 @@ export default function LoansPage() {
           <div className="rounded-xl border border-gray-200 bg-[#F9F9F9] p-4">
             <DateFilterHeader
               monthName={monthName}
-              year={String(currentYear)}
+              year={displayYear}
               onPreviousMonth={handlePreviousMonth}
               onNextMonth={handleNextMonth}
               subtitle="Loan Installments"
