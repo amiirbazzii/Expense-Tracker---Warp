@@ -11,7 +11,7 @@ import { Button } from "@/components/Button";
 import InputContainer from "@/components/InputContainer";
 import { format } from "date-fns";
 import { Id } from "../../convex/_generated/dataModel";
-import { Briefcase, CreditCard, Tag } from "lucide-react";
+import { Type, CreditCard, Tag } from "lucide-react";
 import { useLocalData } from "@/hooks/useLocalData";
 import { localDataStore } from "@/lib/store";
 
@@ -135,36 +135,22 @@ export function EditIncomeSheet({
         </div>
 
         <div>
-          <InputContainer leftIcon={Briefcase}>
+          <InputContainer leftIcon={Type}>
             <input
               type="text"
               value={formData.source}
               onChange={(e) =>
                 setFormData({ ...formData, source: e.target.value })
               }
-              className={`w-full bg-transparent outline-none placeholder:text-gray-500 ${
-                formData.source
-                  ? "font-medium text-gray-900"
-                  : "font-normal text-gray-900"
-              }`}
+              className={`w-full bg-transparent outline-none placeholder:text-gray-500 ${formData.source
+                ? "font-medium text-gray-900"
+                : "font-normal text-gray-900"
+                }`}
               placeholder="Salary, Freelance, etc."
               required
             />
           </InputContainer>
         </div>
-
-        <SmartSelectInput
-          icon={Tag}
-          name="category"
-          label="Category *"
-          multiple={false}
-          value={formData.category}
-          onChange={(newCategory) =>
-            setFormData({ ...formData, category: newCategory })
-          }
-          fetchSuggestions={fetchCategorySuggestions}
-          placeholder="Select or add a category"
-        />
 
         <div>
           <InputContainer
@@ -207,6 +193,19 @@ export function EditIncomeSheet({
           </InputContainer>
         </div>
 
+        <SmartSelectInput
+          icon={Tag}
+          name="category"
+          label="Category *"
+          multiple={false}
+          value={formData.category}
+          onChange={(newCategory) =>
+            setFormData({ ...formData, category: newCategory })
+          }
+          fetchSuggestions={fetchCategorySuggestions}
+          placeholder="Select or add a category"
+        />
+
         <CustomDatePicker
           label=""
           value={formData.date}
@@ -220,11 +219,10 @@ export function EditIncomeSheet({
               onChange={(e) =>
                 setFormData({ ...formData, notes: e.target.value })
               }
-              className={`w-full bg-transparent outline-none placeholder:text-gray-500 resize-none min-h-[88px] text-sm ${
-                formData.notes
-                  ? "font-medium text-gray-900"
-                  : "font-normal text-gray-900"
-              }`}
+              className={`w-full bg-transparent outline-none placeholder:text-gray-500 resize-none min-h-[88px] text-sm ${formData.notes
+                ? "font-medium text-gray-900"
+                : "font-normal text-gray-900"
+                }`}
               placeholder="Add any notes here..."
             />
           </div>

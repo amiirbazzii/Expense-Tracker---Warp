@@ -11,7 +11,7 @@ import { Button } from "@/components/Button";
 import InputContainer from "@/components/InputContainer";
 import { format } from "date-fns";
 import { Id } from "../../convex/_generated/dataModel";
-import { PencilLine, CreditCard, Tag, User } from "lucide-react";
+import { Type, CreditCard, Tag, User } from "lucide-react";
 import { useLocalData } from "@/hooks/useLocalData";
 import { localDataStore } from "@/lib/store";
 
@@ -160,51 +160,22 @@ export function EditExpenseSheet({
         </div>
 
         <div>
-          <InputContainer leftIcon={PencilLine}>
+          <InputContainer leftIcon={Type}>
             <input
               type="text"
               value={formData.title}
               onChange={(e) =>
                 setFormData({ ...formData, title: e.target.value })
               }
-              className={`w-full bg-transparent outline-none placeholder:text-gray-500 ${
-                formData.title
+              className={`w-full bg-transparent outline-none placeholder:text-gray-500 ${formData.title
                   ? "font-medium text-gray-900"
                   : "font-normal text-gray-900"
-              }`}
+                }`}
               placeholder="Lunch, Gas, etc."
               required
             />
           </InputContainer>
         </div>
-
-        <SmartSelectInput
-          icon={Tag}
-          name="category"
-          label="Categories *"
-          multiple
-          value={formData.category}
-          onChange={(newCategories) =>
-            setFormData({ ...formData, category: newCategories })
-          }
-          fetchSuggestions={fetchCategorySuggestions}
-          onCreateNew={handleCreateCategory}
-          formatNewItem={capitalizeWords}
-          placeholder="Select or add categories"
-        />
-
-        <SmartSelectInput
-          icon={User}
-          name="for"
-          label="For (Optional)"
-          multiple={false}
-          value={formData.for}
-          onChange={(newFor) => setFormData({ ...formData, for: newFor })}
-          fetchSuggestions={fetchForSuggestions}
-          onCreateNew={handleCreateForValue}
-          formatNewItem={capitalizeWords}
-          placeholder="Select or add a person"
-        />
 
         <div>
           <InputContainer
@@ -246,6 +217,34 @@ export function EditExpenseSheet({
             </select>
           </InputContainer>
         </div>
+
+        <SmartSelectInput
+          icon={Tag}
+          name="category"
+          label="Categories *"
+          multiple
+          value={formData.category}
+          onChange={(newCategories) =>
+            setFormData({ ...formData, category: newCategories })
+          }
+          fetchSuggestions={fetchCategorySuggestions}
+          onCreateNew={handleCreateCategory}
+          formatNewItem={capitalizeWords}
+          placeholder="Select or add categories"
+        />
+
+        <SmartSelectInput
+          icon={User}
+          name="for"
+          label="For (Optional)"
+          multiple={false}
+          value={formData.for}
+          onChange={(newFor) => setFormData({ ...formData, for: newFor })}
+          fetchSuggestions={fetchForSuggestions}
+          onCreateNew={handleCreateForValue}
+          formatNewItem={capitalizeWords}
+          placeholder="Select or add a person"
+        />
 
         <CustomDatePicker
           label="Date"
