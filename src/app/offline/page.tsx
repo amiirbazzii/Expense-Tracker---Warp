@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AutoRecover } from "./AutoRecover";
 
 /**
  * Offline fallback document.
@@ -36,12 +36,16 @@ export default function OfflinePage() {
         This screen hasn&apos;t been saved for offline use yet. Your data is
         safe on this device — head back to a saved screen to keep working.
       </p>
-      <Link
+      {/* Plain anchor, not <Link>: a client-side hop does an RSC fetch that
+          can fail and bounce straight back here. A document navigation goes
+          through the service worker's cache route directly. */}
+      <a
         href="/add"
         className="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white"
       >
         Go to the app
-      </Link>
+      </a>
+      <AutoRecover />
     </div>
   );
 }

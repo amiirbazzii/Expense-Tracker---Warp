@@ -150,6 +150,12 @@ const withPWA = require("next-pwa")({
       options: {
         cacheName: `app-pages-${CACHE_VERSION}`,
         networkTimeoutSeconds: 3,
+        // Next.js documents ship `Vary: rsc, next-router-*, Accept-Encoding`,
+        // and the Cache API honors Vary — an offline navigation's headers
+        // never match the ones the entry was stored under, so every lookup
+        // missed and fell through to the offline page. One HTML per route is
+        // the intent here; Vary adds nothing but false misses.
+        matchOptions: { ignoreVary: true },
         plugins: [stripSearchPlugin],
         expiration: {
           maxEntries: 30,
@@ -174,6 +180,12 @@ const withPWA = require("next-pwa")({
       options: {
         cacheName: `root-pages-${CACHE_VERSION}`,
         networkTimeoutSeconds: 3,
+        // Next.js documents ship `Vary: rsc, next-router-*, Accept-Encoding`,
+        // and the Cache API honors Vary — an offline navigation's headers
+        // never match the ones the entry was stored under, so every lookup
+        // missed and fell through to the offline page. One HTML per route is
+        // the intent here; Vary adds nothing but false misses.
+        matchOptions: { ignoreVary: true },
         plugins: [stripSearchPlugin],
         expiration: {
           maxEntries: 10,
@@ -190,6 +202,12 @@ const withPWA = require("next-pwa")({
       options: {
         cacheName: `pages-${CACHE_VERSION}`,
         networkTimeoutSeconds: 3,
+        // Next.js documents ship `Vary: rsc, next-router-*, Accept-Encoding`,
+        // and the Cache API honors Vary — an offline navigation's headers
+        // never match the ones the entry was stored under, so every lookup
+        // missed and fell through to the offline page. One HTML per route is
+        // the intent here; Vary adds nothing but false misses.
+        matchOptions: { ignoreVary: true },
         plugins: [stripSearchPlugin],
         expiration: {
           maxEntries: 50,

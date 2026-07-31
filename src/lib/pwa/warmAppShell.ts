@@ -58,6 +58,20 @@ function recordWarmed(version: string): void {
   }
 }
 
+/**
+ * Rebuild a response into a plain cacheable 200.
+ *
+ * Two reasons: Next's `Vary: rsc, next-router-*` header makes later
+ * `cache.match` calls fail against requests with different headers, and a
+ * `redirected` response served to a navigation is rejected by the browser
+ * outright. Storing a clean copy sidesteps both.
+ */
+async function sanitize(response: Response): Promise<Response> {
+  const headers = new Headers(response.headers);
+  headers.delete("Vary");
+  return new Response(await response.blob(), { status: 200, headers });
+}
+
 async function warmInto(cacheName: string, routes: string[]): Promise<number> {
   const cache = await caches.open(cacheName);
   let cached = 0;
@@ -68,7 +82,7 @@ async function warmInto(cacheName: string, routes: string[]): Promise<number> {
       try {
         const response = await fetch(route, { credentials: "same-origin" });
         if (response.ok) {
-          await cache.put(route, response);
+          await cache.put(route, await sanitize(response));
           cached++;
         }
       } catch {
