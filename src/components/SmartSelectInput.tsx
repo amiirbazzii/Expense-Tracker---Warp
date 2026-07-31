@@ -189,10 +189,10 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
       >
         <div className="flex w-full gap-2 flex-wrap items-center" onClick={() => inputRef.current?.focus()}>
           {value.map((item, i) => (
-            <span key={`${name}-chip-${item}-${i}`} className="flex items-center gap-1.5 bg-[#e9e9e9] text-gray-800 text-sm font-medium px-2 py-1 rounded-md">
-              {item}
+            <span key={`${name}-chip-${item}-${i}`} className="flex items-center gap-1.5 max-w-full bg-[#e9e9e9] text-gray-800 text-sm font-medium px-2 py-1 rounded-md">
+              <span className="min-w-0 break-words">{item}</span>
               {multiple && (
-                <button type="button" onClick={() => handleRemove(item)} className="text-gray-500 hover:text-gray-800">
+                <button type="button" onClick={() => handleRemove(item)} className="shrink-0 text-gray-500 hover:text-gray-800">
                   <X size={14} />
                 </button>
               )}
@@ -209,7 +209,8 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
             }}
             onFocus={() => setDropdownVisible(true)}
             onKeyDown={handleKeyDown}
-            className={`flex-grow bg-transparent outline-none placeholder:text-gray-500 min-w-[120px] ${value.length > 0 || inputValue ? 'font-medium text-gray-900' : 'font-normal text-gray-900'}`}
+            size={1}
+            className={`flex-1 basis-0 min-w-[5rem] bg-transparent outline-none placeholder:text-gray-500 ${value.length > 0 || inputValue ? 'font-medium text-gray-900' : 'font-normal text-gray-900'}`}
             placeholder={value.length === 0 ? placeholder : ''}
             autoComplete="off"
             aria-label={label}
