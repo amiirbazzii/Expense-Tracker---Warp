@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { navigateToStartupShell } from "@/lib/pwa/coreRoutes";
 
 export default function Home() {
   const { user, loading, token } = useAuth();
-  const router = useRouter();
   const [redirecting, setRedirecting] = useState(false);
   const [timeoutReached, setTimeoutReached] = useState(false);
 
@@ -23,7 +22,7 @@ export default function Home() {
   useEffect(() => {
     if (timeoutReached && !redirecting) {
       setRedirecting(true);
-      router.replace("/login");
+      navigateToStartupShell("/login");
       return;
     }
 
@@ -31,9 +30,9 @@ export default function Home() {
       setRedirecting(true);
       const redirect = () => {
         if (user || token) {
-          router.replace("/add");
+          navigateToStartupShell("/add");
         } else {
-          router.replace("/login");
+          navigateToStartupShell("/login");
         }
       };
 
@@ -43,7 +42,7 @@ export default function Home() {
         setTimeout(redirect, 100);
       }
     }
-  }, [user, loading, token, router, redirecting, timeoutReached]);
+  }, [user, loading, token, redirecting, timeoutReached]);
 
   // Visible boot state — this page is the PWA start_url and the first paint
   // of every cold start; a bare white div read as a broken app.

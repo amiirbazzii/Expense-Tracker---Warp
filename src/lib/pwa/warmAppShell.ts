@@ -12,6 +12,8 @@
  * cached documents track the current build).
  */
 
+import { STARTUP_SHELL_ROUTES } from "./coreRoutes";
+
 // Must mirror the `appPages` list and cache names in next.config.js — the
 // warm-up writes into the caches those rules read.
 const SW_CACHE_VERSION = process.env.NEXT_PUBLIC_SW_CACHE_VERSION ?? "v3";
@@ -31,7 +33,7 @@ const APP_ROUTES = [
   "/onboarding",
 ];
 
-const ROOT_ROUTES = ["/login", "/register"];
+const ROOT_ROUTES = [STARTUP_SHELL_ROUTES[1], "/register"];
 
 const THROTTLE_KEY = "pwa-shell-warmed";
 const THROTTLE_MS = 24 * 60 * 60 * 1000;

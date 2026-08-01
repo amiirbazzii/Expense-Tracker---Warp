@@ -21,6 +21,21 @@ const stripSearchPlugin = {
   },
 };
 
+// The start screen always leaves through one of these static, auth-free
+// documents. They must be in Workbox's *precache*, not merely a runtime cache:
+// the first App Router transition otherwise needs an RSC response that may not
+// exist while offline. `revision: null` is intentional: next-pwa's own
+// manifest transform replaces it with the current Next build ID, so a new
+// deploy installs a fresh document alongside its matching JS chunks.
+const STARTUP_SHELL_DOCUMENTS = ["/add", "/login"];
+const startupShellManifestTransform = async (manifest) => ({
+  manifest: [
+    ...manifest,
+    ...STARTUP_SHELL_DOCUMENTS.map((url) => ({ url, revision: null })),
+  ],
+  warnings: [],
+});
+
 const withPWA = require("next-pwa")({
   dest: "public",
   register: true,
@@ -34,6 +49,10 @@ const withPWA = require("next-pwa")({
   // dynamicStartUrl is off, so start_url ("/") is precached as a static
   // document. (dynamicStartUrlRedirect only applies when it is on.)
   dynamicStartUrl: false,
+  // Extends (rather than replaces) next-pwa's public/static asset manifest.
+  // See the comment above `startupShellManifestTransform` for the revision
+  // behavior. These pages contain no server-rendered user data.
+  manifestTransforms: [startupShellManifestTransform],
   fallbacks: {
     // Served for any offline navigation whose HTML is not cached. Must be a
     // real, static, auth-free page — falling back to "/" (a blank client-side
