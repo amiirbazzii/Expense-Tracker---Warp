@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { FullScreenLoader } from "./FullScreenLoader";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -21,9 +20,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     router.replace("/login");
   }, [isAuthenticated, loading, router]);
 
-  // Rendering children while authentication is still resolving shows the
-  // signed-in UI to a signed-out visitor for a frame before the redirect.
-  if (loading) return <FullScreenLoader />;
+  // A restored local token is enough to open the local-first app. Do not put
+  // the shell behind a second loader while server validation runs in the
+  // background.
+  if (loading && !isAuthenticated) return null;
   if (!isAuthenticated) return null;
 
   return <>{children}</>;

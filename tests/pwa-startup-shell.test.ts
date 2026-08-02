@@ -11,6 +11,7 @@ const { Response: UndiciResponse } = require("undici");
 
 const mockUseAuth = jest.fn();
 const mockNavigate = jest.fn();
+const mockReplace = jest.fn();
 
 jest.mock("@/contexts/AuthContext", () => ({
   useAuth: () => mockUseAuth(),
@@ -21,7 +22,12 @@ jest.mock("@/lib/pwa/coreRoutes", () => ({
   navigateToStartupShell: (...args: unknown[]) => mockNavigate(...args),
 }));
 
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: mockReplace }),
+}));
+
 import Home from "@/app/page";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { warmAppShell } from "@/lib/pwa/warmAppShell";
 
 describe("offline startup shell", () => {
@@ -36,9 +42,10 @@ describe("offline startup shell", () => {
 
   it("leaves the splash through a document navigation for a restored session", async () => {
     mockUseAuth.mockReturnValue({ user: { _id: "user-1" }, token: "token", loading: false });
-    render(createElement(Home));
+    const { container } = render(createElement(Home));
 
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith("/add"));
+    expect(container.innerHTML).toBe("");
   });
 
   it("uses the same document-navigation path for an unauthenticated launch", async () => {
@@ -46,6 +53,16 @@ describe("offline startup shell", () => {
     render(createElement(Home));
 
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith("/login"));
+  });
+
+  it("does not add a second loader while a saved session validates", () => {
+    mockUseAuth.mockReturnValue({ user: null, token: "token", loading: true });
+    const { getByText } = render(
+      createElement(ProtectedRoute, null, createElement("p", null, "App shell")),
+    );
+
+    expect(getByText("App shell")).toBeInTheDocument();
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 
   it("warms /add and /login documents without visiting either route", async () => {
