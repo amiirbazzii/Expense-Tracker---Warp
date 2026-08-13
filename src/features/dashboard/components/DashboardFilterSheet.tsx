@@ -5,7 +5,12 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { Button } from "@/components/Button";
 import { CustomDatePicker } from "@/components/CustomDatePicker";
 import InputContainer from "@/components/InputContainer";
-import { Calendar, Filter as FilterIcon, ChevronDown } from "lucide-react";
+import { Calendar, Filter as FilterIcon, ChevronDown, Tag, Users } from "lucide-react";
+
+// One heading treatment for every section, so the sheet reads as a single list
+// of filters rather than three differently-styled blocks.
+const SECTION_LABEL =
+  "flex items-center gap-2 text-sm font-medium text-gray-900 mb-3";
 
 export type DatePreset = "thisMonth" | "lastMonth" | "last7Days" | "custom";
 
@@ -62,19 +67,22 @@ export function DashboardFilterSheet({ open, onClose, title = "Filters", categor
       <div className="space-y-6">
         {/* Date Range */}
         <section>
-          <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2"><Calendar size={16} /> Time period</h4>
-          <div className="grid grid-cols-4 gap-2">
+          <h4 className={SECTION_LABEL}><Calendar size={16} /> Time period</h4>
+          {/* Two columns: "This month" / "Last month" do not fit across four
+              at this sheet's width and were wrapping mid-label. */}
+          <div className="grid grid-cols-2 gap-2">
             {([
               { key: "thisMonth", label: "This month" },
               { key: "lastMonth", label: "Last month" },
-              { key: "last7Days", label: "Last 7d" },
+              { key: "last7Days", label: "Last 7 days" },
               { key: "custom", label: "Custom" },
             ] as const).map(({ key, label }) => (
               <button
                 key={key}
                 type="button"
+                aria-pressed={datePreset === key}
                 onClick={() => setDatePreset(key)}
-                className={`text-sm rounded-full border px-3 py-2 ${datePreset === key ? "bg-black text-white border-black" : "bg-white text-gray-700 border-gray-300"}`}
+                className={`text-sm rounded-full border px-3 py-2 transition-colors ${datePreset === key ? "bg-black text-white border-black" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"}`}
               >
                 {label}
               </button>
@@ -111,13 +119,16 @@ export function DashboardFilterSheet({ open, onClose, title = "Filters", categor
 
         {/* Category dropdown */}
         <section>
-          <label className="block text-sm font-medium text-gray-900 mb-2">Category</label>
+          <label className={SECTION_LABEL} htmlFor="filter-category">
+            <Tag size={16} /> Category
+          </label>
           <InputContainer
             rightAdornment={(
               <ChevronDown className="text-gray-500" size={18} />
             )}
           >
             <select
+              id="filter-category"
               className="w-full bg-transparent outline-none text-black placeholder:text-gray-500 py-1 px-0 appearance-none"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
@@ -133,13 +144,16 @@ export function DashboardFilterSheet({ open, onClose, title = "Filters", categor
         {/* For (expenses only) */}
         {showFor && (
           <section>
-            <label className="block text-sm font-medium text-gray-900 mb-2">For</label>
+            <label className={SECTION_LABEL} htmlFor="filter-for">
+              <Users size={16} /> For
+            </label>
             <InputContainer
               rightAdornment={(
                 <ChevronDown className="text-gray-500" size={18} />
               )}
             >
               <select
+                id="filter-for"
                 className="w-full bg-transparent outline-none text-black placeholder:text-gray-500 py-1 px-0 appearance-none"
                 value={forValue}
                 onChange={(e) => setForValue(e.target.value)}
@@ -153,13 +167,27 @@ export function DashboardFilterSheet({ open, onClose, title = "Filters", categor
           </section>
         )}
 
-        <div className="flex items-center justify-between pt-2">
-          <Button onClick={handleReset}>Reset</Button>
-          <Button onClick={handleApply}>
-            <span className="inline-flex items-center gap-2">
-              <FilterIcon size={18} />
-              Apply filters
-            </span>
+        {/* Both actions used to be the same default (primary) variant, sitting
+            at opposite edges at their intrinsic widths with a gap floating
+            between them. Reset is the secondary action, so it reads as one:
+            the row is now a single full-width unit with Apply given the
+            greater weight. */}
+        <div className="flex items-stretch gap-3 pt-4 border-t border-gray-200">
+          <Button
+            variant="secondary"
+            size="medium"
+            className="flex-1"
+            onClick={handleReset}
+          >
+            Reset
+          </Button>
+          <Button
+            size="medium"
+            className="flex-[2] gap-2"
+            onClick={handleApply}
+          >
+            <FilterIcon size={18} />
+            Apply filters
           </Button>
         </div>
       </div>
