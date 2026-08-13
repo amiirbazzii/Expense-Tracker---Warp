@@ -30,8 +30,8 @@ import { useDashboardFilters } from "@/hooks/useDashboardFilters";
 import { useDashboardDerivedData } from "@/hooks/useDashboardDerivedData";
 import {
   getIncomeCategoryNames,
-  getCategoryNames,
-  getForValueNames,
+  getExpenseCategoryNames,
+  getExpenseForValues,
 } from "@/utils/dashboard";
 
 import type { Expense } from "@/features/dashboard/types";
@@ -86,15 +86,15 @@ export default function DashboardPage() {
   const loanMonth = loanGregorianDate.getMonth() + 1;
   const numericYear = loanGregorianDate.getFullYear();
 
-  const { categories: categoriesAll, forValues: forValuesAll } =
-    useOfflineFirstData();
+  // All three come from the rows on screen, so every option the filter sheet
+  // offers can actually match something in the current month and card.
   const expenseCategoryNames = useMemo(
-    () => getCategoryNames(categoriesAll),
-    [categoriesAll],
+    () => getExpenseCategoryNames(effExpenses || []),
+    [effExpenses],
   );
   const forValueNames = useMemo(
-    () => getForValueNames(forValuesAll),
-    [forValuesAll],
+    () => getExpenseForValues(effExpenses || []),
+    [effExpenses],
   );
   const incomeCategoryNames = useMemo(
     () => getIncomeCategoryNames(effIncome || []),
