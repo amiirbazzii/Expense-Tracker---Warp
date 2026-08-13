@@ -1,14 +1,19 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { useSettings } from "@/contexts/SettingsContext";
 import { formatCurrency } from "@/lib/formatters";
 import { useMemo, useState } from "react";
 import { BottomSheet } from "@/components/BottomSheet";
 import { ExpenseCard } from "@/components/cards/ExpenseCard";
 import { IncomeCard } from "@/components/cards/IncomeCard";
+import { useDeleteWithUndo } from "@/hooks/useDeleteWithUndo";
+import { localDataStore } from "@/lib/store";
 import type { Expense } from "../../types/expense";
 import type { Income } from "../../types/income";
+
+const byNewestFirst = <T extends { date: number }>(a: T, b: T) => b.date - a.date;
 
 interface CategoryListProps {
   categoryTotals: Record<string, number>;
@@ -20,19 +25,50 @@ interface CategoryListProps {
 
 export function CategoryList({ categoryTotals, expenses = [], income = [], mode = 'expenses', cardMap = {} }: CategoryListProps) {
   const { settings } = useSettings();
+  const router = useRouter();
   const [openCategory, setOpenCategory] = useState<string | null>(null);
+
+  // Same delete-with-undo path the add screen uses, so a delete here queues
+  // and syncs exactly like one made anywhere else.
+  const { deleteWithUndo: deleteExpense, filterPending: filterExpenses } =
+    useDeleteWithUndo<Expense>(
+      (id) => localDataStore.deleteExpense(id),
+      "Expense",
+    );
+  const { deleteWithUndo: deleteIncome, filterPending: filterIncomes } =
+    useDeleteWithUndo<Income>(
+      (id) => localDataStore.deleteIncome(id),
+      "Income",
+    );
 
   // `expenses`/`income` arrive already filtered, so drilling into a category
   // shows the same rows that produced its total.
-  const filteredByCategory = useMemo(() => {
-    if (!openCategory) return [] as (Expense | Income)[];
-    if (mode === 'income') {
-      return (income || []).filter((i) => i.category === openCategory);
-    }
-    return (expenses || []).filter((e) =>
-      Array.isArray(e.category) ? e.category.includes(openCategory) : (e as any).category === openCategory
-    );
-  }, [expenses, income, openCategory, mode]);
+  const expensesInCategory = useMemo(() => {
+    if (!openCategory || mode === 'income') return [] as Expense[];
+    return (expenses || [])
+      .filter((e) =>
+        Array.isArray(e.category) ? e.category.includes(openCategory) : (e as any).category === openCategory
+      )
+      .sort(byNewestFirst);
+  }, [expenses, openCategory, mode]);
+
+  const incomeInCategory = useMemo(() => {
+    if (!openCategory || mode !== 'income') return [] as Income[];
+    return (income || [])
+      .filter((i) => i.category === openCategory)
+      .sort(byNewestFirst);
+  }, [income, openCategory, mode]);
+
+  // Hides a row for the length of the undo window, before the delete lands.
+  const visibleExpenses = filterExpenses(expensesInCategory);
+  const visibleIncome = filterIncomes(incomeInCategory);
+  const isEmpty =
+    (mode === 'income' ? visibleIncome.length : visibleExpenses.length) === 0;
+
+  const closeAndEdit = (path: string) => {
+    setOpenCategory(null);
+    router.push(path);
+  };
 
   // Kept below the hooks: bailing out before them would change the hook order
   // between renders once this list empties out.
@@ -75,34 +111,26 @@ export function CategoryList({ categoryTotals, expenses = [], income = [], mode 
       >
         {openCategory && (
           <div className="space-y-3">
-            {mode === 'income' ? (
-              filteredByCategory
-                .slice()
-                .sort((a, b) => (b.date as number) - (a.date as number))
-                .map((item) => (
+            {mode === 'income'
+              ? visibleIncome.map((item) => (
                   <IncomeCard
-                    key={String((item as any)._id)}
+                    key={String(item._id)}
                     income={item as any}
                     cardName={cardMap[(item as any).cardId] || "Unknown Card"}
-                    onDelete={() => {}}
-                    hideTags
+                    onDelete={(id) => deleteIncome(String(id))}
+                    onEdit={(id) => closeAndEdit(`/income/edit?id=${id}`)}
                   />
                 ))
-            ) : (
-              filteredByCategory
-                .slice()
-                .sort((a, b) => (b.date as number) - (a.date as number))
-                .map((item) => (
+              : visibleExpenses.map((item) => (
                   <ExpenseCard
-                    key={String((item as any)._id)}
+                    key={String(item._id)}
                     expense={item as any}
                     cardName={cardMap[(item as any).cardId] || "Unknown Card"}
-                    onDelete={() => {}}
-                    hideTags
+                    onDelete={(id) => deleteExpense(String(id))}
+                    onEdit={(id) => closeAndEdit(`/expenses/edit?id=${id}`)}
                   />
-                ))
-            )}
-            {filteredByCategory.length === 0 && (
+                ))}
+            {isEmpty && (
               <p className="text-sm text-gray-500 text-center py-6">No items in this category.</p>
             )}
           </div>
