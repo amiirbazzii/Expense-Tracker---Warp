@@ -219,7 +219,7 @@ export function DailySpendingChart({ dailyTotals, mode = 'expenses', title, _col
 
       // Calculate optimal tooltip position
       let tooltipX = x;
-      let tooltipY = y - tooltipHeight - 8; // Position above the data point
+      const tooltipY = y - tooltipHeight - 8; // Position above the data point
 
       // Adjust horizontal position if tooltip would go outside chart boundaries
       if (tooltipX - tooltipWidth / 2 < chartLeft) {

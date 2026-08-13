@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
-import { DollarSign } from "lucide-react";
+import React, { useEffect, useRef } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
 import InputContainer from "./InputContainer";
 

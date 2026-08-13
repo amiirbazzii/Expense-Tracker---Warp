@@ -24,7 +24,6 @@ import { PreferenceSelect } from "@/components/settings/PreferenceSelect";
 import { BackupBanner } from "@/components/settings/BackupBanner";
 import { ExportButton } from "@/components/settings/ExportButton";
 import { SettingsCard } from "@/components/settings/SettingsCard";
-import { Button } from "@/components/Button";
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();

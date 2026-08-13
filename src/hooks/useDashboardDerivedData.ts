@@ -53,7 +53,7 @@ export function useDashboardDerivedData(
       };
     }
 
-    let list = (expenses || []).filter((expense) => {
+    const list = (expenses || []).filter((expense) => {
       const categories = Array.isArray(expense.category)
         ? expense.category
         : [expense.category];

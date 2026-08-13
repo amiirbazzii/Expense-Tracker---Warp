@@ -104,7 +104,7 @@ export const getExpenses = query({
   handler: async (ctx, args) => {
     const user = await getUserByToken(ctx, args.token);
 
-    let query = ctx.db
+    const query = ctx.db
       .query("expenses")
       .withIndex("by_user", (q) => q.eq("userId", user._id));
 

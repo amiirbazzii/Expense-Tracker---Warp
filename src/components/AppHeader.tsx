@@ -43,10 +43,8 @@ export function AppHeader({
   if (isMain) {
     // Main pages: logo + page name + sync status dot
     const SyncDot = () => {
-      // eslint-disable-next-line react-hooks/rules-of-hooks
       const [synced, setSynced] = useState(false);
 
-      // eslint-disable-next-line react-hooks/rules-of-hooks
       useEffect(() => {
         let active = true;
         const check = async () => {

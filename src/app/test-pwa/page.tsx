@@ -216,7 +216,7 @@ export default function TestPWAPage() {
             <li>1. Make sure Service Worker is registered (green status above)</li>
             <li>2. Navigate to a few pages (dashboard, expenses, etc.)</li>
             <li>3. Open DevTools (F12) → Network tab</li>
-            <li>4. Check the "Offline" checkbox</li>
+            <li>4. Check the &quot;Offline&quot; checkbox</li>
             <li>5. Refresh the page - it should still work!</li>
             <li>6. Try navigating to different pages</li>
           </ol>

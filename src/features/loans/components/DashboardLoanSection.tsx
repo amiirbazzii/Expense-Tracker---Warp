@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { useSettings } from "@/contexts/SettingsContext";
 import { formatCurrency } from "@/lib/formatters";
 import { Loan, computeMonthlyDue } from "../types";
-import { Plus, ChevronRight, Landmark } from "lucide-react";
+import { Plus } from "lucide-react";
 
 interface DashboardLoanSectionProps {
   loans: Loan[] | undefined;

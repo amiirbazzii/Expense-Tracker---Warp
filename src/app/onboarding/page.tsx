@@ -80,7 +80,7 @@ export default function OnboardingPage() {
                 Add Your Cards
               </h2>
               <p className="text-gray-600">
-                Add the cards you'll use to track your finances.
+                Add the cards you&apos;ll use to track your finances.
               </p>
             </div>
 

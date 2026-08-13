@@ -108,7 +108,7 @@ export default function ForgotPasswordPage() {
           </Link>
           
           <div className="text-xs text-gray-500">
-            Don't have a recovery code? Contact support or access Settings from a logged-in device.
+            Don&apos;t have a recovery code? Contact support or access Settings from a logged-in device.
           </div>
         </div>
       </motion.div>

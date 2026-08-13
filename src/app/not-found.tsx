@@ -21,7 +21,7 @@ export default function NotFound() {
       <div className="text-center">
         <h1 className="text-6xl font-bold text-gray-400 mb-4">404</h1>
         <div className="mt-4 text-lg font-medium text-gray-900">Page Not Found</div>
-        <div className="mt-2 text-sm text-gray-600">The page you're looking for doesn't exist.</div>
+        <div className="mt-2 text-sm text-gray-600">The page you&apos;re looking for doesn&apos;t exist.</div>
         <div className="mt-6 space-x-4">
           <button 
             onClick={() => window.location.reload()}

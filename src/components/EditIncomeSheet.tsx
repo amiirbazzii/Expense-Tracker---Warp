@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { BottomSheet } from "@/components/BottomSheet";
 import { SmartSelectInput } from "@/components/SmartSelectInput";

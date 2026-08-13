@@ -465,7 +465,6 @@ export class SyncEngine {
     let syncedAny = false;
 
     try {
-      // eslint-disable-next-line no-constant-condition
       while (true) {
         const mutation = await this.queue.peek();
         if (!mutation) break; // Queue is empty — we're done.

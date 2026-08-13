@@ -1,5 +1,5 @@
 import * as React from "react";
-import { LucideIcon, ChevronDown, CircleDollarSign } from "lucide-react";
+import { LucideIcon, ChevronDown } from "lucide-react";
 
 export interface InputProps
   extends React.InputHTMLAttributes<HTMLInputElement> {

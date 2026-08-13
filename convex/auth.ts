@@ -1,7 +1,7 @@
 import { v } from "convex/values";
-import { mutation, query, internalQuery, QueryCtx, MutationCtx } from "./_generated/server";
+import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
 import { ConvexError } from "convex/values";
-import { Doc, Id } from "./_generated/dataModel";
+import { Doc } from "./_generated/dataModel";
 
 // Look up a user by session token.
 //

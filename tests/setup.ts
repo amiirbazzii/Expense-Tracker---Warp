@@ -11,7 +11,6 @@ if (typeof crypto.randomUUID !== 'function') {
     value: () => {
       // RFC 4122 version 4 UUID
       const bytes = new Uint8Array(16);
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { randomFillSync } = require('crypto');
       randomFillSync(bytes);
       bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4

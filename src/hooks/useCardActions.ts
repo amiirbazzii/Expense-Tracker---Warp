@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { localDataStore } from "@/lib/store";
-import type { CardDoc } from "@/lib/store/LocalDataStore";
 
 interface UseCardActionsResult {
   addCard: (name: string) => Promise<void>;

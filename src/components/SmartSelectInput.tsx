@@ -243,7 +243,7 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
                 className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 ${activeIndex === suggestions.length ? 'bg-gray-100 text-gray-900' : 'text-gray-700 hover:bg-gray-50'}`}
               >
                 <PlusCircle size={16} />
-                <span>Add '<b>{inputValue}</b>'</span>
+                <span>Add &apos;<b>{inputValue}</b>&apos;</span>
               </button>
             )}
           </motion.div>

@@ -160,7 +160,7 @@ export function EnhancedNetworkStatusIndicator() {
 
               {!isOnline && (
                 <div className="text-xs text-gray-500 text-center">
-                  Your changes are saved locally and will sync when you're back online.
+                  Your changes are saved locally and will sync when you&apos;re back online.
                 </div>
               )}
             </div>
@@ -231,7 +231,7 @@ export function OfflineModeIndicator() {
           <WifiOff className="w-5 h-5 text-yellow-600 flex-shrink-0" />
           <div>
             <p className="text-sm font-medium text-yellow-800">
-              You're working offline
+              You&apos;re working offline
             </p>
             <p className="text-xs text-yellow-700">
               Changes are saved locally and will sync when connection is restored.

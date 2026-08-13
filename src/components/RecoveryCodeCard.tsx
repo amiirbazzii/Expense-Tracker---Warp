@@ -140,7 +140,7 @@ export const RecoveryCodeCard = memo(() => {
                 onClick={closeModal}
                 className="w-full py-3 bg-gray-900 text-white rounded-md hover:bg-gray-800"
               >
-                I've Saved It Safely
+                I&apos;ve Saved It Safely
               </button>
             </motion.div>
           </motion.div>

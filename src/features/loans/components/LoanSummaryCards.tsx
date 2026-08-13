@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { motion } from "framer-motion";
 import { useSettings } from "@/contexts/SettingsContext";
 import { formatCurrency } from "@/lib/formatters";
 import { LoanSummary } from "../types";

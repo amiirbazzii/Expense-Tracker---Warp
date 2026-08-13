@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 // Phase 1 cleanup: legacy secondary queue manager import removed.
-import { OperationType, EntityType } from "../lib/types/local-storage";
 
 export type OfflineItem<T> = {
   id: string;

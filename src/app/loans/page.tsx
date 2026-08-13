@@ -7,7 +7,6 @@ import { BottomNav } from "@/components/BottomNav";
 import AppHeader from "@/components/AppHeader";
 import { Plus, ChevronRight } from "lucide-react";
 import { DateFilterHeader } from "@/components/DateFilterHeader";
-import { FullScreenLoader } from "@/components/FullScreenLoader";
 import moment from "jalali-moment";
 import { useSettings } from "@/contexts/SettingsContext";
 import { toast } from "sonner";
