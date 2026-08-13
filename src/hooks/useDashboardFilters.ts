@@ -1,10 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import type {
-  DashboardFilters,
-  DatePreset,
-} from "@/features/dashboard/components/DashboardFilterSheet";
+import type { DashboardFilters } from "@/features/dashboard/components/DashboardFilterSheet";
 
 interface UseDashboardFiltersResult {
   mode: "expenses" | "income";
@@ -15,16 +12,40 @@ interface UseDashboardFiltersResult {
   setFilters: (filters: DashboardFilters) => void;
   dateRangeOverride: { start: number; end: number } | undefined;
   resetDateFilterIfNeeded: () => void;
+  /** Whether anything is narrowing the view beyond the current month. */
+  hasActiveFilters: boolean;
+  clearFilters: () => void;
 }
 
+const EMPTY_FILTERS: DashboardFilters = {
+  datePreset: "thisMonth",
+  categories: [],
+  forValue: undefined,
+};
+
 export function useDashboardFilters(): UseDashboardFiltersResult {
-  const [mode, setMode] = useState<"expenses" | "income">("expenses");
+  const [mode, setModeState] = useState<"expenses" | "income">("expenses");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [filters, setFilters] = useState<DashboardFilters>({
-    datePreset: "thisMonth",
-    categories: [],
-    forValue: undefined,
-  });
+  const [filters, setFilters] = useState<DashboardFilters>(EMPTY_FILTERS);
+
+  // Categories and `for` are per-mode: expense category names come from the
+  // categories table while income ones come from the income rows, so a
+  // selection made in one mode can never match in the other. Carrying it
+  // across left the newly selected tab filtered down to nothing while the tab
+  // you just left still showed its unfiltered total. The date range is
+  // mode-agnostic, so it survives the switch.
+  const setMode = useCallback(
+    (next: "expenses" | "income") => {
+      if (next === mode) return;
+      setModeState(next);
+      setFilters((prev) =>
+        prev.categories.length === 0 && prev.forValue === undefined
+          ? prev
+          : { ...prev, categories: [], forValue: undefined },
+      );
+    },
+    [mode],
+  );
 
   const dateRangeOverride = useMemo(() => {
     if (filters.datePreset === "custom" && filters.start && filters.end) {
@@ -58,6 +79,13 @@ export function useDashboardFilters(): UseDashboardFiltersResult {
     }
   }, [filters.datePreset]);
 
+  const hasActiveFilters =
+    filters.categories.length > 0 ||
+    !!filters.forValue ||
+    filters.datePreset !== "thisMonth";
+
+  const clearFilters = useCallback(() => setFilters(EMPTY_FILTERS), []);
+
   return {
     mode,
     setMode,
@@ -67,5 +95,7 @@ export function useDashboardFilters(): UseDashboardFiltersResult {
     setFilters,
     dateRangeOverride,
     resetDateFilterIfNeeded,
+    hasActiveFilters,
+    clearFilters,
   };
 }

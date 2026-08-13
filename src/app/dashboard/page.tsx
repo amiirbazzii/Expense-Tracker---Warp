@@ -53,6 +53,8 @@ export default function DashboardPage() {
     setFilters,
     dateRangeOverride,
     resetDateFilterIfNeeded,
+    hasActiveFilters,
+    clearFilters,
   } = useDashboardFilters();
 
   const { handleEdit } = useExpenseActions();
@@ -218,6 +220,26 @@ export default function DashboardPage() {
                   cardMap={cardMap}
                 />
               </>
+            ) : hasActiveFilters ? (
+              // Without this the charts and the category list simply vanished
+              // whenever a filter matched nothing, which reads as the screen
+              // being broken rather than as an empty result.
+              <div className="px-4 py-10 text-center">
+                <p className="text-sm font-medium text-gray-900">
+                  No {mode === "income" ? "income" : "expenses"} match these
+                  filters
+                </p>
+                <p className="mt-1 text-sm text-gray-500">
+                  Try a different category or time period.
+                </p>
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="mt-4 text-sm font-medium text-indigo-600 underline underline-offset-4 hover:text-indigo-700"
+                >
+                  Clear filters
+                </button>
+              </div>
             ) : null}
           </motion.div>
         </div>
