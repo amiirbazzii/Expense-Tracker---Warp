@@ -22,10 +22,8 @@ export function CategoryList({ categoryTotals, expenses = [], income = [], mode 
   const { settings } = useSettings();
   const [openCategory, setOpenCategory] = useState<string | null>(null);
 
-  if (!categoryTotals || Object.keys(categoryTotals).length === 0) {
-    return null;
-  }
-
+  // `expenses`/`income` arrive already filtered, so drilling into a category
+  // shows the same rows that produced its total.
   const filteredByCategory = useMemo(() => {
     if (!openCategory) return [] as (Expense | Income)[];
     if (mode === 'income') {
@@ -35,6 +33,12 @@ export function CategoryList({ categoryTotals, expenses = [], income = [], mode 
       Array.isArray(e.category) ? e.category.includes(openCategory) : (e as any).category === openCategory
     );
   }, [expenses, income, openCategory, mode]);
+
+  // Kept below the hooks: bailing out before them would change the hook order
+  // between renders once this list empties out.
+  if (!categoryTotals || Object.keys(categoryTotals).length === 0) {
+    return null;
+  }
 
   return (
     <motion.div

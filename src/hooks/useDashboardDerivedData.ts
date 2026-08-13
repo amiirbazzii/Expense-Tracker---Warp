@@ -1,25 +1,35 @@
 "use client";
 
 import { useMemo } from "react";
-import type {
-  DashboardFilters,
-  DatePreset,
-} from "@/features/dashboard/components/DashboardFilterSheet";
+import type { DashboardFilters } from "@/features/dashboard/components/DashboardFilterSheet";
 import type { ExpenseLike, IncomeLike } from "@/utils/dashboard";
 import { getDateKey } from "@/utils/dashboard";
 
-interface UseDashboardDerivedDataResult {
+interface UseDashboardDerivedDataResult<E, I> {
   categoryTotalsForMode: Record<string, number>;
   dailyTotalsForMode: Record<string, number>;
   totalForMode: number;
+  /**
+   * The exact rows the totals above were derived from, with the active
+   * filters already applied. Anything drilling into a category has to read
+   * from these — reading the unfiltered input instead makes a category's
+   * detail view disagree with the total shown for it.
+   */
+  filteredExpensesForMode: E[];
+  filteredIncomeForMode: I[];
 }
 
-export function useDashboardDerivedData(
+// Generic over the row types so callers get their own concrete row type back
+// rather than the structural minimum this hook needs.
+export function useDashboardDerivedData<
+  E extends ExpenseLike,
+  I extends IncomeLike,
+>(
   mode: "expenses" | "income",
-  expenses: ExpenseLike[],
-  income: IncomeLike[],
+  expenses: E[],
+  income: I[],
   filters: DashboardFilters,
-): UseDashboardDerivedDataResult {
+): UseDashboardDerivedDataResult<E, I> {
   return useMemo(() => {
     if (mode === "income") {
       let list = (income || []).filter(
@@ -50,6 +60,8 @@ export function useDashboardDerivedData(
         categoryTotalsForMode: categoryTotals,
         dailyTotalsForMode: dailyTotals,
         totalForMode: total,
+        filteredExpensesForMode: [],
+        filteredIncomeForMode: list,
       };
     }
 
@@ -97,6 +109,8 @@ export function useDashboardDerivedData(
       categoryTotalsForMode: categoryTotals,
       dailyTotalsForMode: dailyTotals,
       totalForMode: total,
+      filteredExpensesForMode: list,
+      filteredIncomeForMode: [],
     };
   }, [mode, expenses, income, filters]);
 }

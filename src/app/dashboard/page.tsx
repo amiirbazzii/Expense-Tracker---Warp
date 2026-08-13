@@ -119,8 +119,13 @@ export default function DashboardPage() {
     goToPreviousMonth();
   };
 
-  const { categoryTotalsForMode, dailyTotalsForMode, totalForMode } =
-    useDashboardDerivedData(mode, effExpenses || [], effIncome || [], filters);
+  const {
+    categoryTotalsForMode,
+    dailyTotalsForMode,
+    totalForMode,
+    filteredExpensesForMode,
+    filteredIncomeForMode,
+  } = useDashboardDerivedData(mode, effExpenses || [], effIncome || [], filters);
 
   const cardMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -207,8 +212,8 @@ export default function DashboardPage() {
                 )}
                 <CategoryList
                   categoryTotals={categoryTotalsForMode}
-                  expenses={effExpenses || []}
-                  income={effIncome || []}
+                  expenses={filteredExpensesForMode}
+                  income={filteredIncomeForMode}
                   mode={mode}
                   cardMap={cardMap}
                 />
