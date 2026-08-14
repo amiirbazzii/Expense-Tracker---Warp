@@ -1,13 +1,15 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
 import { useSettings } from "@/contexts/SettingsContext";
 import { formatCurrency } from "@/lib/formatters";
 import { useMemo, useState } from "react";
 import { BottomSheet } from "@/components/BottomSheet";
 import { ExpenseCard } from "@/components/cards/ExpenseCard";
 import { IncomeCard } from "@/components/cards/IncomeCard";
+import { EditExpenseSheet } from "@/components/EditExpenseSheet";
+import { EditIncomeSheet } from "@/components/EditIncomeSheet";
+import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useDeleteWithUndo } from "@/hooks/useDeleteWithUndo";
 import { localDataStore } from "@/lib/store";
 import type { Expense } from "../../types/expense";
@@ -25,8 +27,9 @@ interface CategoryListProps {
 
 export function CategoryList({ categoryTotals, expenses = [], income = [], mode = 'expenses', cardMap = {} }: CategoryListProps) {
   const { settings } = useSettings();
-  const router = useRouter();
   const [openCategory, setOpenCategory] = useState<string | null>(null);
+  const [editExpenseId, setEditExpenseId] = useState<Id<"expenses"> | null>(null);
+  const [editIncomeId, setEditIncomeId] = useState<Id<"income"> | null>(null);
 
   // Same delete-with-undo path the add screen uses, so a delete here queues
   // and syncs exactly like one made anywhere else.
@@ -64,11 +67,6 @@ export function CategoryList({ categoryTotals, expenses = [], income = [], mode 
   const visibleIncome = filterIncomes(incomeInCategory);
   const isEmpty =
     (mode === 'income' ? visibleIncome.length : visibleExpenses.length) === 0;
-
-  const closeAndEdit = (path: string) => {
-    setOpenCategory(null);
-    router.push(path);
-  };
 
   // Kept below the hooks: bailing out before them would change the hook order
   // between renders once this list empties out.
@@ -118,7 +116,7 @@ export function CategoryList({ categoryTotals, expenses = [], income = [], mode 
                     income={item as any}
                     cardName={cardMap[(item as any).cardId] || "Unknown Card"}
                     onDelete={(id) => deleteIncome(String(id))}
-                    onEdit={(id) => closeAndEdit(`/income/edit?id=${id}`)}
+                    onEdit={(id) => setEditIncomeId(id as Id<"income">)}
                   />
                 ))
               : visibleExpenses.map((item) => (
@@ -127,7 +125,7 @@ export function CategoryList({ categoryTotals, expenses = [], income = [], mode 
                     expense={item as any}
                     cardName={cardMap[(item as any).cardId] || "Unknown Card"}
                     onDelete={(id) => deleteExpense(String(id))}
-                    onEdit={(id) => closeAndEdit(`/expenses/edit?id=${id}`)}
+                    onEdit={(id) => setEditExpenseId(id as Id<"expenses">)}
                   />
                 ))}
             {isEmpty && (
@@ -136,6 +134,19 @@ export function CategoryList({ categoryTotals, expenses = [], income = [], mode 
           </div>
         )}
       </BottomSheet>
+
+      {/* Edit opens as its own sheet on top of the category sheet, same as
+          the add screen, instead of navigating away from the report. */}
+      <EditExpenseSheet
+        expenseId={editExpenseId}
+        open={editExpenseId !== null}
+        onClose={() => setEditExpenseId(null)}
+      />
+      <EditIncomeSheet
+        incomeId={editIncomeId}
+        open={editIncomeId !== null}
+        onClose={() => setEditIncomeId(null)}
+      />
     </motion.div>
   );
 }

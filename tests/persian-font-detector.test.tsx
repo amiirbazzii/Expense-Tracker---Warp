@@ -57,17 +57,47 @@ describe("PersianFontDetector", () => {
     expect(el.classList.contains("force-persian")).toBe(true);
   });
 
-  it("marks ancestors so a mixed block keeps one font", async () => {
+  // The regression this guards: containers used to be marked when ANY
+  // descendant held Persian text, which dragged every English string inside
+  // them into the Persian font too.
+  it("marks only the element holding the Persian text, not its container", async () => {
     const container = document.createElement("div");
     const inner = document.createElement("span");
     inner.textContent = PERSIAN;
-    container.appendChild(inner);
+    const englishSibling = document.createElement("span");
+    englishSibling.textContent = "Groceries";
+    container.append(inner, englishSibling);
     host.appendChild(container);
 
     await flushMicrotasks();
 
     expect(inner.classList.contains("force-persian")).toBe(true);
-    expect(container.classList.contains("force-persian")).toBe(true);
+    expect(container.classList.contains("force-persian")).toBe(false);
+    expect(englishSibling.classList.contains("force-persian")).toBe(false);
+  });
+
+  it("unmarks text rewritten from Persian back to English", async () => {
+    const el = document.createElement("p");
+    el.textContent = PERSIAN;
+    host.appendChild(el);
+    await flushMicrotasks();
+    expect(el.classList.contains("force-persian")).toBe(true);
+
+    el.textContent = "Hello world";
+    await flushMicrotasks();
+
+    expect(el.classList.contains("force-persian")).toBe(false);
+  });
+
+  it("never unmarks a statically forced element", async () => {
+    const el = document.createElement("span");
+    el.className = "force-persian";
+    el.textContent = "English inside a PersianText component";
+    host.appendChild(el);
+
+    await flushMicrotasks();
+
+    expect(el.classList.contains("force-persian")).toBe(true);
   });
 
   it("marks text that is rewritten in place after mount", async () => {

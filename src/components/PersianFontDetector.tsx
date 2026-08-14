@@ -10,14 +10,40 @@ const TEXT_SELECTOR =
 
 const SKIPPED_TAGS = ["INPUT", "TEXTAREA", "SELECT"];
 
+/**
+ * Only the element's own text nodes count — not the whole subtree. Testing
+ * `textContent` marked every wrapper above a Persian string with
+ * `.force-persian !important`, which dragged all the English text inside
+ * those containers into the Persian font too. Leaf elements that actually
+ * hold Persian text still get marked, and their children inherit the font.
+ */
+function hasDirectPersianText(element: Element): boolean {
+  for (const node of element.childNodes) {
+    if (
+      node.nodeType === Node.TEXT_NODE &&
+      PERSIAN_REGEX.test(node.nodeValue || "")
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Elements the detector marked itself. Some components apply `force-persian`
+// statically in JSX; those must never be unmarked here.
+const detectorMarked = new WeakSet<Element>();
+
 function markIfPersian(element: Element) {
-  // Already marked, and the class is never taken back off — so bail before
-  // touching textContent. This keeps the ancestor walk O(1) per level on the
-  // repeat traffic that `characterData` brings in.
-  if (element.classList.contains("force-persian")) return;
   if (SKIPPED_TAGS.includes(element.tagName)) return;
-  if (PERSIAN_REGEX.test(element.textContent || "")) {
-    element.classList.add("force-persian");
+  if (hasDirectPersianText(element)) {
+    if (!element.classList.contains("force-persian")) {
+      element.classList.add("force-persian");
+      detectorMarked.add(element);
+    }
+  } else if (detectorMarked.has(element)) {
+    // Text rewritten from Persian to English — drop the stale font.
+    element.classList.remove("force-persian");
+    detectorMarked.delete(element);
   }
 }
 
@@ -25,20 +51,6 @@ function markIfPersian(element: Element) {
 function markSubtree(root: Element) {
   if (root.matches(TEXT_SELECTOR)) markIfPersian(root);
   root.querySelectorAll(TEXT_SELECTOR).forEach(markIfPersian);
-}
-
-/**
- * New text also changes the textContent of everything above it, and the old
- * whole-document rescan marked those ancestors too — `.force-persian` on a
- * container is what keeps a mixed Persian/Latin block in one font. Walking up
- * from the mutation preserves that without rescanning the document.
- */
-function markAncestors(element: Element) {
-  let parent = element.parentElement;
-  while (parent && parent !== document.body) {
-    markIfPersian(parent);
-    parent = parent.parentElement;
-  }
 }
 
 /**
@@ -59,13 +71,10 @@ export function usePersianFontDetection() {
         if (mutation.type === "childList") {
           mutation.addedNodes.forEach((node) => {
             if (node.nodeType === Node.ELEMENT_NODE) {
-              const element = node as Element;
-              markSubtree(element);
-              markAncestors(element);
+              markSubtree(node as Element);
             } else if (node.nodeType === Node.TEXT_NODE && node.parentElement) {
               // Text inserted straight into an existing element.
               markIfPersian(node.parentElement);
-              markAncestors(node.parentElement);
             }
           });
         } else if (mutation.type === "characterData") {
@@ -75,7 +84,6 @@ export function usePersianFontDetection() {
           const parent = mutation.target.parentElement;
           if (parent) {
             markIfPersian(parent);
-            markAncestors(parent);
           }
         }
       }

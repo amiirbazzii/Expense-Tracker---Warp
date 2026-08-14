@@ -23,6 +23,16 @@ jest.mock("@/contexts/SettingsContext", () => ({
 jest.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ token: "test-token", user: null }),
 }));
+// The real edit sheets pull in localforage/Convex; a stub that reports its
+// open state and target id is all these tests need.
+jest.mock("@/components/EditExpenseSheet", () => ({
+  EditExpenseSheet: ({ open, expenseId }: { open: boolean; expenseId: string | null }) =>
+    open ? <div data-testid="edit-expense-sheet">{expenseId}</div> : null,
+}));
+jest.mock("@/components/EditIncomeSheet", () => ({
+  EditIncomeSheet: ({ open, incomeId }: { open: boolean; incomeId: string | null }) =>
+    open ? <div data-testid="edit-income-sheet">{incomeId}</div> : null,
+}));
 
 import { CategoryList } from "@/features/dashboard/components/CategoryList/CategoryList";
 
@@ -107,15 +117,17 @@ describe("CategoryList category sheet", () => {
     expect(screen.getAllByRole("button", { name: "Delete" }).length).toBeGreaterThan(0);
   });
 
-  it("Edit closes the sheet and navigates to the expense editor", async () => {
+  it("Edit opens the edit sheet in place instead of navigating", async () => {
     renderExpenses();
     const user = await openCategory("Food");
 
     await user.click(screen.getByText("Weekly shop"));
     await user.click(screen.getAllByRole("button", { name: "Edit" })[0]);
 
-    expect(push).toHaveBeenCalledWith("/expenses/edit?id=e1");
-    expect(screen.queryByText("Weekly shop")).not.toBeInTheDocument();
+    expect(screen.getByTestId("edit-expense-sheet")).toHaveTextContent("e1");
+    expect(push).not.toHaveBeenCalled();
+    // The category sheet stays open underneath.
+    expect(screen.getByText("Weekly shop")).toBeInTheDocument();
   });
 
   it("Delete removes the row straight away, before the undo window elapses", async () => {
@@ -147,7 +159,7 @@ describe("CategoryList category sheet", () => {
     expect(deleteExpense).toHaveBeenCalledWith("e1");
   });
 
-  it("wires income cards to the income editor", async () => {
+  it("wires income cards to the income edit sheet", async () => {
     render(
       <CategoryList
         categoryTotals={{ Salary: 500 }}
@@ -162,6 +174,7 @@ describe("CategoryList category sheet", () => {
     await user.click(screen.getByText("Payslip"));
     await user.click(screen.getAllByRole("button", { name: "Edit" })[0]);
 
-    expect(push).toHaveBeenCalledWith("/income/edit?id=i1");
+    expect(screen.getByTestId("edit-income-sheet")).toHaveTextContent("i1");
+    expect(push).not.toHaveBeenCalled();
   });
 });
