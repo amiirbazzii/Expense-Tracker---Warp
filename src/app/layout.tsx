@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { Poppins } from "next/font/google";
 import "./critical.css";
 import "./globals.css";
 import { ConvexProvider } from "@/providers/ConvexProvider";
@@ -41,13 +40,42 @@ const iranSansX = localFont({
   preload: true,
 });
 
-const poppins = Poppins({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+const poppins = localFont({
+  src: [
+    {
+      path: "./fonts/Poppins-Light.ttf",
+      weight: "300",
+      style: "normal",
+    },
+    {
+      path: "./fonts/Poppins-Regular.ttf",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "./fonts/Poppins-Medium.ttf",
+      weight: "500",
+      style: "normal",
+    },
+    {
+      path: "./fonts/Poppins-SemiBold.ttf",
+      weight: "600",
+      style: "normal",
+    },
+    {
+      path: "./fonts/Poppins-Bold.ttf",
+      weight: "700",
+      style: "normal",
+    },
+    {
+      path: "./fonts/Poppins-ExtraBold.ttf",
+      weight: "800",
+      style: "normal",
+    },
+  ],
   variable: "--font-poppins",
   display: "swap",
   preload: true,
-  fallback: ["system-ui", "arial"],
 });
 
 export const metadata: Metadata = {
