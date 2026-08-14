@@ -5,9 +5,9 @@
   --color-foreground: var(--foreground);
   /* Tailwind v4 reads the `--font-*` namespace: these back the `font-sans`,
      `font-persian`, and `font-english` utilities. */
-  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  --font-persian: var(--font-iran-sans), Tahoma, Arial, sans-serif;
-  --font-english: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-poppins, "Poppins"), ui-sans-serif, system-ui, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-persian: var(--font-iran-sans, "iranSansX"), Tahoma, Arial, sans-serif;
+  --font-english: var(--font-poppins, "Poppins"), ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
@@ -25,7 +25,7 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-poppins, "Poppins"), ui-sans-serif, system-ui, sans-serif;
 }
 
 @utility text-balance {
@@ -55,30 +55,30 @@ body {
 
 /* Persian/Farsi text support */
 @utility font-persian {
-  font-family: var(--font-iran-sans), Tahoma, Arial, sans-serif;
+  font-family: var(--font-iran-sans, "iranSansX"), Tahoma, Arial, sans-serif;
 }
 
 @utility font-english {
-  font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-poppins, "Poppins"), ui-sans-serif, system-ui, sans-serif;
 }
 
 /* Auto-detect Persian characters and apply Persian font */
 :not(input):not(textarea):not(select) {
-  font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-poppins, "Poppins"), ui-sans-serif, system-ui, sans-serif;
 }
 
 /* Persian text detection using CSS */
 *:lang(fa),
 *[dir="rtl"],
 .persian-text {
-  font-family: var(--font-iran-sans), Tahoma, Arial, sans-serif !important;
+  font-family: var(--font-iran-sans, "iranSansX"), Tahoma, Arial, sans-serif !important;
   direction: ltr;
   text-align: left;
 }
 
 /* Force Persian font for any element containing Persian characters */
 .force-persian {
-  font-family: var(--font-iran-sans), Tahoma, Arial, sans-serif !important;
+  font-family: var(--font-iran-sans, "iranSansX"), Tahoma, Arial, sans-serif !important;
   direction: ltr !important;
 }
 
@@ -92,7 +92,7 @@ body {
 /* English content in Persian context */
 [lang="fa"] .english-text,
 [dir="rtl"] .english-text {
-  font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-poppins, "Poppins"), ui-sans-serif, system-ui, sans-serif;
   direction: ltr;
   text-align: left;
   display: inline-block;
@@ -101,7 +101,7 @@ body {
 /* Persian content in English context */
 [lang="en"] .persian-text,
 [dir="ltr"] .persian-text {
-  font-family: var(--font-iran-sans), Tahoma, Arial, sans-serif;
+  font-family: var(--font-iran-sans, "iranSansX"), Tahoma, Arial, sans-serif;
   direction: ltr;
   text-align: left;
   display: inline-block;
@@ -109,16 +109,16 @@ body {
 
 /* Document-level font application */
 html.font-persian {
-  font-family: var(--font-iran-sans), Tahoma, Arial, sans-serif;
+  font-family: var(--font-iran-sans, "iranSansX"), Tahoma, Arial, sans-serif;
 }
 
 html.font-english {
-  font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-poppins, "Poppins"), ui-sans-serif, system-ui, sans-serif;
 }
 
 /* Override for Persian text everywhere */
 html {
-  font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-poppins, "Poppins"), ui-sans-serif, system-ui, sans-serif;
 }
 
 /* Persian number support */
