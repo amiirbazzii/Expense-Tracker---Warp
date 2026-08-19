@@ -168,6 +168,26 @@ describe("idempotency key", () => {
   });
 });
 
+describe("settings through the queue", () => {
+  it("drains a queued settings update with its idempotency key", async () => {
+    await mutationQueue.enqueue("userSettings:update", {
+      token: "stale-token",
+      currency: "EUR",
+      calendar: "jalali",
+    });
+
+    await syncEngine.drainNow();
+
+    expect(await mutationQueue.size()).toBe(0);
+    const call = calls.find((c) => c.fn === "userSettings:update");
+    expect(call).toBeDefined();
+    expect(call!.args).toMatchObject({ currency: "EUR", calendar: "jalali" });
+    // The engine stamps the fresh session token, not the enqueued one.
+    expect(call!.args.token).toBe("token-1");
+    expect(typeof call!.args.idempotencyKey).toBe("string");
+  });
+});
+
 describe("offline delete vs hydration", () => {
   it("does not resurrect a deleted record the server still returns", async () => {
     const created = await localDataStore.addExpense({

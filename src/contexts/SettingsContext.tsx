@@ -1,13 +1,17 @@
 "use client";
 
 import { createContext, useContext, ReactNode, useEffect, useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery } from "convex/react";
 import { useAuth } from "./AuthContext";
 import { api } from "../../convex/_generated/api";
 import { Doc } from "../../convex/_generated/dataModel";
-import { offlineTokenManager, OfflineUserSettings } from "@/lib/auth/OfflineTokenManager";
-import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { mutationQueue } from "@/lib/queue/MutationQueueManager";
+import { syncEngine } from "@/lib/sync/SyncEngine";
+import {
+  getLocalSettings,
+  saveLocalSettings,
+  LocalUserSettings,
+} from "@/lib/settings/localSettingsStore";
 
 export type Currency = Doc<"userSettings">["currency"];
 export type Calendar = Doc<"userSettings">["calendar"];
@@ -22,11 +26,30 @@ interface SettingsContextType {
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
+/** Present the local record in the Doc shape the rest of the app consumes. */
+function toDoc(local: LocalUserSettings): Doc<"userSettings"> {
+  return {
+    _id: "local" as any,
+    _creationTime: local.updatedAt,
+    updatedAt: local.updatedAt,
+    userId: "" as any,
+    currency: local.currency,
+    calendar: local.calendar,
+    language: local.language,
+  };
+}
+
+/**
+ * Settings follow the same offline-first flow as every other collection:
+ * reads come from IndexedDB, writes go local-first and then through the
+ * mutation queue (which the sync engine drains immediately when online, with
+ * Phase-3 idempotency), and the live Convex query acts as hydration — its
+ * results are persisted locally unless an unsent local change is queued.
+ */
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const { token, isOfflineMode } = useAuth();
-  const isOnline = useOnlineStatus();
-  const [offlineSettings, setOfflineSettings] = useState<OfflineUserSettings | null>(null);
-  const [isUsingOfflineSettings, setIsUsingOfflineSettings] = useState(false);
+  const { token } = useAuth();
+  const [localSettings, setLocalSettings] = useState<LocalUserSettings | null>(null);
+  const [localLoaded, setLocalLoaded] = useState(false);
   const [hasPendingSettings, setHasPendingSettings] = useState(false);
 
   // Track whether a settings change is still waiting in the sync queue.
@@ -55,153 +78,96 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       unsubscribe();
     };
   }, []);
-  
-  // Fetch settings from Convex (online)
+
+  // Live server copy — hydration source while online.
   let onlineSettings;
   try {
     onlineSettings = useQuery(api.userSettings.get, token ? { token } : "skip");
   } catch (error) {
-    console.error('Settings query error:', error);
+    console.error("Settings query error:", error);
     onlineSettings = null;
   }
-  
-  const updateMutation = useMutation(api.userSettings.update);
 
-  // Load offline settings on mount
+  // Read the local record first — this is what an offline reload renders from.
   useEffect(() => {
-    const loadOfflineSettings = async () => {
-      try {
-        const cached = await offlineTokenManager.getOfflineSettings();
-        if (cached) {
-          setOfflineSettings(cached);
-          console.log('Loaded offline settings:', cached);
-        }
-      } catch (error) {
-        console.error('Failed to load offline settings:', error);
-      }
+    let cancelled = false;
+    getLocalSettings()
+      .then((stored) => {
+        if (cancelled) return;
+        if (stored) setLocalSettings(stored);
+      })
+      .catch((error) => console.error("Failed to load local settings:", error))
+      .finally(() => {
+        if (!cancelled) setLocalLoaded(true);
+      });
+    return () => {
+      cancelled = true;
     };
-
-    loadOfflineSettings();
   }, []);
 
-  // Save settings to offline storage when online settings change
+  // Hydrate the local record from the server copy — but never over a change
+  // that has not been delivered yet, or reconnect would visibly revert it.
   useEffect(() => {
-    const saveOfflineSettings = async () => {
-      // Don't overwrite a change that hasn't been delivered yet.
-      if (onlineSettings && !hasPendingSettings) {
-        const settingsToCache: OfflineUserSettings = {
-          currency: onlineSettings.currency as OfflineUserSettings['currency'],
-          calendar: onlineSettings.calendar as OfflineUserSettings['calendar'],
-          language: (onlineSettings.language ?? 'en') as OfflineUserSettings['language'],
-        };
-        
-        try {
-          // Also update the offline token with settings
-          const token = await offlineTokenManager.getToken();
-          if (token && !token.settings) {
-            // First time saving settings to token
-            await offlineTokenManager.saveToken(
-              token.userId,
-              token.username,
-              await offlineTokenManager.getDecryptedAuthToken() || '',
-              token.avatar,
-              settingsToCache
-            );
-          } else {
-            // Just update settings
-            await offlineTokenManager.updateOfflineSettings(settingsToCache);
-          }
-          
-          setOfflineSettings(settingsToCache);
-          console.log('Settings cached for offline use');
-        } catch (error) {
-          console.error('Failed to cache settings:', error);
-        }
+    if (!onlineSettings || hasPendingSettings) return;
+    let cancelled = false;
+    (async () => {
+      // Re-check the queue directly: `hasPendingSettings` is populated
+      // asynchronously, so right after mount it can still read false while
+      // an undelivered change sits in the queue.
+      const queued = await mutationQueue.getAll();
+      if (cancelled || queued.some((m) => m.action === "userSettings:update")) {
+        return;
       }
+      const saved = await saveLocalSettings({
+        currency: onlineSettings.currency,
+        calendar: onlineSettings.calendar,
+        language: onlineSettings.language ?? "en",
+      });
+      if (!cancelled) setLocalSettings(saved);
+    })().catch((error) => console.error("Failed to persist settings:", error));
+    return () => {
+      cancelled = true;
     };
-
-    saveOfflineSettings();
   }, [onlineSettings, hasPendingSettings]);
-
-  // Determine which settings to use.
-  //
-  // While a settings change is still queued, the local copy is the truth: the
-  // server has not seen the change yet, so preferring `onlineSettings` here
-  // would visibly revert the user's choice on reconnect.
-  const preferLocal = hasPendingSettings && offlineSettings !== null;
-  const effectiveSettings = ((preferLocal ? null : onlineSettings) || (offlineSettings ? {
-    _id: 'offline' as any,
-    _creationTime: Date.now(),
-    updatedAt: Date.now(),
-    userId: '' as any,
-    currency: offlineSettings.currency,
-    calendar: offlineSettings.calendar,
-    language: offlineSettings.language,
-  } : null)) as Doc<"userSettings"> | null | undefined;
-
-  // Track if we're using offline settings
-  useEffect(() => {
-    setIsUsingOfflineSettings(!onlineSettings && !!offlineSettings);
-  }, [onlineSettings, offlineSettings]);
 
   const updateSettings = async (args: { currency?: Currency; calendar?: Calendar; language?: Language }) => {
     if (!token) {
       console.error("Authentication token not found. Cannot update settings.");
       return;
     }
-    
-    try {
-      // Send it now when we can; otherwise hand it to the same FIFO queue the
-      // rest of the app uses so the change actually reaches the server later.
-      // Previously an offline change was only cached locally and was silently
-      // reverted by the server's copy on the next reconnect.
-      let delivered = false;
-      if (isOnline) {
-        try {
-          await updateMutation({ ...args, token });
-          delivered = true;
-        } catch (error) {
-          console.warn("Settings update failed, queueing for background sync", error);
-        }
-      }
 
-      if (!delivered) {
-        await mutationQueue.enqueue("userSettings:update", { token, ...args });
-        setHasPendingSettings(true);
-      }
+    // Local first, then the shared FIFO queue — the engine drains it right
+    // away when online, retries with the same idempotency key otherwise.
+    const saved = await saveLocalSettings({
+      ...(args.currency != null && { currency: args.currency }),
+      ...(args.calendar != null && { calendar: args.calendar }),
+      ...(args.language != null && { language: args.language }),
+    });
+    setLocalSettings(saved);
 
-      // Always update offline cache
-      const currentSettings = offlineSettings || {
-        currency: 'USD' as Currency,
-        calendar: 'gregorian' as Calendar,
-        language: 'en' as Language
-      };
-      
-      const updatedSettings: OfflineUserSettings = {
-        currency: (args.currency != null ? args.currency : currentSettings.currency) as OfflineUserSettings['currency'],
-        calendar: (args.calendar != null ? args.calendar : currentSettings.calendar) as OfflineUserSettings['calendar'],
-        language: (args.language != null ? args.language : currentSettings.language) as OfflineUserSettings['language'],
-      };
-      
-      await offlineTokenManager.updateOfflineSettings(updatedSettings);
-      setOfflineSettings(updatedSettings);
-      
-      if (!isOnline) {
-        console.log('Settings updated offline, will sync when online');
-      }
-    } catch (error) {
-      console.error("Failed to update settings", error);
-      throw error;
-    }
+    await mutationQueue.enqueue("userSettings:update", { token, ...args });
+    setHasPendingSettings(true);
+
+    // Deliver right away when the engine is online; otherwise the queue
+    // holds it until reconnect.
+    void syncEngine.drainNow().catch(() => {});
   };
+
+  // The local record is the truth the UI renders; the server copy fills in
+  // only before the first local write has ever happened.
+  const effectiveSettings = (
+    localSettings ? toDoc(localSettings) : onlineSettings ?? null
+  ) as Doc<"userSettings"> | null | undefined;
 
   return (
     <SettingsContext.Provider
       value={{
         settings: effectiveSettings,
         updateSettings,
-        isLoading: onlineSettings === undefined && offlineSettings === null,
-        isUsingOfflineSettings,
+        // Resolves as soon as the local read finishes, online or not — an
+        // offline first run renders defaults instead of loading forever.
+        isLoading: !localLoaded && onlineSettings === undefined,
+        isUsingOfflineSettings: !onlineSettings && localSettings !== null,
       }}
     >
       {children}
