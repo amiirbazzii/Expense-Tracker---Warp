@@ -1,23 +1,29 @@
 /**
- * App-shell warm-up.
+ * App-shell self-heal.
  *
- * The service worker precaches every JS/CSS chunk, but page *documents* only
- * enter the runtime cache when the user happens to visit them — so a screen
- * never opened while online was a white screen offline. This fetches each core
- * route's HTML once and stores it in the exact runtime caches the service
- * worker's StaleWhileRevalidate handlers read from, making the whole app
- * navigable offline after a single online launch.
+ * Every route document ships in the service worker's precache, so a fresh
+ * install can cold-start offline into any route. This module covers the two
+ * states where that guarantee has been lost on a real device:
  *
- * Runs at most once per day per app version (each deploy re-warms once, so
- * cached documents track the current build).
+ *  - Cache Storage was evicted under storage pressure. Workbox only fills the
+ *    precache during the SW `install` event, and an unchanged sw.js never
+ *    reinstalls — without this pass the device would stay broken offline
+ *    until the next deploy.
+ *  - The installed SW predates full-route precaching, so most documents were
+ *    never precached at all.
+ *
+ * On every online launch it checks each core route for an offline-servable
+ * document (precache or runtime cache) and re-fetches only what is missing
+ * into the exact runtime caches the SW's document handlers read. Checks are
+ * cache lookups — the network is touched only for the gaps.
  */
 
-import { STARTUP_SHELL_ROUTES } from "./coreRoutes";
 import { connectivity } from "../connectivity";
 
-// Must mirror the `appPages` list and cache names in next.config.js — the
-// warm-up writes into the caches those rules read.
-const SW_CACHE_VERSION = process.env.NEXT_PUBLIC_SW_CACHE_VERSION ?? "v3";
+// Must mirror the cache names in next.config.js — the self-heal writes into
+// the caches those rules read. The version env var is injected by
+// next.config.js at build time, so it is always defined in a real build.
+const SW_CACHE_VERSION = process.env.NEXT_PUBLIC_SW_CACHE_VERSION;
 const APP_PAGES_CACHE = `app-pages-${SW_CACHE_VERSION}`;
 const ROOT_PAGES_CACHE = `root-pages-${SW_CACHE_VERSION}`;
 
@@ -34,31 +40,31 @@ const APP_ROUTES = [
   "/onboarding",
 ];
 
-const ROOT_ROUTES = [STARTUP_SHELL_ROUTES[1], "/register"];
+const ROOT_ROUTES = ["/login", "/register"];
 
-const THROTTLE_KEY = "pwa-shell-warmed";
-const THROTTLE_MS = 24 * 60 * 60 * 1000;
-
-function alreadyWarmedRecently(version: string): boolean {
-  try {
-    const raw = localStorage.getItem(THROTTLE_KEY);
-    if (!raw) return false;
-    const { v, at } = JSON.parse(raw);
-    return v === version && Date.now() - at < THROTTLE_MS;
-  } catch {
-    return false;
+/**
+ * True when some cache can answer a document navigation to `route`.
+ * Precache entries are keyed with a `?__WB_REVISION__` param and runtime
+ * entries carry stripped URLs, so match ignoring search and Vary. Only the
+ * caches the SW's document lookups actually consult are checked — an RSC
+ * payload cached under the same pathname must not count as a document.
+ */
+async function hasDocument(route: string): Promise<boolean> {
+  const names = (await caches.keys()).filter(
+    (name) =>
+      name.startsWith("workbox-precache") ||
+      name === APP_PAGES_CACHE ||
+      name === ROOT_PAGES_CACHE,
+  );
+  for (const name of names) {
+    const cache = await caches.open(name);
+    const hit = await cache.match(route, {
+      ignoreSearch: true,
+      ignoreVary: true,
+    });
+    if (hit) return true;
   }
-}
-
-function recordWarmed(version: string): void {
-  try {
-    localStorage.setItem(
-      THROTTLE_KEY,
-      JSON.stringify({ v: version, at: Date.now() }),
-    );
-  } catch {
-    // Storage full/blocked — we'll simply warm again next launch.
-  }
+  return false;
 }
 
 /**
@@ -69,59 +75,116 @@ function recordWarmed(version: string): void {
  * `redirected` response served to a navigation is rejected by the browser
  * outright. Storing a clean copy sidesteps both.
  */
-async function sanitize(response: Response): Promise<Response> {
-  const headers = new Headers(response.headers);
+function sanitize(body: Blob, original: Response): Response {
+  const headers = new Headers(original.headers);
   headers.delete("Vary");
-  return new Response(await response.blob(), { status: 200, headers });
+  return new Response(body, { status: 200, headers });
 }
 
-async function warmInto(cacheName: string, routes: string[]): Promise<number> {
-  const cache = await caches.open(cacheName);
-  let cached = 0;
+/**
+ * Restore evicted entries directly into Workbox's precache.
+ *
+ * This is the load-bearing half of the self-heal. Once a URL is in the
+ * precache manifest, Workbox's precache route claims every request for it;
+ * on a cache miss it falls back to the network WITHOUT re-caching, and it
+ * never falls through to the runtime rules — so after a Cache Storage
+ * eviction nothing would ever return to cache and offline startup stays
+ * broken until a deploy changes sw.js. Workbox itself only writes the
+ * precache during the SW `install` event.
+ *
+ * The manifest (and each entry's exact `?__WB_REVISION__` cache key) is
+ * parsed out of /sw.js, so what gets restored is exactly what install would
+ * have stored.
+ */
+async function healPrecache(): Promise<number> {
+  let manifest: Array<{ url: string; revision: string | null }> = [];
+  try {
+    const response = await fetch("/sw.js", { cache: "no-store" });
+    if (!response.ok) return 0;
+    const source = await response.text();
+    manifest = Array.from(
+      source.matchAll(/\{url:"([^"]+)",revision:(?:null|"([^"]*)")\}/g),
+      (match) => ({ url: match[1], revision: match[2] ?? null }),
+    );
+  } catch {
+    return 0;
+  }
+  if (manifest.length === 0) return 0;
+
+  const preName =
+    (await caches.keys()).find((name) => name.startsWith("workbox-precache")) ??
+    `workbox-precache-v2-${location.origin}/`;
+  const cache = await caches.open(preName);
+  let healed = 0;
+
+  await Promise.all(
+    manifest.map(async ({ url, revision }) => {
+      const key = revision
+        ? `${url}${url.includes("?") ? "&" : "?"}__WB_REVISION__=${revision}`
+        : url;
+      try {
+        if (await cache.match(key)) return;
+        const response = await fetch(url, { credentials: "same-origin" });
+        if (response.ok) {
+          await cache.put(key, sanitize(await response.blob(), response));
+          healed++;
+        }
+      } catch {
+        // Offline or flaky — skip; the next pass picks it up.
+      }
+    }),
+  );
+
+  return healed;
+}
+
+async function healInto(cacheName: string, routes: string[]): Promise<number> {
+  let healed = 0;
 
   // Individually, not addAll: one failed route must not void the rest.
   await Promise.all(
     routes.map(async (route) => {
       try {
+        if (await hasDocument(route)) return;
         const response = await fetch(route, { credentials: "same-origin" });
         if (response.ok) {
-          await cache.put(route, await sanitize(response));
-          cached++;
+          const cache = await caches.open(cacheName);
+          await cache.put(route, sanitize(await response.blob(), response));
+          healed++;
         }
       } catch {
-        // Offline or flaky — skip; the next warm-up pass picks it up.
+        // Offline or flaky — skip; the next pass picks it up.
       }
     }),
   );
 
-  return cached;
+  return healed;
 }
 
-/** Fetch and cache the core routes' documents. Never throws. */
-export async function warmAppShell(): Promise<void> {
+/**
+ * Ensure every core route's document is offline-servable, re-fetching only
+ * the missing ones. Never throws.
+ */
+export async function ensureAppShell(): Promise<void> {
   if (typeof window === "undefined" || typeof caches === "undefined") return;
   if (!connectivity.isOnline) return;
 
-  const version = process.env.NEXT_PUBLIC_APP_VERSION ?? "unknown";
-  if (alreadyWarmedRecently(version)) return;
-
   try {
+    // Precache first: with it whole, the runtime document heal below finds
+    // every route present and becomes a no-op. The runtime heal still covers
+    // stale installed SWs whose precache manifest never included the route
+    // documents (their document requests do reach the runtime caches).
+    const restored = await healPrecache();
     const [app, root] = await Promise.all([
-      warmInto(APP_PAGES_CACHE, APP_ROUTES),
-      warmInto(ROOT_PAGES_CACHE, ROOT_ROUTES),
+      healInto(APP_PAGES_CACHE, APP_ROUTES),
+      healInto(ROOT_PAGES_CACHE, ROOT_ROUTES),
     ]);
-
-    // Only mark done when everything landed, so a partial pass (connection
-    // dropped mid-way) retries on the next launch.
-    if (app === APP_ROUTES.length && root === ROOT_ROUTES.length) {
-      recordWarmed(version);
-      console.log(`[PWA] App shell warmed (${app + root} routes)`);
-    } else {
+    if (restored + app + root > 0) {
       console.log(
-        `[PWA] App shell partially warmed (${app + root}/${APP_ROUTES.length + ROOT_ROUTES.length}) — will retry next launch`,
+        `[PWA] App shell self-heal restored ${restored} precache and ${app + root} document entries`,
       );
     }
   } catch (err) {
-    console.warn("[PWA] App shell warm-up failed:", err);
+    console.warn("[PWA] App shell self-heal failed:", err);
   }
 }

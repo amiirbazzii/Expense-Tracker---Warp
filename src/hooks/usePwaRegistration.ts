@@ -2,7 +2,8 @@
 
 import { useEffect } from "react";
 import { toast } from "sonner";
-import { warmAppShell } from "@/lib/pwa/warmAppShell";
+import { ensureAppShell } from "@/lib/pwa/warmAppShell";
+import { connectivity } from "@/lib/connectivity";
 
 export function usePwaRegistration() {
   useEffect(() => {
@@ -20,6 +21,13 @@ export function usePwaRegistration() {
       });
       return;
     }
+
+    // Ask the browser not to evict Cache Storage / IndexedDB under storage
+    // pressure. Eviction is otherwise permanent for the precache (Workbox
+    // only fills it during SW install, and an unchanged sw.js never
+    // reinstalls), which killed offline startup on real devices. Best-effort:
+    // browsers may decline; the self-heal below is the fallback.
+    navigator.storage?.persist?.().catch(() => {});
 
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     let isMounted = true;
@@ -41,10 +49,11 @@ export function usePwaRegistration() {
 
         if (!isMounted) return;
 
-        // Once the worker is in control, cache every core route's document so
-        // the whole app can be navigated offline — not just visited screens.
+        // Once the worker is in control, restore any core route documents
+        // missing from the caches (stale installs, evicted storage) so the
+        // whole app stays cold-start navigable offline.
         navigator.serviceWorker.ready
-          .then(() => warmAppShell())
+          .then(() => ensureAppShell())
           .catch(() => {});
 
         registration.addEventListener("updatefound", () => {
@@ -123,8 +132,15 @@ export function usePwaRegistration() {
       window.addEventListener("load", registerSW);
     }
 
+    // An app launched offline skips the self-heal; run it when verified
+    // connectivity arrives so gaps are filled on the first reconnect.
+    const unsubscribeConnectivity = connectivity.subscribe((online) => {
+      if (online && isMounted) void ensureAppShell();
+    });
+
     return () => {
       isMounted = false;
+      unsubscribeConnectivity();
       if (retryTimer) clearTimeout(retryTimer);
     };
   }, []);
