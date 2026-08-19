@@ -1,24 +1,16 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { connectivity } from '@/lib/connectivity';
 
+/** Reactive, probe-verified connectivity state (see src/lib/connectivity.ts). */
 export function useOnlineStatus() {
-  const [isOnline, setIsOnline] = useState(true);
+  const [isOnline, setIsOnline] = useState(() => connectivity.isOnline);
 
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    // Set initial state
-    setIsOnline(navigator.onLine);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
+    // The state can have changed between render and effect.
+    setIsOnline(connectivity.isOnline);
+    return connectivity.subscribe(setIsOnline);
   }, []);
 
   return isOnline;

@@ -25,6 +25,7 @@ import { localStorageManager } from "../storage/LocalStorageManager";
 import { clearAllStores } from "../storage/idb";
 import { LocalLoan } from "../types/local-storage";
 import { localDataStore } from "../store/LocalDataStore";
+import { connectivity } from "../connectivity";
 
 // ── Action router ─────────────────────────────────────────────────────────────
 // Maps the opaque `action` string stored in the queue to the correct
@@ -147,9 +148,11 @@ export class SyncEngine {
   // Used to translate ID references in subsequent update/delete mutations.
   private localToConvexId: Map<string, string> = new Map();
 
-  // True when the browser reports network connectivity.
-  private isOnline: boolean =
-    typeof navigator !== "undefined" ? navigator.onLine : true;
+  // Mirrors the verified connectivity state (src/lib/connectivity.ts).
+  private isOnline: boolean = connectivity.isOnline;
+
+  // Unsubscribe handle for the connectivity subscription.
+  private unsubscribeConnectivity: (() => void) | null = null;
 
   // True while a drain pass is in flight — prevents concurrent runs.
   private isDraining = false;
@@ -170,17 +173,16 @@ export class SyncEngine {
   private listeners = new Set<(status: SyncEngineStatus) => void>();
 
   // Named handler references so addEventListener/removeEventListener are paired.
-  private handleOnline = () => {
-    this.isOnline = true;
-    console.log("[SyncEngine] Online — triggering drain");
-    this.emit();
-    this.drain();
-  };
-
-  private handleOffline = () => {
-    this.isOnline = false;
-    console.log("[SyncEngine] Offline — pausing sync");
-    this.emit();
+  private handleConnectivityChange = (online: boolean) => {
+    this.isOnline = online;
+    if (online) {
+      console.log("[SyncEngine] Online — triggering drain");
+      this.emit();
+      this.drain();
+    } else {
+      console.log("[SyncEngine] Offline — pausing sync");
+      this.emit();
+    }
   };
 
   // Returning to a backgrounded tab is the most common moment for a phone to
@@ -190,9 +192,12 @@ export class SyncEngine {
       typeof document !== "undefined" &&
       document.visibilityState === "visible"
     ) {
-      this.isOnline =
-        typeof navigator !== "undefined" ? navigator.onLine : this.isOnline;
-      this.drain();
+      // Re-probe: the subscription handles the state change; drain either way
+      // so a verified-online tab syncs promptly on return.
+      void connectivity.verify().then((online) => {
+        this.isOnline = online;
+        if (online) this.drain();
+      });
     }
   };
 
@@ -263,8 +268,10 @@ export class SyncEngine {
     this.client = new ConvexClient(convexUrl);
 
     // Register connectivity listeners.
-    window.addEventListener("online", this.handleOnline);
-    window.addEventListener("offline", this.handleOffline);
+    this.isOnline = connectivity.isOnline;
+    this.unsubscribeConnectivity = connectivity.subscribe(
+      this.handleConnectivityChange,
+    );
     document.addEventListener("visibilitychange", this.handleVisibility);
 
     // 30-second periodic fallback.
@@ -341,8 +348,10 @@ export class SyncEngine {
       this.intervalId = null;
     }
 
-    window.removeEventListener("online", this.handleOnline);
-    window.removeEventListener("offline", this.handleOffline);
+    if (this.unsubscribeConnectivity) {
+      this.unsubscribeConnectivity();
+      this.unsubscribeConnectivity = null;
+    }
     document.removeEventListener("visibilitychange", this.handleVisibility);
 
     if (this.client) {

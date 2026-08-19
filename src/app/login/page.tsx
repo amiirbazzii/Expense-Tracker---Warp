@@ -8,29 +8,16 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/Button";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { connectivity } from "@/lib/connectivity";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isOnline, setIsOnline] = useState(true);
+  const isOnline = useOnlineStatus();
   const { login, user } = useAuth();
   const router = useRouter();
-
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-    
-    setIsOnline(navigator.onLine);
-
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-    };
-  }, []);
 
   useEffect(() => {
     if (user) {
@@ -46,8 +33,9 @@ export default function LoginPage() {
       return;
     }
 
-    // Check if offline - show appropriate message
-    if (!navigator.onLine) {
+    // Check if offline — re-probe first so a stale "offline" reading (e.g.
+    // some VPN configurations) never blocks a login that would succeed.
+    if (!isOnline && !(await connectivity.verify())) {
       toast.error("You're offline. Please connect to the internet to log in.");
       return;
     }

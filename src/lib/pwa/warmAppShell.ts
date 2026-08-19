@@ -13,6 +13,7 @@
  */
 
 import { STARTUP_SHELL_ROUTES } from "./coreRoutes";
+import { connectivity } from "../connectivity";
 
 // Must mirror the `appPages` list and cache names in next.config.js — the
 // warm-up writes into the caches those rules read.
@@ -99,7 +100,7 @@ async function warmInto(cacheName: string, routes: string[]): Promise<number> {
 /** Fetch and cache the core routes' documents. Never throws. */
 export async function warmAppShell(): Promise<void> {
   if (typeof window === "undefined" || typeof caches === "undefined") return;
-  if (!navigator.onLine) return;
+  if (!connectivity.isOnline) return;
 
   const version = process.env.NEXT_PUBLIC_APP_VERSION ?? "unknown";
   if (alreadyWarmedRecently(version)) return;

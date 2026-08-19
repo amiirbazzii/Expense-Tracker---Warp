@@ -16,6 +16,7 @@ import { mutationQueue } from '@/lib/queue/MutationQueueManager';
 import { syncEngine } from '@/lib/sync/SyncEngine';
 import { localDataStore } from '@/lib/store';
 import { SyncStatus, PendingMutation } from '@/lib/types/local-storage';
+import { connectivity } from '@/lib/connectivity';
 
 interface OfflineFirstContextType {
   // Initialization state
@@ -56,9 +57,7 @@ interface OfflineFirstProviderProps {
  */
 export function OfflineFirstProvider({ children, userId }: OfflineFirstProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false);
-  const [isOnline, setIsOnline] = useState(
-    typeof navigator !== 'undefined' ? navigator.onLine : true,
-  );
+  const [isOnline, setIsOnline] = useState(() => connectivity.isOnline);
 
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('synced');
   const [pendingOperationsCount, setPendingOperationsCount] = useState(0);
@@ -90,19 +89,10 @@ export function OfflineFirstProvider({ children, userId }: OfflineFirstProviderP
     };
   }, [userId]);
 
-  // Track connectivity.
+  // Track verified connectivity.
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    setIsOnline(navigator.onLine);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
+    setIsOnline(connectivity.isOnline);
+    return connectivity.subscribe(setIsOnline);
   }, []);
 
   // Mirror the queue and the engine. Both emit on every change, so there is
@@ -218,7 +208,7 @@ export function useOfflineCapability() {
       canFunctionOffline: false,
       shouldShowOfflineMessage: false,
       isFullyFunctional: true, // Assume functional to prevent blocking
-      isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+      isOnline: connectivity.isOnline,
       isInitialized: true, // Prevent blocking when context is unavailable
     };
   }

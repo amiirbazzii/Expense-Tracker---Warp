@@ -185,12 +185,12 @@ export function OfflineModeIndicator() {
   }, [context]);
 
   // Only show banner if properly initialized, confirmed offline, and not dismissed
-  const shouldShow = isInitialized && 
-                    context && 
-                    !context.isOnline && 
-                    !dismissed &&
-                    typeof navigator !== 'undefined' && 
-                    !navigator.onLine; // Double-check with native API
+  // context.isOnline is already probe-verified (src/lib/connectivity.ts), so
+  // no non-reactive navigator.onLine double-check is needed here.
+  const shouldShow = isInitialized &&
+                    context &&
+                    !context.isOnline &&
+                    !dismissed;
 
   // Debug logging (remove in production)
   useEffect(() => {
@@ -198,7 +198,7 @@ export function OfflineModeIndicator() {
       isInitialized,
       contextExists: !!context,
       contextIsOnline: context?.isOnline,
-      navigatorOnLine: typeof navigator !== 'undefined' ? navigator.onLine : 'undefined',
+      navigatorOnLine: typeof navigator !== 'undefined' ? navigator.onLine : 'undefined', // raw hint, for comparison only
       dismissed,
       shouldShow
     });
@@ -217,7 +217,7 @@ export function OfflineModeIndicator() {
 
   // Reset dismissed state when coming back online
   useEffect(() => {
-    if (context?.isOnline && navigator.onLine) {
+    if (context?.isOnline) {
       setDismissed(false);
     }
   }, [context?.isOnline]);

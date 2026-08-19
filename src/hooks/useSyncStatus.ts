@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useOnlineStatus } from "./useOnlineStatus";
 import { syncEngine } from "@/lib/sync/SyncEngine";
 import { mutationQueue } from "@/lib/queue/MutationQueueManager";
+import { connectivity } from "@/lib/connectivity";
 
 export type SyncStatus = "offline" | "synced" | "syncing" | "attention";
 
@@ -30,7 +31,7 @@ export function useSyncStatus(): SyncStatus {
     const update = async () => {
       if (cancelled) return;
 
-      if (!navigator.onLine) {
+      if (!connectivity.isOnline) {
         setStatus("offline");
         return;
       }
