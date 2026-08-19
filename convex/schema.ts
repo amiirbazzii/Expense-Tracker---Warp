@@ -91,4 +91,15 @@ export default defineSchema({
     userId: v.id("users"),
     createdAt: v.number(),
   }).index("by_user", ["userId"]),
+
+  // One row per applied client mutation, keyed by the offline queue item's
+  // idempotency key. A retry whose first attempt actually committed (response
+  // lost to a crash or dropped connection) finds its key here and gets the
+  // recorded result back instead of writing a duplicate.
+  mutationLog: defineTable({
+    userId: v.id("users"),
+    key: v.string(),
+    result: v.any(),
+    createdAt: v.number(),
+  }).index("by_user_key", ["userId", "key"]),
 });

@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { idempotentMutation } from "./idempotency";
 import { mutation, query } from "./_generated/server";
 import { ConvexError } from "convex/values";
 
@@ -36,7 +37,7 @@ function assertValidAmount(amount: number) {
 
 // ── Mutations ───────────────────────────────────────────────────────────
 
-export const createLoan = mutation({
+export const createLoan = idempotentMutation({
   args: {
     token: v.string(),
     name: v.string(),
@@ -76,7 +77,7 @@ export const createLoan = mutation({
   },
 });
 
-export const updateLoan = mutation({
+export const updateLoan = idempotentMutation({
   args: {
     token: v.string(),
     loanId: v.id("loans"),
@@ -112,7 +113,7 @@ export const updateLoan = mutation({
   },
 });
 
-export const deleteLoan = mutation({
+export const deleteLoan = idempotentMutation({
   args: {
     token: v.string(),
     loanId: v.id("loans"),
@@ -133,7 +134,7 @@ export const deleteLoan = mutation({
   },
 });
 
-export const payInstallment = mutation({
+export const payInstallment = idempotentMutation({
   args: {
     token: v.string(),
     loanId: v.id("loans"),

@@ -26,6 +26,7 @@ import { clearAllStores } from "../storage/idb";
 import { LocalLoan } from "../types/local-storage";
 import { localDataStore } from "../store/LocalDataStore";
 import { connectivity } from "../connectivity";
+import { runSyncPhase } from "./syncPhaseLock";
 
 // ── Action router ─────────────────────────────────────────────────────────────
 // Maps the opaque `action` string stored in the queue to the correct
@@ -444,7 +445,8 @@ export class SyncEngine {
     this.isDraining = true;
     this.drainRequested = false;
 
-    const pass = this.runDrain()
+    // Serialized against hydration merges — see syncPhaseLock.ts.
+    const pass = runSyncPhase(() => this.runDrain())
       .catch((err) => {
         console.error("[SyncEngine] Drain crashed:", err);
       })
@@ -508,6 +510,11 @@ export class SyncEngine {
           const payload: Record<string, unknown> = {
             ...rest,
             token: this.authToken,
+            // The queue item's UUID doubles as the idempotency key: if the
+            // response is lost (crash or dropped connection after the server
+            // committed), the retry re-sends the same key and the server
+            // returns the recorded result instead of writing twice.
+            idempotencyKey: mutation.id,
           };
 
           await this.resolveIdReferences(payload, mutation.action);

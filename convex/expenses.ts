@@ -1,4 +1,5 @@
 import moment from "jalali-moment";
+import { idempotentMutation } from "./idempotency";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { ConvexError } from "convex/values";
@@ -35,7 +36,7 @@ function assertValidAmount(amount: number) {
   }
 }
 
-export const createExpense = mutation({
+export const createExpense = idempotentMutation({
   args: {
     token: v.string(),
     amount: v.number(),
@@ -149,7 +150,7 @@ export const getExpensesByDateRange = query({
   },
 });
 
-export const updateExpense = mutation({
+export const updateExpense = idempotentMutation({
   args: {
     token: v.string(),
     expenseId: v.id("expenses"),
@@ -262,7 +263,7 @@ export const getAllCategories = query({
   },
 });
 
-export const archiveCategory = mutation({
+export const archiveCategory = idempotentMutation({
   args: {
     token: v.string(),
     categoryName: v.string(),
@@ -286,7 +287,7 @@ export const archiveCategory = mutation({
   },
 });
 
-export const deleteCategory = mutation({
+export const deleteCategory = idempotentMutation({
   args: {
     token: v.string(),
     categoryName: v.string(),
@@ -325,7 +326,7 @@ export const deleteCategory = mutation({
   },
 });
 
-export const deleteExpense = mutation({
+export const deleteExpense = idempotentMutation({
   args: {
     token: v.string(),
     expenseId: v.id("expenses"),
@@ -349,7 +350,7 @@ export const deleteExpense = mutation({
   },
 });
 
-export const createCategory = mutation({
+export const createCategory = idempotentMutation({
   args: {
     token: v.string(),
     name: v.string(),
@@ -386,7 +387,7 @@ export const createCategory = mutation({
   },
 });
 
-export const createForValue = mutation({
+export const createForValue = idempotentMutation({
   args: {
     token: v.string(),
     value: v.string(),

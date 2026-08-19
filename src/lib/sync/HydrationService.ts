@@ -23,6 +23,8 @@ import { localDataStore } from "../store/LocalDataStore";
 import { mutationQueue } from "../queue/MutationQueueManager";
 import { localStorageManager } from "../storage/LocalStorageManager";
 import { EntityType, LocalEntity } from "../types/local-storage";
+import { getTombstonedIds, pruneTombstones } from "./tombstones";
+import { runSyncPhase } from "./syncPhaseLock";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -98,11 +100,9 @@ class HydrationService {
     console.log("[HydrationService] Starting hydration");
 
     try {
-      // Rows touched by a queued mutation must not be overwritten by the
-      // server's older copy.
-      const pendingLocalIds = await this.buildPendingIdSet();
-
-      // Fetch all collections from Convex in parallel
+      // Fetch all collections from Convex in parallel. The fetch runs outside
+      // the sync-phase lock (it has no local side effects); the merge below
+      // must not interleave with a queue drain writing cloudIds back.
       const [expenses, income, categories, forValues, cards, incomeCategories, loans] =
         await Promise.all([
           client.query(api.expenses.getExpenses, { token }),
@@ -113,6 +113,12 @@ class HydrationService {
           client.query(api.cardsAndIncome.getIncomeCategories, { token }),
           client.query(api.loans.getLoans, { token }),
         ]);
+
+      await runSyncPhase(async () => {
+      // Rows touched by a queued mutation must not be overwritten by the
+      // server's older copy. Built inside the lock so a drain finishing just
+      // before us is fully reflected.
+      const pendingLocalIds = await this.buildPendingIdSet();
 
       // Cards first: transactions reference them, and the merges below need a
       // complete cloudId → local key map to rewrite those references.
@@ -139,6 +145,7 @@ class HydrationService {
         pendingLocalIds,
         cardKeyByCloudId,
       );
+      });
 
       // Re-read all collections into memory and notify subscribers
       await localDataStore.refresh();
@@ -215,6 +222,10 @@ class HydrationService {
     const localCollection =
       await this.storage.getEntityCollection<LocalEntity>(collection);
 
+    // Rows deleted locally whose delete mutation may not have landed yet.
+    // Re-inserting the server's copy would resurrect them.
+    const tombstoned = await getTombstonedIds(collection);
+
     // cloudId → local key, for rows already linked to the server.
     const keyByCloudId = new Map<string, string>();
     for (const [key, row] of Object.entries(localCollection)) {
@@ -232,6 +243,13 @@ class HydrationService {
 
     for (const doc of serverDocs) {
       const cloudId = doc._id;
+
+      // Deleted here while offline — skip until the delete reaches the server.
+      if (tombstoned.has(cloudId)) {
+        skipped++;
+        continue;
+      }
+
       const key =
         keyByCloudId.get(cloudId) ??
         (localCollection[cloudId] ? cloudId : undefined);
@@ -265,6 +283,14 @@ class HydrationService {
     const inserted = Object.keys(inserts).length;
     const updated = Object.keys(updates).length;
     await this.storage.bulkMergeServerDocs(collection, updates, inserts);
+
+    // A tombstoned id the server no longer returns has finished deleting.
+    if (tombstoned.size > 0) {
+      await pruneTombstones(
+        collection,
+        new Set(serverDocs.map((doc) => doc._id as string)),
+      );
+    }
 
     // Anything synced that the server no longer returns was deleted elsewhere.
     // Rows that never reached the server are always kept, and collections

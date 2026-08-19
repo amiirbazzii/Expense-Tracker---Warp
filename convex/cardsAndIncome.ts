@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { idempotentMutation } from "./idempotency";
 import { mutation, query } from "./_generated/server";
 import { ConvexError } from "convex/values";
 
@@ -35,7 +36,7 @@ function assertValidAmount(amount: number) {
 }
 
 // Card Operations
-export const addCard = mutation({
+export const addCard = idempotentMutation({
   args: {
     token: v.string(),
     name: v.string(),
@@ -66,7 +67,7 @@ export const getMyCards = query({
   },
 });
 
-export const deleteCard = mutation({
+export const deleteCard = idempotentMutation({
   args: {
     token: v.string(),
     cardId: v.id("cards"),
@@ -107,7 +108,7 @@ export const deleteCard = mutation({
   },
 });
 
-export const updateCard = mutation({
+export const updateCard = idempotentMutation({
   args: {
     token: v.string(),
     cardId: v.id("cards"),
@@ -126,7 +127,7 @@ export const updateCard = mutation({
 });
 
 // Income Operations
-export const createIncome = mutation({
+export const createIncome = idempotentMutation({
   args: {
     token: v.string(),
     amount: v.number(),
@@ -268,7 +269,7 @@ export const getAllIncomeCategories = query({
   },
 });
 
-export const createIncomeCategory = mutation({
+export const createIncomeCategory = idempotentMutation({
   args: {
     token: v.string(),
     name: v.string(),
@@ -304,7 +305,7 @@ export const createIncomeCategory = mutation({
   },
 });
 
-export const archiveIncomeCategory = mutation({
+export const archiveIncomeCategory = idempotentMutation({
   args: {
     token: v.string(),
     categoryName: v.string(),
@@ -327,7 +328,7 @@ export const archiveIncomeCategory = mutation({
   },
 });
 
-export const deleteIncomeCategory = mutation({
+export const deleteIncomeCategory = idempotentMutation({
   args: {
     token: v.string(),
     categoryName: v.string(),
@@ -382,7 +383,7 @@ export const getIncomeById = query({
   },
 });
 
-export const updateIncome = mutation({
+export const updateIncome = idempotentMutation({
   args: {
     token: v.string(),
     incomeId: v.id("income"),
@@ -435,7 +436,7 @@ export const updateIncome = mutation({
   },
 });
 
-export const deleteIncome = mutation({
+export const deleteIncome = idempotentMutation({
   args: {
     token: v.string(),
     incomeId: v.id("income"),
@@ -508,7 +509,7 @@ export const getCardBalances = query({
   },
 });
 
-export const transferFunds = mutation({
+export const transferFunds = idempotentMutation({
   args: {
     token: v.string(),
     fromCardId: v.id("cards"),

@@ -11,6 +11,7 @@
 
 import { localStorageManager } from "../storage/LocalStorageManager";
 import { mutationQueue } from "../queue/MutationQueueManager";
+import { addTombstone } from "../sync/tombstones";
 
 // ── Public types ────────────────────────────────────────────────────────
 
@@ -346,7 +347,24 @@ export class LocalDataStore {
     return this.toExpenseDoc(updated);
   }
 
+  /**
+   * Before removing a synced row, tombstone its cloudId so a hydration pass
+   * racing the queued delete cannot re-insert the server's copy.
+   */
+  private async tombstoneIfSynced(
+    collection: string,
+    id: string,
+  ): Promise<void> {
+    try {
+      const row = await this.storage.getEntityById(collection, id);
+      if (row?.cloudId) await addTombstone(collection, row.cloudId);
+    } catch (err) {
+      console.warn("[LocalDataStore] Failed to record tombstone:", err);
+    }
+  }
+
   async deleteExpense(id: string): Promise<boolean> {
+    await this.tombstoneIfSynced("expenses", id);
     const deleted = await this.storage.deleteExpense(id);
     if (!deleted) return false;
 
@@ -416,6 +434,7 @@ export class LocalDataStore {
   }
 
   async deleteIncome(id: string): Promise<boolean> {
+    await this.tombstoneIfSynced("income", id);
     const deleted = await this.storage.deleteIncome(id);
     if (!deleted) return false;
 
@@ -449,6 +468,7 @@ export class LocalDataStore {
   }
 
   async deleteCard(id: string): Promise<boolean> {
+    await this.tombstoneIfSynced("cards", id);
     const deleted = await this.storage.deleteCard(id);
     if (!deleted) return false;
 
@@ -581,6 +601,10 @@ export class LocalDataStore {
     if (!cat) return false;
 
     const isIncome = cat.type === "income";
+    await this.tombstoneIfSynced(
+      isIncome ? "incomeCategories" : "categories",
+      id,
+    );
     const deleted = isIncome
       ? await this.storage.deleteIncomeCategory(id)
       : await this.storage.deleteCategory(id);
@@ -692,6 +716,7 @@ export class LocalDataStore {
   }
 
   async deleteLoan(id: string): Promise<boolean> {
+    await this.tombstoneIfSynced("loans", id);
     const deleted = await this.storage.deleteLoan(id);
     if (!deleted) return false;
 

@@ -1,4 +1,5 @@
 import { mutation, query } from "./_generated/server";
+import { idempotentMutation } from "./idempotency";
 import { v } from "convex/values";
 import { getUserByToken } from "./auth";
 
@@ -20,7 +21,7 @@ export const get = query({
   },
 });
 
-export const update = mutation({
+export const update = idempotentMutation({
   args: {
     token: v.string(),
     currency: v.optional(
