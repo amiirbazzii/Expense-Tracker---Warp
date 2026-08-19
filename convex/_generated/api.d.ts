@@ -11,6 +11,7 @@
 import type * as auth from "../auth.js";
 import type * as cardsAndIncome from "../cardsAndIncome.js";
 import type * as expenses from "../expenses.js";
+import type * as idempotency from "../idempotency.js";
 import type * as internal_ from "../internal.js";
 import type * as loans from "../loans.js";
 import type * as userSettings from "../userSettings.js";
@@ -25,6 +26,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   cardsAndIncome: typeof cardsAndIncome;
   expenses: typeof expenses;
+  idempotency: typeof idempotency;
   internal: typeof internal_;
   loans: typeof loans;
   userSettings: typeof userSettings;
