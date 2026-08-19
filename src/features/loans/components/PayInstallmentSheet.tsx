@@ -256,7 +256,6 @@ export function PayInstallmentSheet({
 
         <Button
           type="submit"
-          variant="secondary"
           className="w-full"
           disabled={isSubmitting || category.length === 0 || !cardId}
           loading={isSubmitting}

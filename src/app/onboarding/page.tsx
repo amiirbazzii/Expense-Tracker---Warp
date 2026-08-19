@@ -96,7 +96,7 @@ export default function OnboardingPage() {
                     value={cardName}
                     onChange={(e) => setCardName(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
+                    className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
                     placeholder="e.g., Chase Visa, Bank of America"
                   />
                   <Button
@@ -107,6 +107,7 @@ export default function OnboardingPage() {
                     size="medium"
                     icon={<Plus />}
                     aria-label="Add card"
+                    className="shrink-0"
                   />
                 </div>
               </div>
