@@ -68,7 +68,15 @@ const withPWA = require("next-pwa")({
   // re-enabling the HTTP-cached-sw.js update flapping the hook exists to
   // prevent.
   register: false,
-  skipWaiting: false,
+  // A new worker activates itself immediately. This must NOT be false: old
+  // installs serve their own stale precached startup documents cache-first
+  // even while online, so no new *page* code (toast, boot-promote) ever runs
+  // on them — the only update path that reaches every device unconditionally
+  // is the browser's sw.js re-fetch (served with max-age=0) followed by the
+  // worker activating itself. With it false, real devices sat for months on
+  // an ancient worker with a fully-installed successor stuck in waiting, and
+  // offline cold start served the fallback page.
+  skipWaiting: true,
   clientsClaim: true,
   disable: process.env.NODE_ENV === "development",
   sw: "sw.js",
