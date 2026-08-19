@@ -89,6 +89,12 @@ const withPWA = require("next-pwa")({
     "!sitemap.xml",
     "!background-sync-sw.js",
     "!sw-version.js",
+    // Cloudflare consumes these config files and serves 404 for their URLs.
+    // Precaching them made the ENTIRE service-worker install fail atomically
+    // (bad-precaching-response) on the Workers deployment — no SW could ever
+    // install there, so the app had zero offline capability in production.
+    "!_headers",
+    "!_redirects",
   ],
   // dynamicStartUrl is off, so start_url ("/") is precached as a static
   // document. (dynamicStartUrlRedirect only applies when it is on.)
