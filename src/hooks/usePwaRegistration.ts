@@ -96,6 +96,18 @@ export function usePwaRegistration() {
           }
         });
 
+        // A worker already waiting at page load is an update that stalled in
+        // a previous session — on real devices it stayed stuck for months,
+        // leaving an ancient worker (with no offline app shell) in control
+        // while every deploy just replaced the waiting one. This early in the
+        // boot there is nothing unsaved, so promote it immediately; the
+        // controllerchange handler above reloads into it. The update toast
+        // still handles updates discovered later in the session.
+        if (registration.waiting && navigator.serviceWorker.controller) {
+          isUpdating = true;
+          registration.waiting.postMessage({ type: "SKIP_WAITING" });
+        }
+
         // Check for updates when the app returns to the foreground, at most
         // once per hour. The old version checked on every focus AND every
         // visibility change — both fire together on each app switch, so the
