@@ -28,6 +28,8 @@ export interface ExpenseDoc {
   cardId?: string;
   loanId?: string;
   installmentIndex?: number;
+  /** Local sync state; "failed" means the server rejected this row's mutation. */
+  syncStatus?: "pending" | "synced" | "failed";
 }
 
 /** Shape of an income record as the UI expects it (mirrors the Convex document). */
@@ -41,6 +43,7 @@ export interface IncomeDoc {
   source: string;
   category: string;
   notes?: string;
+  syncStatus?: "pending" | "synced" | "failed";
 }
 
 /** Shape of a card with computed balances (mirrors `getCardBalances`). */
@@ -811,6 +814,7 @@ export class LocalDataStore {
     cardId: e.cardId,
     loanId: e.loanId,
     installmentIndex: e.installmentIndex,
+    syncStatus: e.syncStatus,
   });
 
   private toIncomeDoc = (i: any): IncomeDoc => ({
@@ -823,6 +827,7 @@ export class LocalDataStore {
     source: i.source,
     category: i.category,
     notes: i.notes,
+    syncStatus: i.syncStatus,
   });
 
   private toCategoryDoc = (c: any): CategoryDoc => ({

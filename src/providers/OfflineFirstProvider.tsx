@@ -37,6 +37,8 @@ interface OfflineFirstContextType {
   // Operations
   forcSync: () => Promise<void>;
   retryFailedMutations: () => Promise<void>;
+  /** Drop rejected mutations and their never-saved local rows. */
+  discardFailedMutations: () => Promise<void>;
   clearLocalData: () => Promise<void>;
 }
 
@@ -158,6 +160,10 @@ export function OfflineFirstProvider({ children, userId }: OfflineFirstProviderP
     await syncEngine.drainNow();
   }, []);
 
+  const discardFailedMutations = useCallback(async () => {
+    await syncEngine.discardDeadLetters();
+  }, []);
+
   const clearLocalData = useCallback(async () => {
     await localStorageManager.clearAllData();
     localDataStore.reset();
@@ -176,6 +182,7 @@ export function OfflineFirstProvider({ children, userId }: OfflineFirstProviderP
     failedMutations,
     forcSync,
     retryFailedMutations,
+    discardFailedMutations,
     clearLocalData,
   };
 

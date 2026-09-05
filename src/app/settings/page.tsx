@@ -24,10 +24,38 @@ import { PreferenceSelect } from "@/components/settings/PreferenceSelect";
 import { BackupBanner } from "@/components/settings/BackupBanner";
 import { ExportButton } from "@/components/settings/ExportButton";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { Button } from "@/components/Button";
+
+/** Plain-language label for a queued action, for the sync-problems list. */
+const ACTION_LABELS: Record<string, string> = {
+  "expenses:createExpense": "New expense",
+  "expenses:updateExpense": "Expense edit",
+  "expenses:deleteExpense": "Expense deletion",
+  "income:createIncome": "New income",
+  "income:updateIncome": "Income edit",
+  "income:deleteIncome": "Income deletion",
+  "cards:addCard": "New card",
+  "cards:updateCard": "Card change",
+  "cards:deleteCard": "Card deletion",
+  "loans:createLoan": "New loan",
+  "loans:updateLoan": "Loan edit",
+  "loans:deleteLoan": "Loan deletion",
+  "loans:payInstallment": "Installment payment",
+  transferFunds: "Card transfer",
+  "userSettings:update": "Preferences",
+};
+
+/** The server's reason, without the Convex request/handler prefix. */
+function rejectionReason(error?: string): string {
+  if (!error) return "Rejected by the server.";
+  const match = error.match(/(?:ConvexError|Error):\s*(.+?)(?:\n|$)/);
+  return (match ? match[1] : error).trim().slice(0, 160);
+}
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
-  const { isOnline } = useOfflineFirst();
+  const { isOnline, failedMutations, retryFailedMutations, discardFailedMutations } =
+    useOfflineFirst();
   const {
     settings,
     updateSettings,
@@ -92,6 +120,54 @@ export default function SettingsPage() {
             <UserProfileSection username={user?.username} />
 
 
+
+            {/* Sync problems: mutations the server rejected. The rows they
+                wrote are still on this device, flagged as failed, until the
+                user retries or discards them. */}
+            {failedMutations.length > 0 && (
+              <SettingsCard title="Needs attention">
+                <div className="px-4 py-2 flex flex-col gap-3">
+                  <p className="text-sm text-black">
+                    {failedMutations.length === 1
+                      ? "1 change was rejected by the server and is not saved online."
+                      : `${failedMutations.length} changes were rejected by the server and are not saved online.`}{" "}
+                    Retry to send them again, or discard them to remove the
+                    unsaved changes from this device.
+                  </p>
+                  <ul className="flex flex-col gap-1">
+                    {failedMutations.map((m) => (
+                      <li key={m.id} className="text-sm">
+                        <span className="font-medium text-black">
+                          {ACTION_LABELS[m.action] ?? m.action}
+                        </span>
+                        <span className="text-[#707070]"> — {rejectionReason(m.lastError)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="flex gap-2">
+                    <Button
+                      size="small"
+                      onClick={async () => {
+                        await retryFailedMutations();
+                        toast.success("Retrying rejected changes");
+                      }}
+                    >
+                      Retry
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="secondary"
+                      onClick={async () => {
+                        await discardFailedMutations();
+                        toast.success("Rejected changes discarded");
+                      }}
+                    >
+                      Discard
+                    </Button>
+                  </div>
+                </div>
+              </SettingsCard>
+            )}
 
             {/* Preferences Card */}
             <SettingsCard title="Preferences">

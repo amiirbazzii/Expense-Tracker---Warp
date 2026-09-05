@@ -439,6 +439,7 @@ function ExpenseTab({
                 cardName={cardMap[expense.cardId!] || "Unknown Card"}
                 onDelete={onDelete}
                 onEdit={onEdit}
+                status={expense.syncStatus === "failed" ? "failed" : undefined}
               />
             ))}
           </div>
@@ -590,6 +591,7 @@ function IncomeTab({
                 cardName={cardMap[income.cardId] || "Unknown Card"}
                 onDelete={onDelete}
                 onEdit={onEdit}
+                status={income.syncStatus === "failed" ? "failed" : undefined}
               />
             ))}
           </div>

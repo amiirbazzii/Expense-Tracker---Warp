@@ -65,6 +65,23 @@ export async function getTombstonedIds(
 }
 
 /**
+ * Drop one tombstone: the delete it guarded was rejected by the server, so
+ * the document still exists upstream and the next hydration should restore it.
+ */
+export async function removeTombstone(
+  collection: string,
+  cloudId: string,
+): Promise<void> {
+  await runExclusive(async () => {
+    const map = await read();
+    const key = `${collection}:${cloudId}`;
+    if (!(key in map)) return;
+    delete map[key];
+    await dataStore.setItem(STORE_KEY, map);
+  });
+}
+
+/**
  * Drop tombstones of `collection` whose document the server no longer
  * returns — the delete has landed — plus any that aged out.
  */

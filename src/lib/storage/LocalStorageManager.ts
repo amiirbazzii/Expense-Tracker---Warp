@@ -232,6 +232,26 @@ export class LocalStorageManager {
     });
   }
 
+  /**
+   * Set a row's sync status without changing its data, version or updatedAt.
+   * Used when the server rejected the row's mutation for good ("failed") and
+   * when the user discards that failure ("synced" — let hydration reconcile).
+   */
+  async setEntitySyncStatus(
+    entityType: string,
+    id: string,
+    syncStatus: "pending" | "synced" | "failed",
+  ): Promise<boolean> {
+    return runExclusive(async () => {
+      const collection = await this.getEntityCollection<LocalEntity>(entityType);
+      const entity = collection[id];
+      if (!entity) return false;
+      collection[id] = { ...entity, syncStatus };
+      await this.setEntityCollection(entityType, collection);
+      return true;
+    });
+  }
+
   /** The durable local-key → Convex-id map. */
   private async getCloudIdMap(): Promise<Record<string, string>> {
     const map = await this.storage.getItem<Record<string, string>>(

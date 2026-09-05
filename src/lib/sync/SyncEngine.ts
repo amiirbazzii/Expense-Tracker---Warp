@@ -23,10 +23,11 @@ import { api } from "../../../convex/_generated/api";
 import { mutationQueue } from "../queue/MutationQueueManager";
 import { localStorageManager } from "../storage/LocalStorageManager";
 import { clearAllStores } from "../storage/idb";
-import { LocalLoan } from "../types/local-storage";
+import { LocalLoan, PendingMutation } from "../types/local-storage";
 import { localDataStore } from "../store/LocalDataStore";
 import { connectivity } from "../connectivity";
 import { runSyncPhase } from "./syncPhaseLock";
+import { removeTombstone } from "./tombstones";
 
 // ── Action router ─────────────────────────────────────────────────────────────
 // Maps the opaque `action` string stored in the queue to the correct
@@ -615,61 +616,151 @@ export class SyncEngine {
   }
 
   /**
-   * Undo the optimistic local writes of a mutation that will never be
-   * delivered (it just moved to the dead-letter list).
+   * Mark the local effects of a mutation that will never be delivered (it just
+   * moved to the dead-letter list) so the UI stops presenting them as saved.
    *
-   * Currently covers installment payments — the one action whose local write
-   * is a *derived counter* rather than a plain row, so leaving it would show
-   * a month as paid that the server refused to charge.
+   * Nothing is deleted here — the user decides via retry or discard. Rows the
+   * server refused are flagged `failed` (the cards show the badge, Settings
+   * lists the failure); a refused *delete* drops its tombstone so the next
+   * hydration restores the server's copy; a refused installment payment is
+   * rolled back because its local write is a derived counter.
    */
-  private async compensateDeadLetter(mutation: {
-    action: string;
-    payload: any;
-  }): Promise<void> {
-    if (mutation.action !== "loans:payInstallment") return;
-
-    const { loanId, localExpenseId, installmentIndex } = mutation.payload;
-
+  private async compensateDeadLetter(
+    mutation: Pick<PendingMutation, "action" | "payload">,
+  ): Promise<void> {
     try {
-      // 1. Remove the local payment expense, unless it somehow already linked
-      //    to a server document (then it is real and must stay).
-      if (typeof localExpenseId === "string") {
-        const expense = await this.storage.getEntityById(
-          "expenses",
-          localExpenseId,
-        );
-        if (expense && !expense.cloudId) {
-          await this.storage.deleteEntity("expenses", localExpenseId);
+      if (mutation.action === "loans:payInstallment") {
+        await this.rollbackInstallmentPayment(mutation.payload);
+      } else {
+        for (const { collection, id } of this.localRowsOf(mutation)) {
+          const row = await this.storage.getEntityById(collection, id);
+          if (!row) continue;
+          // A create that somehow already links to a server document is real.
+          if (this.isCreateAction(mutation.action) && row.cloudId) continue;
+          await this.storage.setEntitySyncStatus(collection, id, "failed");
         }
+        await this.restoreRejectedDelete(mutation);
       }
-
-      // 2. Roll the counter back — but only while it still reflects this
-      //    payment, so a later successful payment is never undone.
-      if (typeof loanId === "string") {
-        const loan = await this.storage.getEntityById<any>("loans", loanId);
-        const expected =
-          typeof installmentIndex === "number" ? installmentIndex + 1 : null;
-        if (
-          loan &&
-          loan.paidInstallments > 0 &&
-          (expected === null || loan.paidInstallments === expected)
-        ) {
-          await this.storage.updateEntity<LocalLoan>("loans", loanId, {
-            paidInstallments: loan.paidInstallments - 1,
-          });
-          // updateEntity marks the row as an unsent local change; this
-          // rollback is not one — flip it back so hydration keeps syncing it.
-          await this.storage.markEntityAsSynced("loans", loanId);
-        }
-      }
-
       await localDataStore.refresh();
-      console.warn(
-        `[SyncEngine] ↩ rolled back local installment payment for loan ${loanId}`,
-      );
     } catch (err) {
-      console.error("[SyncEngine] Failed to roll back dead-lettered payment:", err);
+      console.error("[SyncEngine] Failed to compensate dead-lettered mutation:", err);
     }
+  }
+
+  /**
+   * Discard every dead-lettered mutation: rows that never reached the server
+   * are removed, rows with a rejected edit go back to `synced` so hydration
+   * can reconcile them with the server's copy. Explicit user action only.
+   */
+  async discardDeadLetters(): Promise<void> {
+    const dead = await this.queue.getDeadLetters();
+    for (const mutation of dead) {
+      try {
+        if (mutation.action === "loans:payInstallment") continue; // already rolled back
+        for (const { collection, id } of this.localRowsOf(mutation)) {
+          const row = await this.storage.getEntityById(collection, id);
+          if (!row) continue;
+          if (!row.cloudId) {
+            await this.storage.deleteEntity(collection, id);
+          } else {
+            await this.storage.setEntitySyncStatus(collection, id, "synced");
+          }
+        }
+        await this.restoreRejectedDelete(mutation);
+      } catch (err) {
+        console.error("[SyncEngine] Failed to discard dead letter:", err);
+      }
+    }
+    await this.queue.clearDeadLetters();
+    await localDataStore.refresh();
+  }
+
+  private isCreateAction(action: string): boolean {
+    return action in CREATE_TARGET_COLLECTION || action === "transferFunds";
+  }
+
+  /** Local rows a mutation wrote optimistically. */
+  private localRowsOf(
+    mutation: Pick<PendingMutation, "action" | "payload">,
+  ): Array<{ collection: string; id: string }> {
+    const rows: Array<{ collection: string; id: string }> = [];
+    const p = mutation.payload ?? {};
+    const created = CREATE_TARGET_COLLECTION[mutation.action];
+    if (created && typeof p.__localId === "string") {
+      rows.push({ collection: created, id: p.__localId });
+    }
+    const updated = UPDATE_TARGET[mutation.action];
+    if (updated && typeof p[updated.idField] === "string") {
+      rows.push({ collection: updated.collection, id: p[updated.idField] });
+    }
+    if (mutation.action === "transferFunds") {
+      if (typeof p.localExpenseId === "string") rows.push({ collection: "expenses", id: p.localExpenseId });
+      if (typeof p.localIncomeId === "string") rows.push({ collection: "income", id: p.localIncomeId });
+    }
+    return rows;
+  }
+
+  /** A rejected delete: the document still exists upstream — stop hiding it. */
+  private async restoreRejectedDelete(
+    mutation: Pick<PendingMutation, "action" | "payload">,
+  ): Promise<void> {
+    const idField = DELETE_TARGET_ID_FIELD[mutation.action];
+    if (!idField) return;
+    const key = mutation.payload?.[idField];
+    if (typeof key !== "string") return;
+    const collection = entityTypeForField(idField, mutation.action);
+    if (!collection) return;
+    const cloudId = key.startsWith("local_")
+      ? await this.storage.getCloudIdForLocalId(key)
+      : key;
+    if (cloudId) await removeTombstone(collection, cloudId);
+  }
+
+  /**
+   * Roll back a dead-lettered installment payment: the local write is a
+   * derived counter, so leaving it would show a month as paid that the server
+   * refused to charge.
+   */
+  private async rollbackInstallmentPayment(
+    payload: PendingMutation["payload"],
+  ): Promise<void> {
+    const { loanId, localExpenseId, installmentIndex } = payload;
+
+    // 1. Remove the local payment expense, unless it somehow already linked
+    //    to a server document (then it is real and must stay).
+    if (typeof localExpenseId === "string") {
+      const expense = await this.storage.getEntityById(
+        "expenses",
+        localExpenseId,
+      );
+      if (expense && !expense.cloudId) {
+        await this.storage.deleteEntity("expenses", localExpenseId);
+      }
+    }
+
+    // 2. Roll the counter back — but only while it still reflects this
+    //    payment, so a later successful payment is never undone.
+    if (typeof loanId === "string") {
+      const loan = await this.storage.getEntityById<any>("loans", loanId);
+      const expected =
+        typeof installmentIndex === "number" ? installmentIndex + 1 : null;
+      if (
+        loan &&
+        loan.paidInstallments > 0 &&
+        (expected === null || loan.paidInstallments === expected)
+      ) {
+        await this.storage.updateEntity<LocalLoan>("loans", loanId, {
+          paidInstallments: loan.paidInstallments - 1,
+        });
+        // updateEntity marks the row as an unsent local change; this
+        // rollback is not one — flip it back so hydration keeps syncing it.
+        await this.storage.markEntityAsSynced("loans", loanId);
+      }
+    }
+
+    console.warn(
+      `[SyncEngine] ↩ rolled back local installment payment for loan ${loanId}`,
+    );
   }
 
   /**
