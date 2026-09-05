@@ -1531,6 +1531,27 @@ export class LocalStorageManager {
     };
   }
 
+  /**
+   * Case-insensitive search across a collection's text fields (and arrays of
+   * text, e.g. categories). Restores a helper the test suite still covers.
+   */
+  async searchEntities<T extends LocalEntity>(
+    entityType: EntityType,
+    term: string,
+  ): Promise<T[]> {
+    const needle = term.trim().toLowerCase();
+    if (!needle) return [];
+    const matches = (value: unknown): boolean => {
+      if (typeof value === "string") return value.toLowerCase().includes(needle);
+      if (Array.isArray(value)) return value.some((v) => typeof v === "string" && v.toLowerCase().includes(needle));
+      return false;
+    };
+    const entities = await this.getEntities<T>(entityType);
+    return entities.filter((entity) =>
+      Object.values(entity as Record<string, unknown>).some(matches),
+    );
+  }
+
   // Utility operations
   async clearAllData(): Promise<void> {
     await this.storage.clear();

@@ -74,7 +74,7 @@ export function AppHeader({
             ) : (
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg overflow-hidden bg-white">
                 <Image
-                  src={(usePngFallback ? "/logo.png" : "/logo.webp") + "?v=2"}
+                  src={usePngFallback ? "/logo.png" : "/logo.webp"}
                   alt="Spendly Logo"
                   width={24}
                   height={24}
