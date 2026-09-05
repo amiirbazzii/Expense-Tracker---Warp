@@ -99,6 +99,14 @@ const withPWA = require("next-pwa")({
   // dynamicStartUrl is off, so start_url ("/") is precached as a static
   // document. (dynamicStartUrlRedirect only applies when it is on.)
   dynamicStartUrl: false,
+  // Match precached documents regardless of query string. The app itself
+  // navigates to `/add?tab=income` and `/expenses/edit?id=…`; with the default
+  // (ignore nothing) those URLs missed the precache and fell through to the
+  // runtime NetworkFirst rules, whose caches never fill while online because
+  // the plain paths are answered by the precache — so a cold offline start on
+  // either URL showed the /offline fallback. Query strings never change these
+  // static client shells, and no precached asset is keyed by one.
+  ignoreURLParametersMatching: [/.*/],
   // Extends (rather than replaces) next-pwa's public/static asset manifest.
   // See the comment above `startupShellManifestTransform` for the revision
   // behavior. These pages contain no server-rendered user data.
