@@ -37,6 +37,18 @@ import { localDataStore } from "@/lib/store";
 import { useExpenseForm } from "@/hooks/useExpenseForm";
 import { useIncomeForm } from "@/hooks/useIncomeForm";
 import { useDeleteWithUndo } from "@/hooks/useDeleteWithUndo";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+
+/** Card badge: rejected rows always; unsent rows only while offline (online
+ *  they deliver within moments, so a badge would just flicker). */
+function cardStatus(
+  syncStatus: "pending" | "synced" | "failed" | undefined,
+  isOnline: boolean,
+): "pending" | "failed" | undefined {
+  if (syncStatus === "failed") return "failed";
+  if (syncStatus === "pending" && !isOnline) return "pending";
+  return undefined;
+}
 
 const capitalizeWords = (str: string) =>
   str
@@ -338,6 +350,7 @@ function ExpenseTab({
   onEdit: (id: string) => void;
   onManageCategories: () => void;
 }) {
+  const isOnline = useOnlineStatus();
   return (
     <div className="space-y-6 px-4">
       <motion.div
@@ -439,7 +452,7 @@ function ExpenseTab({
                 cardName={cardMap[expense.cardId!] || "Unknown Card"}
                 onDelete={onDelete}
                 onEdit={onEdit}
-                status={expense.syncStatus === "failed" ? "failed" : undefined}
+                status={cardStatus(expense.syncStatus, isOnline)}
               />
             ))}
           </div>
@@ -493,6 +506,7 @@ function IncomeTab({
   onEdit: (id: string) => void;
   onManageCategories: () => void;
 }) {
+  const isOnline = useOnlineStatus();
   return (
     <div className="space-y-6 px-4">
       <motion.div
@@ -591,7 +605,7 @@ function IncomeTab({
                 cardName={cardMap[income.cardId] || "Unknown Card"}
                 onDelete={onDelete}
                 onEdit={onEdit}
-                status={income.syncStatus === "failed" ? "failed" : undefined}
+                status={cardStatus(income.syncStatus, isOnline)}
               />
             ))}
           </div>

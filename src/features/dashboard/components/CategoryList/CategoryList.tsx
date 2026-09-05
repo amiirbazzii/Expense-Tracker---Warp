@@ -7,6 +7,17 @@ import { useMemo, useState } from "react";
 import { BottomSheet } from "@/components/BottomSheet";
 import { ExpenseCard } from "@/components/cards/ExpenseCard";
 import { IncomeCard } from "@/components/cards/IncomeCard";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+
+/** Rejected rows always get a badge; unsent rows only while offline. */
+function badgeFor(
+  syncStatus: string | undefined,
+  isOnline: boolean,
+): "pending" | "failed" | undefined {
+  if (syncStatus === "failed") return "failed";
+  if (syncStatus === "pending" && !isOnline) return "pending";
+  return undefined;
+}
 import { EditExpenseSheet } from "@/components/EditExpenseSheet";
 import { EditIncomeSheet } from "@/components/EditIncomeSheet";
 import type { Id } from "../../../../../convex/_generated/dataModel";
@@ -26,6 +37,7 @@ interface CategoryListProps {
 }
 
 export function CategoryList({ categoryTotals, expenses = [], income = [], mode = 'expenses', cardMap = {} }: CategoryListProps) {
+  const isOnline = useOnlineStatus();
   const { settings } = useSettings();
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const [editExpenseId, setEditExpenseId] = useState<Id<"expenses"> | null>(null);
@@ -113,6 +125,7 @@ export function CategoryList({ categoryTotals, expenses = [], income = [], mode 
               ? visibleIncome.map((item) => (
                   <IncomeCard
                     key={String(item._id)}
+                    status={badgeFor((item as { syncStatus?: string }).syncStatus, isOnline)}
                     income={item as any}
                     cardName={cardMap[(item as any).cardId] || "Unknown Card"}
                     onDelete={(id) => deleteIncome(String(id))}
@@ -122,6 +135,7 @@ export function CategoryList({ categoryTotals, expenses = [], income = [], mode 
               : visibleExpenses.map((item) => (
                   <ExpenseCard
                     key={String(item._id)}
+                    status={badgeFor((item as { syncStatus?: string }).syncStatus, isOnline)}
                     expense={item as any}
                     cardName={cardMap[(item as any).cardId] || "Unknown Card"}
                     onDelete={(id) => deleteExpense(String(id))}

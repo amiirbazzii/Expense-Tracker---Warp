@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { HeaderRow } from "@/components/HeaderRow";
 import { ArrowLeft } from "lucide-react";
-import { syncEngine } from "@/lib/sync/SyncEngine";
+import { useSyncStatus } from "@/hooks/useSyncStatus";
 
 const MAIN_PAGES: Record<string, string> = {
   "/dashboard": "Report",
@@ -41,32 +41,24 @@ export function AppHeader({
   const [usePngFallback, setUsePngFallback] = useState(false);
 
   if (isMain) {
-    // Main pages: logo + page name + sync status dot
+    // Main pages: logo + page name + sync status dot. Driven by the queue
+    // and engine events (useSyncStatus), not a poll; every state is visible so
+    // "not yet synced" and "needs attention" are never just an absent dot.
     const SyncDot = () => {
-      const [synced, setSynced] = useState(false);
-
-      useEffect(() => {
-        let active = true;
-        const check = async () => {
-          if (!active) return;
-          const [pending, draining] = await Promise.all([
-            syncEngine.getPendingCount(),
-            syncEngine.getIsDraining(),
-          ]);
-          const online = syncEngine.getIsOnline();
-          setSynced(online && !draining && pending === 0);
-        };
-        check();
-        const id = setInterval(check, 1500);
-        return () => { active = false; clearInterval(id); };
-      }, []);
+      const status = useSyncStatus();
+      const look = {
+        synced: { className: "bg-[#10B981]", title: "Synced" },
+        syncing: { className: "bg-[#F59E0B]", title: "Syncing changes…" },
+        offline: { className: "bg-[#9CA3AF]", title: "Offline — changes are saved on this device" },
+        attention: { className: "bg-[#EF4444]", title: "Some changes were rejected — see Settings" },
+      }[status];
 
       return (
         <span
-          className={`block w-2 h-2 rounded-full transition-opacity duration-500 ${
-            synced ? "opacity-100 bg-[#10B981]" : "opacity-0"
-          }`}
-          title={synced ? "Synced" : undefined}
+          className={`block w-2 h-2 rounded-full transition-colors duration-500 ${look.className}`}
+          title={look.title}
+          aria-label={look.title}
+          role="status"
         />
       );
     };
