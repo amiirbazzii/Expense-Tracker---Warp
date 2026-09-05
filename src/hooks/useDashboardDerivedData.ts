@@ -21,6 +21,9 @@ interface UseDashboardDerivedDataResult<E, I> {
 
 // Generic over the row types so callers get their own concrete row type back
 // rather than the structural minimum this hook needs.
+/** Rows the server rejected stay listed (flagged) but never count toward totals. */
+const isFailed = (row: unknown) => (row as { syncStatus?: string }).syncStatus === "failed";
+
 export function useDashboardDerivedData<
   E extends ExpenseLike,
   I extends IncomeLike,
@@ -33,7 +36,7 @@ export function useDashboardDerivedData<
   return useMemo(() => {
     if (mode === "income") {
       let list = (income || []).filter(
-        (item) => item && item.category !== "Card Transfer",
+        (item) => item && item.category !== "Card Transfer" && !isFailed(item),
       );
       if (filters.categories.length > 0) {
         list = list.filter((it) =>
@@ -66,6 +69,7 @@ export function useDashboardDerivedData<
     }
 
     const list = (expenses || []).filter((expense) => {
+      if (isFailed(expense)) return false;
       const categories = Array.isArray(expense.category)
         ? expense.category
         : [expense.category];

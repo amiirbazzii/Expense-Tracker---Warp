@@ -47,14 +47,16 @@ export function useDashboardData(token: string | null, selectedCardId: string | 
   const monthlyData = useMemo<MonthlyData | null>(() => {
     if (!expenses || !income) return null;
 
-    const filteredExpenses = expenses.filter((expense) => {
+    // Rows the server rejected stay visible in lists but never count.
+    const notFailed = (row: unknown) => (row as { syncStatus?: string }).syncStatus !== "failed";
+    const filteredExpenses = expenses.filter(notFailed).filter((expense) => {
       if (Array.isArray(expense.category)) {
         return !expense.category.includes("Card Transfer");
       }
       return expense.category !== "Card Transfer";
     });
 
-    const filteredIncome = income.filter((item) => {
+    const filteredIncome = income.filter(notFailed).filter((item) => {
       if (Array.isArray(item.category)) {
         return !item.category.includes("Card Transfer");
       }

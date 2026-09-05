@@ -86,3 +86,18 @@ describe("useDashboardDerivedData", () => {
     }
   });
 });
+
+describe("rejected rows", () => {
+  it("are excluded from every total but nothing else changes", () => {
+    const withFailed = [
+      ...expenses,
+      { _id: "e5", amount: 1000, category: ["Food"], date: 5, for: "Personal", syncStatus: "failed" },
+    ];
+    const r = renderHook(() => useDashboardDerivedData("expenses", withFailed as any, income as any, baseFilters)).result.current;
+    expect(r.totalForMode).toBe(60);
+    expect(r.categoryTotalsForMode).toEqual({ Food: 30, Transport: 30 });
+    expect(r.filteredExpensesForMode.map((e: any) => e._id)).toEqual(["e1", "e2", "e3"]);
+    const inc = renderHook(() => useDashboardDerivedData("income", expenses as any, [...income, { _id: "i4", amount: 999, category: "Salary", date: 4, syncStatus: "failed" }] as any, baseFilters)).result.current;
+    expect(inc.totalForMode).toBe(300);
+  });
+});

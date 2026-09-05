@@ -82,7 +82,9 @@ export function useTimeFramedData(type: DataType, _token: string | null) {
 
   const monthlyTotal = useMemo(() => {
     if (!data) return 0;
-    return data.reduce((sum, item) => sum + item.amount, 0);
+    return data
+      .filter((item) => (item as { syncStatus?: string }).syncStatus !== "failed")
+      .reduce((sum, item) => sum + item.amount, 0);
   }, [data]);
 
   const goToPreviousMonth = () => {

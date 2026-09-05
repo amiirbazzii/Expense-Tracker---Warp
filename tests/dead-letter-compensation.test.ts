@@ -166,3 +166,27 @@ describe("Issue 3 — rejected edit", () => {
     expect((await mutationQueue.getDeadLetters())[0].lastError).toContain("Amount must be a positive number");
   });
 });
+
+describe("Issue 3 — rejected rows and money", () => {
+  it("excludes failed rows from card balances while keeping them listed", async () => {
+    const card = await localStorageManager.saveCard({ name: "Visa" });
+    const other = await localStorageManager.saveCard({ name: "Cash" });
+    await localStorageManager.markEntityAsSynced("cards", card.id, "cloud_card_a");
+    await localStorageManager.markEntityAsSynced("cards", other.id, "cloud_card_b");
+    const expense = await localStorageManager.saveExpense({ amount: 500, title: "Transfer to Cash", category: ["Card Transfer"], for: [], date: 1, cardId: card.id });
+    const income = await localStorageManager.saveIncome({ amount: 500, source: "Transfer from Visa", category: "Card Transfer", date: 1, cardId: other.id });
+    await mutationQueue.enqueue("transferFunds", { token: "t", fromCardId: card.id, toCardId: other.id, amount: 500, localExpenseId: expense.id, localIncomeId: income.id });
+    await localDataStore.refresh();
+    const before = Object.fromEntries(localDataStore.getSnapshot().cards.map((c) => [c.cardName, c.balance]));
+    expect(before).toEqual({ Visa: -500, Cash: 500 }); // optimistic while pending
+
+    mutationImpl = reject("Insufficient funds for the transfer.");
+    (syncEngine as any).isOnline = true;
+    await drainUntilDead();
+    const after = Object.fromEntries(localDataStore.getSnapshot().cards.map((c) => [c.cardName, c.balance]));
+    expect(after).toEqual({ Visa: 0, Cash: 0 }); // rejected: no money moved
+    // ...but the rows are still there for the user to see, retry or discard.
+    expect(localDataStore.getSnapshot().expenses.map((e) => e.syncStatus)).toEqual(["failed"]);
+    expect(localDataStore.getSnapshot().income.map((e) => e.syncStatus)).toEqual(["failed"]);
+  });
+});

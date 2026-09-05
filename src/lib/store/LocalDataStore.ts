@@ -863,9 +863,13 @@ export class LocalDataStore {
    */
   private computeCardBalances(
     cards: any[],
-    income: any[],
-    expenses: any[],
+    incomeRows: any[],
+    expenseRows: any[],
   ): CardDoc[] {
+    // A row the server rejected for good never existed upstream; it stays
+    // listed (flagged "failed", for retry or discard) but must not move money.
+    const income = incomeRows.filter((r) => r.syncStatus !== "failed");
+    const expenses = expenseRows.filter((r) => r.syncStatus !== "failed");
     return cards.map((card) => {
       // Transactions reference a card either by its stable local key or — for
       // rows hydrated from Convex before the card was linked — by its cloud
