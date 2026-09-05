@@ -4,6 +4,7 @@ import { api } from '../../convex/_generated/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useClipboard } from '@/lib/clipboard';
+import { connectivity } from '@/lib/connectivity';
 
 interface UseRecoveryCodeReturn {
   isGenerating: boolean;
@@ -35,7 +36,14 @@ export const useRecoveryCode = (): UseRecoveryCodeReturn => {
   // Memoized handlers
   const generateCode = useCallback(async () => {
     if (!token || isGenerating) return;
-    
+
+    // Needs the server. Offline, the Convex client would queue the call and
+    // never settle it, leaving "Generating…" on screen indefinitely.
+    if (!connectivity.isOnline && !(await connectivity.verify())) {
+      toast.error("You're offline. Connect to the internet to generate a recovery code.");
+      return;
+    }
+
     setIsGenerating(true);
     try {
       const result = await generateRecoveryMutation({ token });

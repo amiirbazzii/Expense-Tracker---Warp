@@ -7,6 +7,7 @@ import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { offlineTokenManager } from "@/lib/auth/OfflineTokenManager";
 import { clearLocalUserData } from "@/lib/localDataReset";
 import { syncEngine } from "@/lib/sync/SyncEngine";
+import { connectivity } from "@/lib/connectivity";
 
 interface User {
   _id: string;
@@ -219,9 +220,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    if (token) {
+    // Revoke the session on the server when it can be reached. The Convex
+    // client queues mutations while disconnected and the promise never settles,
+    // so awaiting it offline (or on a stalled connection) hung the sign-out
+    // forever with no feedback. Offline, skip the call: the local session is
+    // cleared below and the token is rotated by the next sign-in anyway.
+    if (token && connectivity.isOnline) {
       try {
-        await logoutMutation({ token });
+        await Promise.race([
+          logoutMutation({ token }),
+          new Promise((resolve) => setTimeout(resolve, 4000)),
+        ]);
       } catch (error) {
         console.error("Logout error:", error);
       }

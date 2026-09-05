@@ -54,8 +54,13 @@ function rejectionReason(error?: string): string {
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
-  const { isOnline, failedMutations, retryFailedMutations, discardFailedMutations } =
-    useOfflineFirst();
+  const {
+    isOnline,
+    pendingOperationsCount,
+    failedMutations,
+    retryFailedMutations,
+    discardFailedMutations,
+  } = useOfflineFirst();
   const {
     settings,
     updateSettings,
@@ -85,6 +90,16 @@ export default function SettingsPage() {
   }, []);
 
   const handleLogout = async () => {
+    // Signing out wipes this device's local data, including changes that have
+    // not reached the server yet. Never do that silently.
+    const unsent = pendingOperationsCount + failedMutations.length;
+    if (unsent > 0) {
+      const ok = window.confirm(
+        `${unsent} change${unsent === 1 ? "" : "s"} on this device ${unsent === 1 ? "has" : "have"} not been saved online yet. ` +
+          "Logging out will discard them. Log out anyway?",
+      );
+      if (!ok) return;
+    }
     try {
       await logout();
       toast.success("Logged out successfully");
