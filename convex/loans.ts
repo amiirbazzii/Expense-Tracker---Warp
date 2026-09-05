@@ -107,6 +107,7 @@ export const updateLoan = idempotentMutation({
       monthlyPaymentDay: args.monthlyPaymentDay,
       startMonth: args.startMonth,
       startYear: args.startYear,
+      updatedAt: Date.now(),
     });
 
     return { success: true };
@@ -188,6 +189,7 @@ export const payInstallment = idempotentMutation({
 
     await ctx.db.patch(args.loanId, {
       paidInstallments: loan.paidInstallments + 1,
+      updatedAt: Date.now(),
     });
 
     const expenseId = await ctx.db.insert("expenses", {

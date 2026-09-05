@@ -180,6 +180,7 @@ export const updateExpense = idempotentMutation({
       for: args.for,
       date: args.date,
       cardId: args.cardId,
+      updatedAt: Date.now(),
     });
 
     // Add new categories to user's categories if they don't exist
@@ -282,7 +283,10 @@ export const archiveCategory = idempotentMutation({
       return { success: true };
     }
 
-    await ctx.db.patch(category._id, { isArchived: args.isArchived });
+    await ctx.db.patch(category._id, {
+      isArchived: args.isArchived,
+      updatedAt: Date.now(),
+    });
     return { success: true };
   },
 });
@@ -375,7 +379,10 @@ export const createCategory = idempotentMutation({
     if (existingCategory) {
       // If archived, unarchive it so it becomes active again
       if (existingCategory.isArchived) {
-        await ctx.db.patch(existingCategory._id, { isArchived: false });
+        await ctx.db.patch(existingCategory._id, {
+          isArchived: false,
+          updatedAt: Date.now(),
+        });
       }
       return existingCategory._id;
     }

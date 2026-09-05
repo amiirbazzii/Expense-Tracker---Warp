@@ -122,7 +122,10 @@ export const updateCard = idempotentMutation({
       throw new ConvexError("Card not found or not authorized to update");
     }
 
-    await ctx.db.patch(args.cardId, { isArchived: args.isArchived });
+    await ctx.db.patch(args.cardId, {
+      isArchived: args.isArchived,
+      updatedAt: Date.now(),
+    });
   },
 });
 
@@ -164,7 +167,10 @@ export const createIncome = idempotentMutation({
     if (existingCategory) {
       // If archived, unarchive it so it becomes active again
       if (existingCategory.isArchived) {
-        await ctx.db.patch(existingCategory._id, { isArchived: false });
+        await ctx.db.patch(existingCategory._id, {
+          isArchived: false,
+          updatedAt: Date.now(),
+        });
       }
     } else {
       await ctx.db.insert("incomeCategories", {
@@ -293,7 +299,10 @@ export const createIncomeCategory = idempotentMutation({
 
     if (existingCategory) {
       if (existingCategory.isArchived) {
-        await ctx.db.patch(existingCategory._id, { isArchived: false });
+        await ctx.db.patch(existingCategory._id, {
+          isArchived: false,
+          updatedAt: Date.now(),
+        });
       }
       return existingCategory._id;
     }
@@ -323,7 +332,10 @@ export const archiveIncomeCategory = idempotentMutation({
       return { success: true };
     }
 
-    await ctx.db.patch(category._id, { isArchived: args.isArchived });
+    await ctx.db.patch(category._id, {
+      isArchived: args.isArchived,
+      updatedAt: Date.now(),
+    });
     return { success: true };
   },
 });
@@ -411,6 +423,7 @@ export const updateIncome = idempotentMutation({
       date: args.date,
       cardId: args.cardId,
       notes: args.notes,
+      updatedAt: Date.now(),
     });
 
     // Ensure the updated category exists in incomeCategories
@@ -423,7 +436,10 @@ export const updateIncome = idempotentMutation({
 
     if (existingCategory) {
       if (existingCategory.isArchived) {
-        await ctx.db.patch(existingCategory._id, { isArchived: false });
+        await ctx.db.patch(existingCategory._id, {
+          isArchived: false,
+          updatedAt: Date.now(),
+        });
       }
     } else {
       await ctx.db.insert("incomeCategories", {

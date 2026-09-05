@@ -29,12 +29,22 @@ export default defineSchema({
     // lets payInstallment retries detect an already-applied payment.
     loanId: v.optional(v.id("loans")),
     installmentIndex: v.optional(v.number()),
+    // Set by every update mutation; absent on documents created before it
+    // existed (clients fall back to _creationTime). Drives last-write-wins
+    // during hydration so an edit made on another device replaces a row this
+    // device edited earlier.
+    updatedAt: v.optional(v.number()),
   }).index("by_user", ["userId"]).index("by_user_date", ["userId", "date"]).index("by_card", ["cardId"]).index("by_loan", ["loanId"]),
 
   categories: defineTable({
     name: v.string(),
     userId: v.id("users"),
     isArchived: v.optional(v.boolean()),
+    // Set by every update mutation; absent on documents created before it
+    // existed (clients fall back to _creationTime). Drives last-write-wins
+    // during hydration so an edit made on another device replaces a row this
+    // device edited earlier.
+    updatedAt: v.optional(v.number()),
   }).index("by_user", ["userId"]).index("by_user_name", ["userId", "name"]),
 
   forValues: defineTable({
@@ -47,6 +57,11 @@ export default defineSchema({
     userId: v.id("users"),
     createdAt: v.number(),
     isArchived: v.optional(v.boolean()),
+    // Set by every update mutation; absent on documents created before it
+    // existed (clients fall back to _creationTime). Drives last-write-wins
+    // during hydration so an edit made on another device replaces a row this
+    // device edited earlier.
+    updatedAt: v.optional(v.number()),
   }).index("by_user", ["userId"]).index("by_user_name", ["userId", "name"]),
 
   income: defineTable({
@@ -58,6 +73,11 @@ export default defineSchema({
     notes: v.optional(v.string()),
     userId: v.id("users"),
     createdAt: v.number(),
+    // Set by every update mutation; absent on documents created before it
+    // existed (clients fall back to _creationTime). Drives last-write-wins
+    // during hydration so an edit made on another device replaces a row this
+    // device edited earlier.
+    updatedAt: v.optional(v.number()),
   }).index("by_user", ["userId"]).index("by_user_date", ["userId", "date"]).index("by_card", ["cardId"]),
 
   userSettings: defineTable({
@@ -77,6 +97,11 @@ export default defineSchema({
     name: v.string(),
     userId: v.id("users"),
     isArchived: v.optional(v.boolean()),
+    // Set by every update mutation; absent on documents created before it
+    // existed (clients fall back to _creationTime). Drives last-write-wins
+    // during hydration so an edit made on another device replaces a row this
+    // device edited earlier.
+    updatedAt: v.optional(v.number()),
   }).index("by_user", ["userId"]).index("by_user_name", ["userId", "name"]),
 
   loans: defineTable({
@@ -90,6 +115,11 @@ export default defineSchema({
     startYear: v.number(),  // e.g. 2025
     userId: v.id("users"),
     createdAt: v.number(),
+    // Set by every update mutation; absent on documents created before it
+    // existed (clients fall back to _creationTime). Drives last-write-wins
+    // during hydration so an edit made on another device replaces a row this
+    // device edited earlier.
+    updatedAt: v.optional(v.number()),
   }).index("by_user", ["userId"]),
 
   // One row per applied client mutation, keyed by the offline queue item's
