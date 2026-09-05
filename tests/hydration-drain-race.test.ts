@@ -253,3 +253,29 @@ describe("Issue 6 — drain on enqueue", () => {
     expect(await mutationQueue.size()).toBe(1);
   });
 });
+
+describe("Issue 8 — drain removes the mutation it sent, not the head", () => {
+  it("does not drop an unsent mutation when the head changed mid-flight", async () => {
+    syncEngine.start("https://example.convex.cloud", "token-1");
+    (syncEngine as any).isOnline = false;
+    await localDataStore.addExpense({ amount: 1, title: "First", category: ["Food"], for: [], date: 1 });
+    await localDataStore.addExpense({ amount: 2, title: "Second", category: ["Food"], for: [], date: 1 });
+    const [first, second] = await mutationQueue.getAll();
+
+    // While the first mutation's response is in flight, "another tab" already
+    // removed it from the shared queue, so `Second` is now the head.
+    (globalThis as any).__convexMutation = async (fn: string, args: any) => {
+      calls.push({ fn, args });
+      if (args.title === "First") await mutationQueue.remove(first.id);
+      await delay(10);
+      return `cloud_${calls.length}`;
+    };
+    (syncEngine as any).isOnline = true;
+    await syncEngine.drainNow();
+
+    expect(await mutationQueue.size()).toBe(0);
+    // Both were delivered exactly once — `Second` was not silently dropped.
+    expect(calls.map((c) => c.args.title).sort()).toEqual(["First", "Second"]);
+    expect(second).toBeDefined();
+  });
+});

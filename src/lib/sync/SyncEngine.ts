@@ -468,8 +468,9 @@ export class SyncEngine {
     this.isDraining = true;
     this.drainRequested = false;
 
-    // Serialized against hydration merges — see syncPhaseLock.ts.
-    const pass = runSyncPhase(() => this.runDrain())
+    // Serialized against hydration merges (this tab) and against drains in
+    // other tabs of the same origin, which share the IndexedDB queue.
+    const pass = runSyncPhase(() => withCrossTabLock(() => this.runDrain()))
       .catch((err) => {
         console.error("[SyncEngine] Drain crashed:", err);
       })
@@ -547,8 +548,10 @@ export class SyncEngine {
 
           await this.linkCloudIds(mutation, result, _localId);
 
-          // ✓ Success — atomically remove the head item.
-          await this.queue.dequeue();
+          // ✓ Success — remove *this* item. Removing "the head" instead
+          // dropped a different, unsent mutation whenever another tab (or a
+          // dead-letter retry sorted in front) had changed the head meanwhile.
+          await this.queue.remove(mutation.id);
           syncedAny = true;
           console.log(
             `[SyncEngine] ✓ synced: ${mutation.action} (${mutation.id})`,
@@ -942,6 +945,22 @@ export class SyncEngine {
       console.warn(`[SyncEngine] Failed to link ${localId} → ${cloudId}:`, err);
     }
   }
+}
+
+// ── Cross-tab exclusion ───────────────────────────────────────────────────────
+
+const CROSS_TAB_LOCK = "spendly-sync-drain";
+
+/**
+ * Run `fn` while holding a Web Lock shared by every tab of this origin, so two
+ * tabs never drain the same queue at once. Falls back to running unguarded
+ * where the API is missing (older WebViews, jsdom).
+ */
+function withCrossTabLock<T>(fn: () => Promise<T>): Promise<T> {
+  const locks =
+    typeof navigator !== "undefined" ? navigator.locks : undefined;
+  if (!locks) return fn();
+  return locks.request(CROSS_TAB_LOCK, fn);
 }
 
 // ── Error classification ──────────────────────────────────────────────────────
