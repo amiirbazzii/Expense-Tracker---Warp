@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { localDataStore } from "@/lib/store";
 import { validateAmount } from "@/lib/validation";
@@ -43,6 +43,32 @@ export function useExpenseForm(options?: UseExpenseFormOptions) {
     return INITIAL_EXPENSE_FORM;
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // On a cold load of the edit page the record is not in the local store yet
+  // when the form state initializes, so the fields stayed empty (and a save
+  // would have written today's date and blank fields over the real record).
+  // Populate from the record the first time it arrives, but never over text
+  // the user has already typed.
+  const populatedFor = useRef<string | null>(null);
+  const existingId = options?.existingExpense?._id;
+  useEffect(() => {
+    const e = options?.existingExpense;
+    if (!e || populatedFor.current === e._id) return;
+    populatedFor.current = e._id;
+    setForm((prev) => {
+      const pristine = !prev.amount && !prev.title;
+      if (!pristine) return prev;
+      return {
+        amount: e.amount.toString(),
+        title: e.title,
+        category: e.category,
+        for: Array.isArray(e.for) ? e.for : (e.for ? [e.for] : []),
+        date: new Date(e.date),
+        cardId: e.cardId || "",
+      };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingId]);
+
 
   const setField = useCallback((key: string, value: unknown) => {
     setForm((prev) => ({ ...prev, [key]: value }));
