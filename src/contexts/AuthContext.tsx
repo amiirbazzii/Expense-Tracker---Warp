@@ -6,6 +6,7 @@ import { api } from "../../convex/_generated/api";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { offlineTokenManager } from "@/lib/auth/OfflineTokenManager";
 import { clearLocalUserData } from "@/lib/localDataReset";
+import { syncEngine } from "@/lib/sync/SyncEngine";
 
 interface User {
   _id: string;
@@ -145,6 +146,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setToken(null);
                 localStorage.removeItem('auth-token');
                 await offlineTokenManager.clearToken();
+                // Drop the offline identity too, or the app keeps rendering as
+                // signed in (ProtectedRoute accepts the offline user) with sync
+                // stopped and no way to re-authenticate. Local data and the
+                // pending queue stay on disk for the next sign-in.
+                setOfflineUser(null);
+                setIsOfflineMode(false);
               }
             } else if (user) {
               // Successful validation - refresh offline token
@@ -225,7 +232,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await offlineTokenManager.clearToken();
     // Drop the locally cached financial data too — it is not scoped per user,
     // so leaving it behind exposes it to the next account signed in on this
-    // device.
+    // device. This is the one place the pending queue is wiped: an explicit
+    // sign-out. A rejected/expired token only pauses sync (OfflineFirstWrapper).
+    await syncEngine.clearAndStop();
     await clearLocalUserData();
     setIsOfflineMode(false);
     setOfflineGracePeriodWarning(null);

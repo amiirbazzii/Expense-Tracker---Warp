@@ -372,8 +372,14 @@ export class SyncEngine {
     document.removeEventListener("visibilitychange", this.handleVisibility);
 
     if (this.client) {
-      this.client.close();
+      // Close only once any in-flight drain or hydration has finished with
+      // it. Closing immediately left their pending request unsettled, so the
+      // sync-phase lock and `isDraining` stayed held for the rest of the
+      // session — after a re-login, nothing ever drained again. Detach the
+      // field now (no new work reaches this client); the close waits its turn.
+      const client = this.client;
       this.client = null;
+      void runSyncPhase(async () => client.close());
     }
 
     this.authToken = null;

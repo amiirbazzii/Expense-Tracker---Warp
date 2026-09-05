@@ -16,7 +16,7 @@ import {
   LocalMetadata,
 } from "../types/local-storage";
 import { createAsyncLock } from "./asyncLock";
-import { dataStore } from "./idb";
+import { dataStore, clearAllStores } from "./idb";
 import { migrateLocalData, CURRENT_SCHEMA_VERSION } from "./migrations";
 
 /**
@@ -65,7 +65,10 @@ export class LocalStorageManager {
       // data left behind by a previous account would otherwise be readable by
       // whoever logs in next on this device. Wipe on user change.
       if (metadata && metadata.userId !== userId) {
-        await this.clearAllData();
+        // Includes the mutation queue: unsent work left by the previous
+        // account must never be delivered under this account's token.
+        await clearAllStores();
+        this.initializedFor = null;
         metadata = null;
       }
 

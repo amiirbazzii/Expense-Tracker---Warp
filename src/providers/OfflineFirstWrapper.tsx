@@ -28,12 +28,15 @@ export function OfflineFirstWrapper({ children }: OfflineFirstWrapperProps) {
 
     if (!token || !user) {
       if (engineRunning.current) {
-        // Token cleared (logout) — wipe data, stop engine, reset hydration.
+        // The session ended — stop syncing but keep IndexedDB and the queue.
+        // This branch also runs when the server rejects the token (a login on
+        // another device rotates it); wiping here destroyed unsent offline
+        // work. An explicit logout wipes via AuthContext.logout instead.
+        // Unsent work stays put until the same user signs in again, and
+        // LocalStorageManager.initialize wipes it if a different user does.
         engineRunning.current = false;
         hydrationService.reset();
-        syncEngine.clearAndStop().catch((err) => {
-          console.error('[OfflineFirstWrapper] Error during clearAndStop:', err);
-        });
+        syncEngine.stop();
       }
       return;
     }
