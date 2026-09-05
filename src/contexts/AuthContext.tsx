@@ -72,12 +72,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             
             console.log('Offline login successful - instant access granted');
           }
-        } else if (validation.token && !navigator.onLine) {
+        } else if (validation.token && !(await connectivity.verify())) {
           // The offline token has passed its expiry and grace period and the
-          // server cannot be reached to re-validate. Falling back to the raw
-          // session token here left the app "signed in" with no user object,
-          // so every screen rendered empty. Require a sign-in instead; local
-          // data and the pending queue stay on disk for that same account.
+          // server cannot be reached to re-validate (probe-verified: a
+          // connected-but-dead network must not count as online). Falling
+          // back to the raw session token here left the app "signed in" with
+          // no user object, so every screen rendered empty. Require a sign-in
+          // instead; local data and the pending queue stay on disk for that
+          // same account.
           console.log('Offline token expired and no connectivity - sign-in required');
         } else {
           // No valid offline token - check localStorage for backward compatibility
