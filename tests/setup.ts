@@ -22,6 +22,14 @@ if (typeof crypto.randomUUID !== 'function') {
   });
 }
 
+// fake-indexeddb clones records with structuredClone, which the jsdom test
+// environment does not expose (Node itself has it). Provide it so suites that
+// exercise IndexedDB through localforage can run.
+if (typeof (globalThis as any).structuredClone !== 'function') {
+  (globalThis as any).structuredClone = (value: unknown) =>
+    value === undefined ? value : JSON.parse(JSON.stringify(value));
+}
+
 // Mock IndexedDB for testing
 const FDBFactory = require('fake-indexeddb/lib/FDBFactory');
 const FDBKeyRange = require('fake-indexeddb/lib/FDBKeyRange');

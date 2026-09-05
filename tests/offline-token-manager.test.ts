@@ -1,5 +1,7 @@
 import { OfflineTokenManager } from '../src/lib/auth/OfflineTokenManager';
-import 'fake-indexeddb/auto';
+// IndexedDB is provided by tests/setup.ts (fake-indexeddb FDBFactory). Importing
+// 'fake-indexeddb/auto' here tried to redefine that non-configurable global and
+// made the whole suite fail to load.
 
 describe('OfflineTokenManager', () => {
   let tokenManager: OfflineTokenManager;
