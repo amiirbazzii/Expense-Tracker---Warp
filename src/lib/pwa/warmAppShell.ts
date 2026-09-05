@@ -95,7 +95,27 @@ function sanitize(body: Blob, original: Response): Response {
  * The manifest (and each entry's exact `?__WB_REVISION__` cache key) is
  * parsed out of /sw.js, so what gets restored is exactly what install would
  * have stored.
+ *
+ * Crucial invariant: a revision key must only ever hold content belonging to
+ * THAT revision. /sw.js can be a NEWER deploy than the worker currently
+ * controlling this page — during the window between a deploy and the new
+ * worker activating, and on the launch right after a deploy. In that window a
+ * `fetch(url)` for a document is answered cache-first by the OLD worker's
+ * precache, returning the OLD document — and storing it under the NEW
+ * revision key poisons the incoming worker's precache (it trusts the key at
+ * install and never fetches the real new document, so the app reloads into
+ * the old build). So heal a document only when it is genuinely missing, never
+ * when a DIFFERENT revision of the same URL is already cached: that is an
+ * update in progress, and the incoming worker's own install will populate it
+ * correctly. Content-hashed assets carry a unique URL per build, so they can
+ * never collide this way and are always safe to restore.
  */
+function precacheKey(url: string, revision: string | null): string {
+  return revision
+    ? `${url}${url.includes("?") ? "&" : "?"}__WB_REVISION__=${revision}`
+    : url;
+}
+
 async function healPrecache(): Promise<number> {
   let manifest: Array<{ url: string; revision: string | null }> = [];
   try {
@@ -115,15 +135,32 @@ async function healPrecache(): Promise<number> {
     (await caches.keys()).find((name) => name.startsWith("workbox-precache")) ??
     `workbox-precache-v2-${location.origin}/`;
   const cache = await caches.open(preName);
+
+  // Pathnames that already have SOME precache entry. A manifest entry whose
+  // exact revision key is absent but whose pathname is present here is a
+  // revision that the active worker has not installed — healing it would risk
+  // storing the old worker's content under the new key, so it is skipped.
+  const cachedPaths = new Set<string>();
+  try {
+    for (const request of await cache.keys()) {
+      cachedPaths.add(new URL(request.url).pathname);
+    }
+  } catch {
+    // Older cache mock / no keys(): fall back to per-key checks only.
+  }
+
   let healed = 0;
 
   await Promise.all(
     manifest.map(async ({ url, revision }) => {
-      const key = revision
-        ? `${url}${url.includes("?") ? "&" : "?"}__WB_REVISION__=${revision}`
-        : url;
+      const key = precacheKey(url, revision);
+      const pathname = url.split("?")[0];
       try {
         if (await cache.match(key)) return;
+        // A different revision of this same document is already cached → an
+        // update is in flight; let the incoming worker install it. Never
+        // overwrite a fresh revision with content the old worker serves.
+        if (revision && cachedPaths.has(pathname)) return;
         const response = await fetch(url, { credentials: "same-origin" });
         if (response.ok) {
           await cache.put(key, sanitize(await response.blob(), response));

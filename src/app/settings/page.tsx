@@ -25,6 +25,7 @@ import { BackupBanner } from "@/components/settings/BackupBanner";
 import { ExportButton } from "@/components/settings/ExportButton";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/Button";
+import { useUpdateAvailable, applyUpdate } from "@/lib/pwa/updateState";
 
 /** Plain-language label for a queued action, for the sync-problems list. */
 const ACTION_LABELS: Record<string, string> = {
@@ -80,6 +81,11 @@ export default function SettingsPage() {
     expenseCount: number;
     incomeCount: number;
   } | null>(null);
+
+  // True once a new app version is installed and controlling the page; stays
+  // available for the rest of this old-version session even if the toast is
+  // dismissed, until the user reloads into the new build.
+  const updateAvailable = useUpdateAvailable();
 
   useEffect(() => {
     const loadBackupInfo = async () => {
@@ -271,6 +277,18 @@ export default function SettingsPage() {
             {/* App Version */}
             <p className="text-center text-xs text-[#707070] mt-4">
               v{process.env.NEXT_PUBLIC_APP_VERSION || "0.1.4"}
+              {updateAvailable && (
+                <>
+                  {" · "}
+                  <button
+                    type="button"
+                    onClick={applyUpdate}
+                    className="text-[#3b6fd4] underline underline-offset-2 hover:text-[#2f59aa] cursor-pointer"
+                  >
+                    Update
+                  </button>
+                </>
+              )}
             </p>
           </motion.div>
         </div>

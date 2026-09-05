@@ -79,7 +79,10 @@ describe("offline startup shell", () => {
   const mockCaches = (matchResult: Response | undefined) => {
     const put = jest.fn().mockResolvedValue(undefined);
     const match = jest.fn().mockResolvedValue(matchResult);
-    const open = jest.fn().mockResolvedValue({ put, match });
+    // cache.keys() (used by healPrecache to spot in-flight revisions) —
+    // empty here so every genuinely-missing entry still heals.
+    const cacheKeys = jest.fn().mockResolvedValue([]);
+    const open = jest.fn().mockResolvedValue({ put, match, keys: cacheKeys });
     const keys = jest.fn().mockResolvedValue(["workbox-precache-v2-x"]);
     Object.defineProperty(global, "caches", {
       configurable: true,

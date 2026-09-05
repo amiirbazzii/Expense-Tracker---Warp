@@ -3,7 +3,16 @@
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { ensureAppShell } from "@/lib/pwa/warmAppShell";
+import { applyUpdate, markUpdateAvailable } from "@/lib/pwa/updateState";
 import { connectivity } from "@/lib/connectivity";
+
+/** Periodic sw.js check so a window that stays open (and visible, so the
+ *  visibilitychange path never fires) still discovers deploys. */
+const PERIODIC_UPDATE_CHECK_MS = 5 * 60 * 1000;
+
+/** Visibility-return checks keep their old, coarser throttle: foreground
+ *  switches are frequent and the periodic timer already covers the gaps. */
+const VISIBILITY_UPDATE_CHECK_MS = 60 * 60 * 1000;
 
 export function usePwaRegistration() {
   useEffect(() => {
@@ -31,10 +40,12 @@ export function usePwaRegistration() {
 
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     let isMounted = true;
-    let isUpdating = false;
-    let hasReloaded = false;
+    let isBootPromoting = false;
     let toastId: string | number | null = null;
-    let waitingWorker: ServiceWorker | null = null;
+    let swCleanup: (() => void) | null = null;
+    // Assigned once the registration exists; the connectivity subscription
+    // below may fire before then, so it starts as a no-op.
+    let requestUpdateCheck: () => void = () => {};
 
     async function registerSW() {
       try {
@@ -56,79 +67,118 @@ export function usePwaRegistration() {
           .then(() => ensureAppShell())
           .catch(() => {});
 
-        registration.addEventListener("updatefound", () => {
-          const newWorker = registration.installing;
-          if (!newWorker) return;
+        // With skipWaiting + clientsClaim a new worker installs, activates,
+        // and claims this page entirely on its own — there is never a waiting
+        // worker for a button to promote. By the time controllerchange fires
+        // the update is fully installed (Workbox installs atomically) and
+        // already controlling the page; only the running JS is still the
+        // previous build's. So controllerchange IS the "update ready" signal:
+        // prompt there, and the button's whole job is one reload. Never reload
+        // automatically — the user may be mid-entry, and the old build keeps
+        // working because its chunks stay in the runtime caches.
+        //
+        // A controllerchange with no controller beforehand is the FIRST
+        // install claiming the page, not an update — no prompt for that.
+        let hadController = !!navigator.serviceWorker.controller;
 
-          newWorker.addEventListener("statechange", () => {
-            if (isUpdating) return;
+        const handleControllerChange = () => {
+          const isReplacement = hadController;
+          hadController = true;
 
-            if (
-              newWorker.state === "installed" &&
-              navigator.serviceWorker.controller
-            ) {
-              waitingWorker = newWorker;
-
-              // One sticky toast at a time — repeated update discoveries must
-              // replace the previous prompt, not stack a new one on top.
-              if (toastId !== null) toast.dismiss(toastId);
-
-              toastId = toast("Update available", {
-                description: "A new version is ready.",
-                action: {
-                  label: "Update",
-                  onClick: () => {
-                    isUpdating = true;
-                    if (toastId !== null) toast.dismiss(toastId);
-                    waitingWorker?.postMessage({ type: "SKIP_WAITING" });
-                  },
-                },
-                duration: Infinity,
-              });
-            }
-          });
-        });
-
-        navigator.serviceWorker.addEventListener("controllerchange", () => {
-          if (isUpdating && !hasReloaded) {
-            hasReloaded = true;
-            window.location.reload();
+          if (isBootPromoting) {
+            // Boot-promoted stalled worker (see below): nothing unsaved this
+            // early, reload straight into it.
+            isBootPromoting = false;
+            applyUpdate();
+            return;
           }
-        });
+
+          if (!isReplacement || !isMounted) return;
+
+          // A real replacement worker now controls the page. Record it in the
+          // shared flag so Settings can offer the same update later — this
+          // survives the toast being dismissed; only a reload into the new
+          // build clears it.
+          markUpdateAvailable();
+
+          // One sticky toast at a time — repeated update discoveries must
+          // replace the previous prompt, not stack a new one on top.
+          if (toastId !== null) toast.dismiss(toastId);
+
+          toastId = toast("Update available", {
+            description: "A new version is ready.",
+            action: {
+              label: "Update",
+              // Same action as the Settings button — dismiss this
+              // notification and load the new app shell once.
+              onClick: () => {
+                if (toastId !== null) toast.dismiss(toastId);
+                applyUpdate();
+              },
+            },
+            duration: Infinity,
+          });
+        };
+
+        navigator.serviceWorker.addEventListener(
+          "controllerchange",
+          handleControllerChange,
+        );
 
         // A worker already waiting at page load is an update that stalled in
         // a previous session — on real devices it stayed stuck for months,
         // leaving an ancient worker (with no offline app shell) in control
         // while every deploy just replaced the waiting one. This early in the
         // boot there is nothing unsaved, so promote it immediately; the
-        // controllerchange handler above reloads into it. The update toast
-        // still handles updates discovered later in the session.
+        // controllerchange handler above reloads into it.
         if (registration.waiting && navigator.serviceWorker.controller) {
-          isUpdating = true;
+          isBootPromoting = true;
           registration.waiting.postMessage({ type: "SKIP_WAITING" });
         }
 
-        // Check for updates when the app returns to the foreground, at most
-        // once per hour. The old version checked on every focus AND every
-        // visibility change — both fire together on each app switch, so the
-        // check ran near-constantly.
-        const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000;
-        let lastUpdateCheck = Date.now();
-
-        const handleVisibilityChange = () => {
-          if (document.visibilityState !== "visible") return;
-          if (Date.now() - lastUpdateCheck < UPDATE_CHECK_INTERVAL_MS) return;
-          lastUpdateCheck = Date.now();
-          registration.update().catch(() => {});
+        // All update checks funnel through here: at most one sw.js fetch in
+        // flight, failures (e.g. offline) swallowed — the next trigger simply
+        // tries again.
+        let updateCheckInFlight = false;
+        requestUpdateCheck = () => {
+          if (updateCheckInFlight) return;
+          updateCheckInFlight = true;
+          registration
+            .update()
+            .catch(() => {})
+            .finally(() => {
+              updateCheckInFlight = false;
+            });
         };
 
+        // Check when the app returns to the foreground, at most once per
+        // hour. The old version checked on every focus AND every visibility
+        // change — both fire together on each app switch, so the check ran
+        // near-constantly.
+        let lastVisibilityCheck = Date.now();
+        const handleVisibilityChange = () => {
+          if (document.visibilityState !== "visible") return;
+          if (Date.now() - lastVisibilityCheck < VISIBILITY_UPDATE_CHECK_MS) return;
+          lastVisibilityCheck = Date.now();
+          requestUpdateCheck();
+        };
         document.addEventListener("visibilitychange", handleVisibilityChange);
 
-        return () => {
+        const periodicTimer = setInterval(
+          requestUpdateCheck,
+          PERIODIC_UPDATE_CHECK_MS,
+        );
+
+        swCleanup = () => {
+          navigator.serviceWorker.removeEventListener(
+            "controllerchange",
+            handleControllerChange,
+          );
           document.removeEventListener(
             "visibilitychange",
             handleVisibilityChange,
           );
+          clearInterval(periodicTimer);
         };
       } catch (error) {
         console.warn("[PWA] SW registration failed, retrying in 5s:", error);
@@ -144,15 +194,21 @@ export function usePwaRegistration() {
       window.addEventListener("load", registerSW);
     }
 
-    // An app launched offline skips the self-heal; run it when verified
-    // connectivity arrives so gaps are filled on the first reconnect.
+    // On verified reconnect: an app launched offline skipped the self-heal,
+    // so fill any app-shell gaps now — and check for updates, because a
+    // release deployed while this device was offline is otherwise invisible
+    // until the next launch.
     const unsubscribeConnectivity = connectivity.subscribe((online) => {
-      if (online && isMounted) void ensureAppShell();
+      if (!online || !isMounted) return;
+      void ensureAppShell();
+      requestUpdateCheck();
     });
 
     return () => {
       isMounted = false;
       unsubscribeConnectivity();
+      window.removeEventListener("load", registerSW);
+      if (swCleanup) swCleanup();
       if (retryTimer) clearTimeout(retryTimer);
     };
   }, []);
