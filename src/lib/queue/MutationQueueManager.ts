@@ -16,12 +16,16 @@ export const MAX_ATTEMPTS = 5;
  * both read the same array and the later `setItem` wins.
  */
 const runExclusive = createAsyncLock();
-const listeners = new Set<() => void>();
 
-function notify(): void {
+/** `enqueue` — new work arrived; `change` — anything else (dequeue, failure…). */
+export type QueueEvent = "enqueue" | "change";
+type QueueListener = (event: QueueEvent) => void;
+const listeners = new Set<QueueListener>();
+
+function notify(event: QueueEvent = "change"): void {
   listeners.forEach((listener) => {
     try {
-      listener();
+      listener(event);
     } catch (err) {
       console.error('[MutationQueue] listener threw:', err);
     }
@@ -50,7 +54,7 @@ export class MutationQueueManager {
   // ── Change notification ─────────────────────────────────────────────────
 
   /** Subscribe to queue changes. Returns an unsubscribe function. */
-  subscribe(listener: () => void): () => void {
+  subscribe(listener: QueueListener): () => void {
     listeners.add(listener);
     return () => {
       listeners.delete(listener);
@@ -79,7 +83,7 @@ export class MutationQueueManager {
       await this.storage.setItem(STORE_KEY, queue);
     });
 
-    notify();
+    notify("enqueue");
     return mutation;
   }
 

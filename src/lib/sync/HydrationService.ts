@@ -100,9 +100,15 @@ class HydrationService {
     console.log("[HydrationService] Starting hydration");
 
     try {
-      // Fetch all collections from Convex in parallel. The fetch runs outside
-      // the sync-phase lock (it has no local side effects); the merge below
-      // must not interleave with a queue drain writing cloudIds back.
+      // Fetch AND merge inside the sync-phase lock. The fetch used to run
+      // outside it: on reconnect the drain and this pull start together, the
+      // queries return the pre-drain server state, and by the time the merge
+      // acquired the lock the drain had linked every freshly-created row to
+      // its cloud id — so the merge treated those rows as "deleted upstream"
+      // and removed the user's own entries. Holding the lock across the fetch
+      // means the snapshot always reflects whatever drain finished before us.
+      await runSyncPhase(async () => {
+      const fetchStartedAt = Date.now();
       const [expenses, income, categories, forValues, cards, incomeCategories, loans] =
         await Promise.all([
           client.query(api.expenses.getExpenses, { token }),
@@ -114,7 +120,6 @@ class HydrationService {
           client.query(api.loans.getLoans, { token }),
         ]);
 
-      await runSyncPhase(async () => {
       // Rows touched by a queued mutation must not be overwritten by the
       // server's older copy. Built inside the lock so a drain finishing just
       // before us is fully reflected.
@@ -122,27 +127,30 @@ class HydrationService {
 
       // Cards first: transactions reference them, and the merges below need a
       // complete cloudId → local key map to rewrite those references.
-      await this.mergeCollection("cards", cards, pendingLocalIds);
+      await this.mergeCollection("cards", cards, pendingLocalIds, fetchStartedAt);
       const cardKeyByCloudId = await this.storage.getCloudIdIndex("cards");
 
-      await this.mergeCollection("categories", categories, pendingLocalIds);
+      await this.mergeCollection("categories", categories, pendingLocalIds, fetchStartedAt);
       await this.mergeCollection(
         "incomeCategories",
         incomeCategories,
         pendingLocalIds,
+        fetchStartedAt,
       );
-      await this.mergeCollection("forValues", forValues, pendingLocalIds);
-      await this.mergeCollection("loans", loans, pendingLocalIds);
+      await this.mergeCollection("forValues", forValues, pendingLocalIds, fetchStartedAt);
+      await this.mergeCollection("loans", loans, pendingLocalIds, fetchStartedAt);
       await this.mergeCollection(
         "expenses",
         expenses,
         pendingLocalIds,
+        fetchStartedAt,
         cardKeyByCloudId,
       );
       await this.mergeCollection(
         "income",
         income,
         pendingLocalIds,
+        fetchStartedAt,
         cardKeyByCloudId,
       );
       });
@@ -217,6 +225,7 @@ class HydrationService {
     collection: EntityType,
     serverDocs: any[],
     pendingLocalIds: Set<string>,
+    fetchStartedAt: number,
     cardKeyByCloudId?: Map<string, string>,
   ): Promise<void> {
     const localCollection =
@@ -294,11 +303,17 @@ class HydrationService {
 
     // Anything synced that the server no longer returns was deleted elsewhere.
     // Rows that never reached the server are always kept, and collections
-    // whose query is filtered server-side never take part.
+    // whose query is filtered server-side never take part. A row that was
+    // linked to the server *after* this snapshot was requested (e.g. by a
+    // drain in another tab, which this tab's lock cannot serialize) is not
+    // "missing upstream" — the snapshot simply predates it.
     let removed = 0;
     if (DELETION_AUTHORITATIVE.has(collection)) {
       const removable = Object.keys(localCollection).filter(
-        (key) => !seenKeys.has(key) && !pendingLocalIds.has(key),
+        (key) =>
+          !seenKeys.has(key) &&
+          !pendingLocalIds.has(key) &&
+          !((localCollection[key].lastSyncedAt ?? 0) >= fetchStartedAt),
       );
       removed = await this.storage.removeSyncedEntities(collection, removable);
     }

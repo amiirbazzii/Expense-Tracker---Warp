@@ -135,6 +135,9 @@ afterEach(() => {
 
 describe("idempotency key", () => {
   it("is sent with every drained mutation and stays stable across retries", async () => {
+    // Enqueue while "offline": the engine now drains on enqueue when online,
+    // and this test needs the first delivery to run against the failing mock.
+    (syncEngine as any).isOnline = false;
     await localDataStore.addExpense({
       amount: 12,
       title: "Coffee",
@@ -153,6 +156,7 @@ describe("idempotency key", () => {
       return "cloud_expense_1";
     };
 
+    (syncEngine as any).isOnline = true;
     await syncEngine.drainNow();
     expect(await mutationQueue.size()).toBe(1); // halted, not dropped
 
@@ -221,6 +225,9 @@ describe("offline delete vs hydration", () => {
 
 describe("hydration racing the drain", () => {
   it("does not insert a duplicate local copy of a freshly-synced row", async () => {
+    // Enqueue while "offline" so the create is delivered by the mock below
+    // (which also publishes the document server-side), not by drain-on-enqueue.
+    (syncEngine as any).isOnline = false;
     const created = await localDataStore.addExpense({
       amount: 12,
       title: "Coffee",
@@ -238,6 +245,7 @@ describe("hydration racing the drain", () => {
     };
 
     // Reconnect: both phases fire together.
+    (syncEngine as any).isOnline = true;
     const drain = syncEngine.drainNow();
     await new Promise((resolve) => setTimeout(resolve, 10)); // drain is mid-mutation
     const hydrate = hydrationService.hydrate(hydrationClient, "token-1", {

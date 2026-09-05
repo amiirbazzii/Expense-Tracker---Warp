@@ -295,7 +295,9 @@ describe("create → sync → edit", () => {
   it("un-parks a mutation dead-lettered before the backend was fixed", async () => {
     // Anything already sitting in the dead-letter list from the old
     // classification has to come back on its own, since a user cannot reach
-    // the queue by hand.
+    // the queue by hand. Enqueue while "offline" so drain-on-enqueue does not
+    // deliver it before the failures below are recorded.
+    (syncEngine as any).isOnline = false;
     await mutationQueue.enqueue("incomeCategories:createIncomeCategory", {
       name: "Salary",
     });

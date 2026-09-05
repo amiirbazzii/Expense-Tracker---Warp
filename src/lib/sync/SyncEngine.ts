@@ -155,6 +155,9 @@ export class SyncEngine {
   // Unsubscribe handle for the connectivity subscription.
   private unsubscribeConnectivity: (() => void) | null = null;
 
+  // Unsubscribe handle for the queue subscription (drain-on-enqueue).
+  private unsubscribeQueue: (() => void) | null = null;
+
   // True while a drain pass is in flight — prevents concurrent runs.
   private isDraining = false;
 
@@ -275,6 +278,15 @@ export class SyncEngine {
     );
     document.addEventListener("visibilitychange", this.handleVisibility);
 
+    // New work while online used to wait for the 30-second timer (or a page
+    // reload) before it was sent. Deliver it promptly instead. Only *new*
+    // items trigger this — dequeue and failure notifications do not, so the
+    // retry cadence for a rejected mutation is unchanged. drain() is
+    // re-entrant: a pass already in flight just schedules one follow-up.
+    this.unsubscribeQueue = this.queue.subscribe((event) => {
+      if (event === "enqueue" && this.isOnline) this.drain();
+    });
+
     // 30-second periodic fallback.
     this.intervalId = setInterval(() => {
       if (this.isOnline) {
@@ -352,6 +364,10 @@ export class SyncEngine {
     if (this.unsubscribeConnectivity) {
       this.unsubscribeConnectivity();
       this.unsubscribeConnectivity = null;
+    }
+    if (this.unsubscribeQueue) {
+      this.unsubscribeQueue();
+      this.unsubscribeQueue = null;
     }
     document.removeEventListener("visibilitychange", this.handleVisibility);
 
