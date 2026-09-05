@@ -45,8 +45,14 @@ jest.mock("convex/browser", () => ({
   })),
 }));
 
+(globalThis as any).__online = false;
 jest.mock("../src/lib/connectivity", () => ({
-  connectivity: { isOnline: false, subscribe: () => () => {}, verify: async () => false, whenOnline: () => new Promise(() => {}) },
+  connectivity: {
+    get isOnline() { return (globalThis as any).__online; },
+    subscribe: () => () => {},
+    verify: async () => (globalThis as any).__online,
+    whenOnline: () => new Promise(() => {}),
+  },
 }));
 
 let mockAuth: any = { token: "token-1", user: { _id: "user-1", username: "u" } };
@@ -67,6 +73,7 @@ import { syncEngine } from "../src/lib/sync/SyncEngine";
 const flush = () => new Promise((r) => setTimeout(r, 20));
 
 beforeEach(async () => {
+  (globalThis as any).__online = false;
   ((globalThis as any).__sessStores as Map<string, Map<string, any>>)?.forEach((s) => s.clear());
   mockAuth = { token: "token-1", user: { _id: "user-1", username: "u" } };
   localDataStore.reset();
@@ -168,5 +175,38 @@ describe("Issue 2 — engine stopped mid-drain", () => {
 
     expect(await mutationQueue.size()).toBe(0);
     expect(sends).toBe(2);
+  });
+});
+
+describe("Issue 2 — a different account signing in", () => {
+  it("never delivers the previous account's queued work under the new token", async () => {
+    const { ConvexClient } = jest.requireMock("convex/browser");
+    const sent: any[] = [];
+    (ConvexClient as jest.Mock).mockImplementation(() => ({
+      mutation: jest.fn(async (_fn: any, args: any) => { sent.push(args); return "cloud_x"; }),
+      query: jest.fn(async () => []),
+      close: jest.fn(),
+    }));
+    // account A, offline, queues work
+    mockAuth = { token: "token-A", user: { _id: "user-A", username: "a" } };
+    const { rerender } = render(createElement(OfflineFirstWrapper, null, createElement("div")));
+    await act(flush);
+    await localDataStore.addExpense({ amount: 7, title: "A pending", category: ["Food"], for: [], date: 1 });
+    expect(await mutationQueue.size()).toBe(1);
+    // A's session ends; the device is back online; account B signs in.
+    // The engine start on B's sign-in must not drain A's queue before the
+    // storage initialization for B has wiped it.
+    mockAuth = { token: null, user: null };
+    rerender(createElement(OfflineFirstWrapper, null, createElement("div")));
+    await act(flush);
+    (globalThis as any).__online = true;
+    mockAuth = { token: "token-B", user: { _id: "user-B", username: "b" } };
+    rerender(createElement(OfflineFirstWrapper, null, createElement("div")));
+    await act(flush); await act(flush);
+    await syncEngine.drainNow();
+
+    expect(sent.filter((a) => a.title === "A pending")).toHaveLength(0);
+    expect(await mutationQueue.size()).toBe(0);
+    expect(await localStorageManager.getEntities("expenses")).toHaveLength(0);
   });
 });

@@ -41,14 +41,17 @@ export function OfflineFirstWrapper({ children }: OfflineFirstWrapperProps) {
       return;
     }
 
-    // User is authenticated — start sync engine.
-    syncEngine.start(convexUrl, token);
-    engineRunning.current = true;
-
     let cancelled = false;
 
-    // Initialize the local store, then keep it in step with the server.
-    const ready = localDataStore.init(user._id);
+    // Initialize the local store FIRST: when a different account signs in on
+    // this device, initialization wipes the previous account's rows and its
+    // pending queue. Starting the engine before that finished let the drain
+    // deliver the previous account's queued mutations under the new token.
+    const ready = localDataStore.init(user._id).then(() => {
+      if (cancelled) return;
+      syncEngine.start(convexUrl, token);
+      engineRunning.current = true;
+    });
 
     const pull = (force = false) => {
       if (cancelled || !connectivity.isOnline) return;
