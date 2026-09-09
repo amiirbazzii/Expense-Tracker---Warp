@@ -31,6 +31,12 @@ const stripSearchPlugin = {
   },
 };
 
+// Hard upper bound on the actual RSC network fetch (see the module for why
+// `networkTimeoutSeconds` alone is not enough on a hanging connection). Kept in
+// its own CommonJS module so it is unit-testable; required here so next-pwa
+// serializes the same object into sw.js.
+const { boundedRscFetchPlugin } = require("./src/lib/pwa/rscNetworkTimeout.js");
+
 // Every page in this app is a static client shell, so every route's document
 // can live in Workbox's *precache* — not merely a runtime cache that only
 // fills when the user happens to visit the route while online. Precaching
@@ -205,9 +211,12 @@ const withPWA = require("next-pwa")({
         },
         // RSC responses carry a Vary header that would defeat cache.match.
         matchOptions: { ignoreVary: true },
-        // Drops the whole query — including the varying `_rsc` token — so a
-        // route has one payload entry that every navigation to it can hit.
-        plugins: [stripSearchPlugin],
+        // Order matters: boundedRscFetchPlugin.requestWillFetch attaches the
+        // abort signal to the request before it is fetched; stripSearchPlugin
+        // only rewrites the cache key. Drops the whole query — including the
+        // varying `_rsc` token — so a route has one payload entry that every
+        // navigation to it can hit.
+        plugins: [boundedRscFetchPlugin, stripSearchPlugin],
       },
     },
     {
