@@ -90,6 +90,7 @@ export interface LoanDoc {
   monthlyPaymentDay: number;
   startMonth: number;
   startYear: number;
+  calendar?: "gregorian" | "jalali";
   userId: string;
   createdAt: number;
 }
@@ -679,6 +680,7 @@ export class LocalDataStore {
     monthlyPaymentDay: number;
     startMonth: number;
     startYear: number;
+    calendar?: "gregorian" | "jalali";
   }): Promise<LoanDoc> {
     const saved = await this.storage.saveLoan({ ...data, userId: this.userId ?? "" });
 
@@ -701,8 +703,9 @@ export class LocalDataStore {
       paidInstallments: number;
       installmentAmount: number;
       monthlyPaymentDay: number;
-      startMonth: number;
-      startYear: number;
+    startMonth: number;
+    startYear: number;
+    calendar?: "gregorian" | "jalali";
     },
   ): Promise<LoanDoc | null> {
     const updated = await this.storage.updateLoan(id, data);
@@ -740,7 +743,8 @@ export class LocalDataStore {
    * Convex mutation carrying the exact `installmentIndex` being paid, so a
    * double submission or queue redelivery can never charge two months.
    *
-   * Returns null when the loan is missing or already fully paid.
+   * Returns null when the loan is missing, fully paid, or the displayed month
+   * is no longer the loan's next unpaid installment.
    */
   async payInstallment(
     loanId: string,
@@ -752,15 +756,21 @@ export class LocalDataStore {
       date: number;
       cardId?: string;
     },
+    expectedInstallmentIndex: number,
   ): Promise<LoanDoc | null> {
     const loans = await this.storage.getLoans();
     const loan = loans.find((l) => l.id === loanId);
     if (!loan) return null;
+    // The UI's displayed month is authoritative; never silently pay the next
+    // counter when a navigated-to month no longer matches local storage.
+    if (loan.paidInstallments !== expectedInstallmentIndex) {
+      return null;
+    }
     if (loan.paidInstallments >= loan.totalInstallments) return null;
 
     // The installment this payment covers — the server refuses to apply the
     // same index twice.
-    const installmentIndex = loan.paidInstallments;
+    const installmentIndex = expectedInstallmentIndex;
 
     const expense = await this.storage.saveExpense({
       amount: payment.amount,
@@ -853,6 +863,7 @@ export class LocalDataStore {
     monthlyPaymentDay: l.monthlyPaymentDay,
     startMonth: l.startMonth,
     startYear: l.startYear,
+    calendar: l.calendar,
     userId: this.userId ?? "",
     createdAt: l.createdAt,
   });

@@ -8,6 +8,8 @@ import { Button } from "@/components/Button";
 import InputContainer from "@/components/InputContainer";
 import { Type, Hash, Calendar } from "lucide-react";
 import { Loan } from "../types";
+import { deriveStart, type LoanCalendar } from "../schedule";
+import { useSettings } from "@/contexts/SettingsContext";
 
 interface LoanFormData {
   name: string;
@@ -16,6 +18,8 @@ interface LoanFormData {
   paidInstallments: string;
   installmentAmount: string;
   monthlyPaymentDay: string;
+  startMonth: string;
+  startYear: string;
 }
 
 interface LoanFormProps {
@@ -30,6 +34,7 @@ interface LoanFormProps {
     monthlyPaymentDay: number;
     startMonth: number;
     startYear: number;
+    calendar: LoanCalendar;
   }) => Promise<void>;
   editingLoan?: Loan | null;
 }
@@ -41,9 +46,14 @@ const emptyForm: LoanFormData = {
   paidInstallments: "",
   installmentAmount: "",
   monthlyPaymentDay: "",
+  startMonth: "",
+  startYear: "",
 };
 
 export function LoanForm({ open, onClose, onSubmit, editingLoan }: LoanFormProps) {
+  const { settings } = useSettings();
+  const loanCalendar: LoanCalendar =
+    editingLoan?.calendar ?? settings?.calendar ?? "gregorian";
   const [form, setForm] = useState<LoanFormData>(emptyForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +68,8 @@ export function LoanForm({ open, onClose, onSubmit, editingLoan }: LoanFormProps
         paidInstallments: String(editingLoan.paidInstallments),
         installmentAmount: String(editingLoan.installmentAmount),
         monthlyPaymentDay: String(editingLoan.monthlyPaymentDay),
+        startMonth: String(editingLoan.startMonth),
+        startYear: String(editingLoan.startYear),
       });
     } else {
       setForm(emptyForm);
@@ -80,8 +92,17 @@ export function LoanForm({ open, onClose, onSubmit, editingLoan }: LoanFormProps
     if (!name) { setError("Please enter a loan name."); return; }
     if (isNaN(totalAmount) || totalAmount <= 0) { setError("Please enter a valid total amount."); return; }
     if (isNaN(totalInstallments) || totalInstallments < 1) { setError("Please enter at least 1 installment."); return; }
-    if (isNaN(paidInstallments) || paidInstallments < 0 || paidInstallments >= totalInstallments) {
-      setError("Paid installments must be between 0 and total - 1.");
+    if (
+      isNaN(paidInstallments) ||
+      paidInstallments < 0 ||
+      paidInstallments > totalInstallments ||
+      (!editingLoan && paidInstallments >= totalInstallments)
+    ) {
+      setError(
+        editingLoan
+          ? "Paid installments must be between 0 and total."
+          : "Paid installments must be between 0 and total - 1.",
+      );
       return;
     }
     if (isNaN(installmentAmount) || installmentAmount <= 0) { setError("Please enter a valid installment amount."); return; }
@@ -90,22 +111,27 @@ export function LoanForm({ open, onClose, onSubmit, editingLoan }: LoanFormProps
       return;
     }
 
-    // Compute start month/year
+    const calendar = loanCalendar;
     let startMonth: number;
     let startYear: number;
 
     if (editingLoan) {
-      startMonth = editingLoan.startMonth;
-      startYear = editingLoan.startYear;
+      startMonth = parseInt(form.startMonth, 10);
+      startYear = parseInt(form.startYear, 10);
+      if (isNaN(startMonth) || startMonth < 1 || startMonth > 12) {
+        setError("Start month must be between 1 and 12.");
+        return;
+      }
+      if (isNaN(startYear)) {
+        setError("Please enter a valid start year.");
+        return;
+      }
     } else {
-      // Derive start from current month minus already paid
-      const now = new Date();
-      const currentMonth = now.getMonth() + 1; // 1-12
-      const currentYear = now.getFullYear();
-      // Go back paidInstallments months
-      const totalMonths = currentYear * 12 + currentMonth - paidInstallments;
-      startYear = Math.floor((totalMonths - 1) / 12);
-      startMonth = ((totalMonths - 1) % 12) + 1;
+      ({ startMonth, startYear } = deriveStart(
+        new Date(),
+        paidInstallments,
+        calendar,
+      ));
     }
 
     setIsSubmitting(true);
@@ -119,6 +145,7 @@ export function LoanForm({ open, onClose, onSubmit, editingLoan }: LoanFormProps
         monthlyPaymentDay,
         startMonth,
         startYear,
+        calendar,
       });
       setForm(emptyForm);
       onClose();
@@ -197,6 +224,37 @@ export function LoanForm({ open, onClose, onSubmit, editingLoan }: LoanFormProps
             required
           />
         </InputContainer>
+
+        {editingLoan && (
+          <div className="grid grid-cols-2 gap-3">
+            <label className="text-xs text-gray-500">
+              Start month (1-12) — {loanCalendar}
+              <Input
+                type="number"
+                value={form.startMonth}
+                onChange={(e) => setForm({ ...form, startMonth: e.target.value })}
+                placeholder="1-12"
+                aria-label={`Start month (1-12) — ${loanCalendar}`}
+                icon={Calendar}
+                min="1"
+                max="12"
+                required
+              />
+            </label>
+            <label className="text-xs text-gray-500">
+              Start year — {loanCalendar}
+              <Input
+                type="number"
+                value={form.startYear}
+                onChange={(e) => setForm({ ...form, startYear: e.target.value })}
+                placeholder="Year"
+                aria-label={`Start year — ${loanCalendar}`}
+                icon={Hash}
+                required
+              />
+            </label>
+          </div>
+        )}
 
         <Button
           type="submit"

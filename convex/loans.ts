@@ -48,6 +48,7 @@ export const createLoan = idempotentMutation({
     monthlyPaymentDay: v.number(),
     startMonth: v.number(),
     startYear: v.number(),
+    calendar: v.optional(v.union(v.literal("gregorian"), v.literal("jalali"))),
   },
   handler: async (ctx, args) => {
     const user = await getUserByToken(ctx, args.token);
@@ -71,6 +72,7 @@ export const createLoan = idempotentMutation({
       monthlyPaymentDay: args.monthlyPaymentDay,
       startMonth: args.startMonth,
       startYear: args.startYear,
+      ...(args.calendar !== undefined ? { calendar: args.calendar } : {}),
       userId: user._id,
       createdAt: Date.now(),
     });
@@ -89,6 +91,7 @@ export const updateLoan = idempotentMutation({
     monthlyPaymentDay: v.number(),
     startMonth: v.number(),
     startYear: v.number(),
+    calendar: v.optional(v.union(v.literal("gregorian"), v.literal("jalali"))),
   },
   handler: async (ctx, args) => {
     const user = await getUserByToken(ctx, args.token);
@@ -96,6 +99,12 @@ export const updateLoan = idempotentMutation({
     const loan = await ctx.db.get(args.loanId);
     if (!loan || loan.userId !== user._id) {
       throw new ConvexError("Loan not found or not authorized.");
+    }
+    if (args.totalInstallments < 1) {
+      throw new ConvexError("Total installments must be at least 1.");
+    }
+    if (args.paidInstallments < 0 || args.paidInstallments > args.totalInstallments) {
+      throw new ConvexError("Paid installments must be between 0 and total installments.");
     }
 
     await ctx.db.patch(args.loanId, {
@@ -107,6 +116,7 @@ export const updateLoan = idempotentMutation({
       monthlyPaymentDay: args.monthlyPaymentDay,
       startMonth: args.startMonth,
       startYear: args.startYear,
+      ...(args.calendar !== undefined ? { calendar: args.calendar } : {}),
       updatedAt: Date.now(),
     });
 

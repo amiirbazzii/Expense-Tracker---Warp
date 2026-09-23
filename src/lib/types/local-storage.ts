@@ -114,6 +114,7 @@ export interface LocalLoan extends LocalEntity {
   monthlyPaymentDay: number;
   startMonth: number;
   startYear: number;
+  calendar?: "gregorian" | "jalali";
   userId: string;
 }
 

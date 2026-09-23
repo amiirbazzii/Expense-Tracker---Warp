@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useAuth } from "@/contexts/AuthContext";
 import { BottomNav } from "@/components/BottomNav";
 import AppHeader from "@/components/AppHeader";
 import { Plus, ChevronRight } from "lucide-react";
@@ -22,32 +21,23 @@ import { LoanSummaryCards } from "@/features/loans/components/LoanSummaryCards";
 import { PayInstallmentSheet } from "@/features/loans/components/PayInstallmentSheet";
 import { useLoanData } from "@/features/loans/hooks/useLoanData";
 import { Loan } from "@/features/loans/types";
+import {
+  installmentIndexForMonth,
+  isInstallmentPaid,
+  type LoanCalendar,
+} from "@/features/loans/schedule";
 
 export default function LoansPage() {
-  const { token } = useAuth();
   const { settings } = useSettings();
   const isJalali = settings?.calendar === "jalali";
   const [navigating, setNavigating] = useState(false);
 
-  // The month being viewed. Held as a date (not raw month/year numbers) so
-  // the header can present it in the user's calendar — Jalali or Gregorian —
-  // while the loan-schedule math below keeps using Gregorian months, the
-  // space loan.startMonth/startYear are stored in (mirrors the dashboard).
+  // Keep the viewed month as a date so each loan can interpret it in its own calendar.
   const [currentDate, setCurrentDate] = useState(() => moment());
 
   useEffect(() => {
     moment.locale(isJalali ? "fa" : "en");
   }, [isJalali]);
-
-  // Gregorian month/year of the viewed date — the loan schedule's space.
-  //
-  // NOT currentDate.month()/.year(): under the "fa" locale jalali-moment
-  // returns *Jalali* values from those (e.g. year 1405), which put the
-  // schedule comparison in the wrong calendar and filtered out every loan.
-  // Date() is calendar-agnostic, so this stays Gregorian in both modes.
-  const gregorianDate = new Date(currentDate.valueOf());
-  const currentMonth = gregorianDate.getMonth() + 1; // 1-12
-  const currentYear = gregorianDate.getFullYear();
 
   // Loan data hook
   const {
@@ -63,7 +53,7 @@ export default function LoansPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingLoan, setEditingLoan] = useState<Loan | null>(null);
   const [selectedLoan, setSelectedLoan] = useState<
-    (Loan & { isCurrentMonthPaid?: boolean }) | null
+    (Loan & { installmentIndex: number }) | null
   >(null);
 
   const [showPaySheet, setShowPaySheet] = useState(false);
@@ -71,7 +61,7 @@ export default function LoansPage() {
   // Details view: the card's primary action shows this read-only sheet;
   // editing is an explicit step from inside it.
   const [detailsLoan, setDetailsLoan] = useState<
-    (Loan & { isCurrentMonthPaid?: boolean }) | null
+    (Loan & { installmentIndex: number; isInstallmentPaid: boolean }) | null
   >(null);
   const [showDetails, setShowDetails] = useState(false);
 
@@ -93,39 +83,26 @@ export default function LoansPage() {
   // Filter loans for the selected month
   const filteredLoans = useMemo(() => {
     if (!loans) return [];
+    const viewedDate = new Date(currentDate.valueOf());
     return loans
       .map((loan) => {
-        const remaining = loan.totalInstallments - loan.paidInstallments;
-        if (remaining <= 0) return null;
-
-        // Calculate the original schedule (without paidInstallments offset)
-        const scheduleStartOffset = loan.startYear * 12 + loan.startMonth;
-        const scheduleEndOffset =
-          loan.startYear * 12 + loan.startMonth + loan.totalInstallments - 1;
-        const checkOffset = currentYear * 12 + currentMonth;
-
-        // Check if current month falls within the loan's original schedule
-        const isInCurrentMonth =
-          checkOffset >= scheduleStartOffset &&
-          checkOffset <= scheduleEndOffset;
-
-        if (!isInCurrentMonth) return null;
-
-        // Determine which installment number this month corresponds to (0-indexed)
-        const installmentIndex = checkOffset - scheduleStartOffset;
-        // Check if this month's installment has been paid
-        const isCurrentMonthPaid = installmentIndex < loan.paidInstallments;
-
-        return { ...loan, isCurrentMonthPaid };
+        const installmentIndex = installmentIndexForMonth(loan, viewedDate);
+        if (installmentIndex === null) return null;
+        return {
+          ...loan,
+          installmentIndex,
+          isInstallmentPaid: isInstallmentPaid(loan, viewedDate),
+        };
       })
       .filter(
-        (loan): loan is Loan & { isCurrentMonthPaid: boolean } => loan !== null,
+        (loan): loan is Loan & { installmentIndex: number; isInstallmentPaid: boolean } =>
+          loan !== null,
       )
       .sort((a, b) => {
-        if (a.isCurrentMonthPaid === b.isCurrentMonthPaid) return 0;
-        return a.isCurrentMonthPaid ? 1 : -1;
+        if (a.isInstallmentPaid === b.isInstallmentPaid) return 0;
+        return a.isInstallmentPaid ? 1 : -1;
       });
-  }, [loans, currentMonth, currentYear]);
+  }, [loans, currentDate]);
 
   // Header text in the user's calendar (Jalali month/year for Jalali users).
   const monthName = isJalali
@@ -136,12 +113,14 @@ export default function LoansPage() {
     : currentDate.format("YYYY");
 
   // Handlers
-  const handlePayInstallment = (loan: Loan) => {
+  const handlePayInstallment = (loan: Loan & { installmentIndex: number }) => {
     setSelectedLoan(loan);
     setShowPaySheet(true);
   };
 
-  const handleViewDetails = (loan: Loan & { isCurrentMonthPaid?: boolean }) => {
+  const handleViewDetails = (
+    loan: Loan & { installmentIndex: number; isInstallmentPaid: boolean },
+  ) => {
     setDetailsLoan(loan);
     setShowDetails(true);
   };
@@ -175,6 +154,7 @@ export default function LoansPage() {
     monthlyPaymentDay: number;
     startMonth: number;
     startYear: number;
+    calendar: LoanCalendar;
   }) => {
     if (editingLoan) {
       await updateLoan(editingLoan._id, data);

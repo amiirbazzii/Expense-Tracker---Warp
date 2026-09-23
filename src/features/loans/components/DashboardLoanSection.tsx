@@ -11,15 +11,13 @@ import { Plus } from "lucide-react";
 interface DashboardLoanSectionProps {
   loans: Loan[] | undefined;
   isLoading: boolean;
-  month: number;
-  year: number;
+  date: Date;
 }
 
 export function DashboardLoanSection({
   loans,
   isLoading,
-  month,
-  year,
+  date,
 }: DashboardLoanSectionProps) {
   const router = useRouter();
   const { settings } = useSettings();
@@ -39,6 +37,7 @@ export function DashboardLoanSection({
       type="button"
       whileTap={{ scale: 0.98 }}
       onClick={handlePress}
+      aria-busy={isLoading}
       className="w-full flex items-center justify-center transition-colors active:bg-gray-50 border-t border-gray-200"
     >
       {!hasLoans ? (
@@ -57,7 +56,7 @@ export function DashboardLoanSection({
               </p>
               <p className="text-base font-bold text-gray-900 mt-0.5">
                 {(() => {
-                  const { totalDue } = computeMonthlyDue(loans, month, year);
+                  const { totalDue } = computeMonthlyDue(loans, date);
                   return settings
                     ? formatCurrency(totalDue, settings.currency)
                     : `$${totalDue.toLocaleString()}`;
@@ -66,7 +65,7 @@ export function DashboardLoanSection({
             </div>
           </div>
           <span className="border border-gray-200 text-xs font-medium px-3 py-2 mx-4  bg-gray-50 text-gray-600 rounded-full">
-            {computeMonthlyDue(loans, month, year).loanCount} loans
+            {computeMonthlyDue(loans, date).loanCount} loans
           </span>
         </>
       )}

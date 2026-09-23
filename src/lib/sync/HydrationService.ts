@@ -404,6 +404,7 @@ class HydrationService {
           monthlyPaymentDay: doc.monthlyPaymentDay,
           startMonth: doc.startMonth,
           startYear: doc.startYear,
+          calendar: doc.calendar,
           userId: doc.userId,
         };
       default:

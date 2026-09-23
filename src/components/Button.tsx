@@ -41,8 +41,8 @@ const iconSizeMap = {
   small: 16,
 } as const;
 
-const LucideLoaderCircle = () => (
-  <svg className="animate-spin" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+const LucideLoaderCircle = ({ size }: { size: number }) => (
+  <svg className="animate-spin absolute inset-0 m-auto" width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M21 12a9 9 0 1 1-6.219-8.56" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
@@ -69,7 +69,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     children,
     ...props
   }, ref) => {
-    const baseStyles = 'flex items-center justify-center rounded-xl transition-all duration-150';
+    const baseStyles = 'relative flex items-center justify-center rounded-xl transition-all duration-150';
 
     const v = variantStyles[variant];
 
@@ -105,9 +105,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || loading}
         {...props}
       >
-        {loading
-          ? <LucideLoaderCircle />
-          : (buttonType === 'icon' ? iconElement : disabled ? 'Fill the information' : children)}
+        {/* content stays in DOM (invisible) while loading so button keeps its size */}
+        <span className={`inline-flex items-center justify-center w-full${loading ? ' invisible' : ''}`} aria-hidden={loading}>
+          {buttonType === 'icon' ? iconElement : (disabled && !loading) ? 'Fill the information' : children}
+        </span>
+        {loading && <LucideLoaderCircle size={iconSizeMap[size]} />}
       </button>
     );
   }

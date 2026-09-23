@@ -15,9 +15,9 @@ import {
 import { DropdownMenu } from "@/components/DropdownMenu";
 
 interface LoanCardProps {
-  loan: Loan & { isCurrentMonthPaid?: boolean };
-  onPayInstallment: (loan: Loan) => void;
-  onViewDetails: (loan: Loan) => void;
+  loan: Loan & { installmentIndex: number; isInstallmentPaid: boolean };
+  onPayInstallment: (loan: Loan & { installmentIndex: number; isInstallmentPaid: boolean }) => void;
+  onViewDetails: (loan: Loan & { installmentIndex: number; isInstallmentPaid: boolean }) => void;
   onDelete: (loan: Loan) => void;
 }
 
@@ -45,8 +45,9 @@ export function LoanCard({
     : `$${loan.installmentAmount.toLocaleString()}`;
 
   const allPaid = loan.paidInstallments >= loan.totalInstallments;
-  const currentMonthPaid = loan.isCurrentMonthPaid || false;
-  const payDisabled = allPaid || currentMonthPaid;
+  const payDisabled =
+    allPaid || loan.installmentIndex !== loan.paidInstallments;
+  const payEarlierMonths = loan.installmentIndex > loan.paidInstallments;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
@@ -73,7 +74,7 @@ export function LoanCard({
       className={`relative w-full text-left rounded-xl border border-gray-200 pt-4 transition-all cursor-pointer ${
         isMenuOpen ? "z-30" : "z-0"
       } ${
-        loan.isCurrentMonthPaid
+        loan.isInstallmentPaid
           ? "bg-[#F9F9F9] active:bg-gray-200"
           : "bg-white active:bg-gray-50 shadow-sm"
       }`}
@@ -83,13 +84,13 @@ export function LoanCard({
         <div className="flex items-center gap-1">
           <h3
             className={`text-base font-medium ${
-              loan.isCurrentMonthPaid ? "text-green-600" : "text-gray-950"
+            loan.isInstallmentPaid ? "text-green-600" : "text-gray-950"
             }`}
           >
             {loan.name}
           </h3>
           {/* لیبل 'Paid' فقط زمانی نمایش داده می‌شود که قسط پرداخت شده باشد */}
-          {loan.isCurrentMonthPaid && (
+          {loan.isInstallmentPaid && (
             <span className="text-xs font-medium text-green-600">| Paid</span>
           )}
         </div>
@@ -162,7 +163,9 @@ export function LoanCard({
           <CreditCard size={14} className="mr-2" />
           {allPaid
             ? "All installments paid"
-            : currentMonthPaid
+            : payEarlierMonths
+              ? "Pay earlier months first"
+              : loan.isInstallmentPaid
               ? "This month already paid"
               : "Pay Installment"}
         </button>

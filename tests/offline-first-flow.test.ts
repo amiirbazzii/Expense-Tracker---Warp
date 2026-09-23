@@ -367,7 +367,7 @@ describe("create → sync → edit", () => {
       category: ["Installment"],
       for: [],
       date: Date.now(),
-    });
+    }, 0);
 
     // Fresh-state read: the counter comes from the store, and the enqueued
     // mutation carries the exact installment being paid.
@@ -395,7 +395,7 @@ describe("create → sync → edit", () => {
         category: ["Installment"],
         for: [],
         date: Date.now(),
-      });
+      }, i);
     }
     const overpay = await localDataStore.payInstallment(loan._id, {
       amount: 100,
@@ -403,7 +403,7 @@ describe("create → sync → edit", () => {
       category: ["Installment"],
       for: [],
       date: Date.now(),
-    });
+    }, 12);
     expect(overpay).toBeNull();
   });
 
@@ -434,7 +434,7 @@ describe("create → sync → edit", () => {
       category: ["Installment"],
       for: [],
       date: Date.now(),
-    });
+    }, 0);
 
     // Optimistic state is visible…
     expect(
@@ -479,7 +479,7 @@ describe("create → sync → edit", () => {
       category: ["Installment"],
       for: [],
       date: Date.now(),
-    });
+    }, 0);
     await syncEngine.drainNow();
 
     // The mutation is acknowledged (dequeued, not dead-lettered) and the

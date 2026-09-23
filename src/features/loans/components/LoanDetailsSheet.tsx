@@ -21,7 +21,7 @@ import { Loan } from "../types";
 interface LoanDetailsSheetProps {
   open: boolean;
   onClose: () => void;
-  loan: (Loan & { isCurrentMonthPaid?: boolean }) | null;
+  loan: Loan | null;
   /** Opens the edit form for this loan. */
   onEdit: (loan: Loan) => void;
 }

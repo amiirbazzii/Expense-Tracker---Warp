@@ -113,6 +113,8 @@ export default defineSchema({
     monthlyPaymentDay: v.number(), // 1-31
     startMonth: v.number(), // 1-12
     startYear: v.number(),  // e.g. 2025
+    // Optional so existing Gregorian rows remain valid and keep their old behavior.
+    calendar: v.optional(v.union(v.literal("gregorian"), v.literal("jalali"))),
     userId: v.id("users"),
     createdAt: v.number(),
     // Set by every update mutation; absent on documents created before it

@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { localDataStore } from "@/lib/store";
 import { useLocalData } from "@/hooks/useLocalData";
 import { Loan, LoanSummary } from "../types";
+import type { LoanCalendar } from "../schedule";
 
 /**
  * Provides loan data and mutation actions.
@@ -39,6 +40,7 @@ export function useLoanData() {
     monthlyPaymentDay: number;
     startMonth: number;
     startYear: number;
+    calendar?: LoanCalendar;
   }) => {
     if (!user) throw new Error("Authentication required");
     return await localDataStore.createLoan(data);
@@ -55,6 +57,7 @@ export function useLoanData() {
       monthlyPaymentDay: number;
       startMonth: number;
       startYear: number;
+      calendar?: LoanCalendar;
     }
   ) => {
     if (!user) throw new Error("Authentication required");
@@ -76,9 +79,14 @@ export function useLoanData() {
       date: number;
       cardId?: string;
     },
+    expectedInstallmentIndex: number,
   ) => {
     if (!user) throw new Error("Authentication required");
-    return await localDataStore.payInstallment(loanId, payment);
+    return await localDataStore.payInstallment(
+      loanId,
+      payment,
+      expectedInstallmentIndex,
+    );
   };
 
   return {

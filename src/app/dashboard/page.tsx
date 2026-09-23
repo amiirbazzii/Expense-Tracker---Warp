@@ -80,11 +80,9 @@ export default function DashboardPage() {
 
   const { loans: loanData, isLoading: loanLoading } = useLoanData();
 
-  const loanGregorianDate = currentDate
+  const loanViewedDate = currentDate
     ? new Date(currentDate.valueOf())
-    : new Date();
-  const loanMonth = loanGregorianDate.getMonth() + 1;
-  const numericYear = loanGregorianDate.getFullYear();
+    : new Date(0);
 
   // All three come from the rows on screen, so every option the filter sheet
   // offers can actually match something in the current month and card.
@@ -166,8 +164,7 @@ export default function DashboardPage() {
             <DashboardLoanSection
               loans={loanData}
               isLoading={loanLoading}
-              month={loanMonth}
-              year={numericYear}
+              date={loanViewedDate}
             />
 
             {cards && (

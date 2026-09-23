@@ -18,7 +18,7 @@ import { localDataStore } from "@/lib/store";
 interface PayInstallmentSheetProps {
   open: boolean;
   onClose: () => void;
-  loan: Loan | null;
+  loan: (Loan & { installmentIndex: number }) | null;
   onPaid: () => void;
 }
 
@@ -148,10 +148,12 @@ export function PayInstallmentSheet({
         for: paidFor,
         date: date.getTime(),
         cardId: cardId || undefined,
-      });
+      }, loan.installmentIndex);
 
       if (!paid) {
-        toast.error("This loan has no unpaid installments left.");
+        toast.error(
+          "This month's installment can't be paid yet — pay earlier months first.",
+        );
         onClose();
         return;
       }
