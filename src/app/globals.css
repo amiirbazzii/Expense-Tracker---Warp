@@ -1,31 +1,14 @@
 @import "tailwindcss";
-
-@theme {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  /* Tailwind v4 reads the `--font-*` namespace: these back the `font-sans`,
-     `font-persian`, and `font-english` utilities. */
-  --font-sans: var(--font-poppins, "Poppins"), ui-sans-serif, system-ui, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  --font-persian: var(--font-iran-sans, "iranSansX"), Tahoma, Arial, sans-serif;
-  --font-english: var(--font-poppins, "Poppins"), ui-sans-serif, system-ui, sans-serif;
-}
+@import "../styles/tokens.css";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: var(--surface-page);
+  --foreground: var(--ink-primary);
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: var(--font-poppins, "Poppins"), ui-sans-serif, system-ui, sans-serif;
 }
 
 @utility text-balance {
