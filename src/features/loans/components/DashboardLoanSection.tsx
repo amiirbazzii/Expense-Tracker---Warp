@@ -38,12 +38,12 @@ export function DashboardLoanSection({
       whileTap={{ scale: 0.98 }}
       onClick={handlePress}
       aria-busy={isLoading}
-      className="w-full flex items-center justify-center transition-colors active:bg-gray-50 border-t border-gray-200"
+      className="w-full flex items-center justify-center transition-colors hover:bg-surface-hover active:bg-surface-active border-t border-border-subtle"
     >
       {!hasLoans ? (
         // Empty state CTA
-        <div className="flex items-center justify-center py-2 gap-2 text-gray-500">
-          <Plus size={16} className="text-gray-500" />
+        <div className="flex items-center justify-center py-2 gap-2 text-ink-secondary">
+          <Plus size={16} className="text-ink-secondary" />
           <p className="text-sm font-normal">Add your loans</p>
         </div>
       ) : (
@@ -51,10 +51,10 @@ export function DashboardLoanSection({
         <>
           <div className="flex flex-1 items-center gap-3 py-3 px-4">
             <div className="text-left">
-              <p className="text-xs text-gray-500 leading-tight">
+              <p className="text-xs text-ink-secondary leading-tight">
                 Amount to pay this month
               </p>
-              <p className="text-base font-bold text-gray-900 mt-0.5">
+              <p className="text-base font-bold text-ink-primary mt-0.5">
                 {(() => {
                   const { totalDue } = computeMonthlyDue(loans, date);
                   return settings
@@ -64,7 +64,7 @@ export function DashboardLoanSection({
               </p>
             </div>
           </div>
-          <span className="border border-gray-200 text-xs font-medium px-3 py-2 mx-4  bg-gray-50 text-gray-600 rounded-full">
+          <span className="border border-border-subtle text-xs font-medium px-3 py-2 mx-4 bg-surface-sunken text-ink-secondary rounded-full">
             {computeMonthlyDue(loans, date).loanCount} loans
           </span>
         </>

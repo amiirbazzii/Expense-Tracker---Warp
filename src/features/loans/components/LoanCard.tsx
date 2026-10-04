@@ -71,12 +71,12 @@ export function LoanCard({
       whileTap={{ scale: 0.98 }}
       onClick={() => setIsMenuOpen((prev) => !prev)}
       // استایل کلی کارت: پس‌زمینه، گوشه‌ها، پدینگ
-      className={`relative w-full text-left rounded-xl border border-gray-200 pt-4 transition-all cursor-pointer ${
+      className={`relative w-full text-left rounded-xl border border-border-subtle pt-4 transition-all cursor-pointer ${
         isMenuOpen ? "z-30" : "z-0"
       } ${
         loan.isInstallmentPaid
-          ? "bg-[#F9F9F9] active:bg-gray-200"
-          : "bg-white active:bg-gray-50 shadow-sm"
+          ? "bg-surface-app active:bg-surface-hover"
+          : "bg-surface-raised active:bg-surface-hover shadow-card"
       }`}
     >
       {/* بخش هدر (نام وام و مبلغ قسط) */}
@@ -84,32 +84,32 @@ export function LoanCard({
         <div className="flex items-center gap-1">
           <h3
             className={`text-base font-medium ${
-            loan.isInstallmentPaid ? "text-green-600" : "text-gray-950"
+            loan.isInstallmentPaid ? "text-sync-synced" : "text-ink-primary"
             }`}
           >
             {loan.name}
           </h3>
           {/* لیبل 'Paid' فقط زمانی نمایش داده می‌شود که قسط پرداخت شده باشد */}
           {loan.isInstallmentPaid && (
-            <span className="text-xs font-medium text-green-600">| Paid</span>
+            <span className="text-xs font-medium text-sync-synced">| Paid</span>
           )}
         </div>
         <div className="flex items-baseline gap-1">
-          <span className="text-base font-medium text-gray-950">
+          <span className="text-base font-medium text-ink-primary">
             {formattedInstallment}
           </span>
-          <span className="text-xs font-normal text-gray-400">/mo</span>
+          <span className="text-xs font-normal text-ink-tertiary">/mo</span>
         </div>
       </div>
 
       {/* بخش اطلاعات میانی (مبلغ کل و روز پرداخت) */}
-      <div className="flex items-center gap-6 px-4 py-2 text-gray-500">
+      <div className="flex items-center gap-6 px-4 py-2 text-ink-secondary">
         <div className="flex items-center gap-1">
-          <Landmark size={16} className=" text-gray-400" />
+          <Landmark size={16} className=" text-ink-tertiary" />
           <span className="text-sm font-light">{formattedTotal}</span>
         </div>
         <div className="flex items-center gap-1">
-          <CalendarIcon size={16} className="text-gray-400" />
+          <CalendarIcon size={16} className="text-ink-tertiary" />
           <span className="text-sm font-light">
             Day {loan.monthlyPaymentDay}
           </span>
@@ -117,7 +117,7 @@ export function LoanCard({
       </div>
 
       {/* خط جداکننده نازک */}
-      <div className="border-t border-gray-200" />
+      <div className="border-t border-border-subtle" />
 
       {/* بخش اسلایدر اقساط */}
       <div className="flex items-center gap-2  px-4 py-2">
@@ -127,7 +127,7 @@ export function LoanCard({
             <div
               key={index}
               className={`h-1.5 rounded-full ${
-                index < loan.paidInstallments ? "bg-green-600" : "bg-gray-100"
+                index < loan.paidInstallments ? "bg-sync-synced" : "bg-surface-sunken"
               }`}
               style={{
                 // محاسبه عرض هر بخش بر اساس تعداد کل اقساط
@@ -138,8 +138,8 @@ export function LoanCard({
         </div>
         {/* نمایش تعداد اقساط پرداخت شده و کل اقساط */}
         <div className="text-xs font-medium">
-          <span className="text-green-600">{loan.paidInstallments}</span>
-          <span className="text-gray-400">/{loan.totalInstallments}</span>
+          <span className="text-sync-synced">{loan.paidInstallments}</span>
+          <span className="text-ink-tertiary">/{loan.totalInstallments}</span>
         </div>
       </div>
 
@@ -156,8 +156,8 @@ export function LoanCard({
           }}
           className={`flex items-center w-full px-4 py-2 text-sm text-left ${
             payDisabled
-              ? "text-gray-400 bg-gray-50 cursor-not-allowed"
-              : "text-gray-700 hover:bg-indigo-50"
+              ? "text-ink-disabled bg-surface-sunken cursor-not-allowed"
+              : "text-ink-primary hover:bg-surface-hover"
           }`}
         >
           <CreditCard size={14} className="mr-2" />
@@ -177,7 +177,7 @@ export function LoanCard({
             onViewDetails(loan);
             setIsMenuOpen(false);
           }}
-          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
+          className="flex items-center w-full px-4 py-2 text-sm text-ink-primary hover:bg-surface-hover text-left"
         >
           <Eye size={14} className="mr-2" />
           View Details
@@ -190,7 +190,7 @@ export function LoanCard({
             onDelete(loan);
             setIsMenuOpen(false);
           }}
-          className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
+          className="flex items-center w-full px-4 py-2 text-sm text-danger hover:bg-danger-subtle text-left"
         >
           <Trash2 size={14} className="mr-2" />
           Delete Loan

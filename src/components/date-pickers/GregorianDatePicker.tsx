@@ -21,7 +21,7 @@ const GREGORIAN_CONFIG: DatePickerConfig = {
   displayFormat: "YYYY-MM-DD",
   monthFormat: "MMM",
   isRtl: false,
-  popoverClassName: "bg-white rounded-2xl shadow-xl border border-gray-200/60 overflow-hidden",
+  popoverClassName: "bg-surface-raised rounded-2xl shadow-raised border border-border-default overflow-hidden",
   calendarClassName: "rmdp-custom",
 };
 

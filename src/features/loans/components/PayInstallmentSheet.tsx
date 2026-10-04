@@ -187,7 +187,7 @@ export function PayInstallmentSheet({
           leftIcon={CreditCard}
           rightAdornment={
             <svg
-              className="size-5 text-gray-500"
+              className="size-5 text-ink-secondary"
               viewBox="0 0 24 24"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
@@ -206,12 +206,12 @@ export function PayInstallmentSheet({
           <select
             value={cardId}
             onChange={(e) => setCardId(e.target.value)}
-            className="w-full bg-transparent outline-none text-black placeholder:text-gray-500 py-1 px-0 appearance-none font-normal"
+            className="w-full bg-transparent outline-none text-ink-primary placeholder:text-ink-tertiary py-1 px-0 appearance-none font-normal"
             required
           >
-            <option value="">Select card</option>
+            <option value="" className="bg-surface-raised text-ink-primary">Select card</option>
             {cards?.map((card) => (
-              <option key={card._id} value={card._id}>
+              <option key={card._id} value={card._id} className="bg-surface-raised text-ink-primary">
                 {card.name}
               </option>
             ))}

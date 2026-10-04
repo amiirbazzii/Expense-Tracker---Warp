@@ -17,7 +17,7 @@ export const metadata = {
 
 export default function OfflinePage() {
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center">
+    <div className="min-h-screen bg-surface-page flex flex-col items-center justify-center p-6 text-center">
       {/* Plain <img>, deliberately: next/image serves via /_next/image, a
           server endpoint that may be uncached in exactly the situation this
           page exists for. /logo.webp itself is precached. */}
@@ -29,10 +29,10 @@ export default function OfflinePage() {
         height={64}
         className="mb-6 rounded-xl"
       />
-      <h1 className="text-xl font-semibold text-gray-900 mb-2">
+      <h1 className="text-xl font-semibold text-ink-primary mb-2">
         You&apos;re offline
       </h1>
-      <p className="text-sm text-gray-600 mb-6 max-w-xs">
+      <p className="text-sm text-ink-secondary mb-6 max-w-xs">
         This screen hasn&apos;t been saved for offline use yet. Your data is
         safe on this device — head back to a saved screen to keep working.
       </p>
@@ -41,7 +41,7 @@ export default function OfflinePage() {
           through the service worker's cache route directly. */}
       <a
         href="/add"
-        className="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white"
+        className="rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-foreground hover:bg-accent-hover transition-colors"
       >
         Go to the app
       </a>

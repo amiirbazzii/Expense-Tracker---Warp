@@ -19,7 +19,7 @@ interface CardFilterProps {
 
 export const CardFilter = ({ cards, selectedCardId, onSelectCard, leadingSlot }: CardFilterProps) => {
   return (
-    <div className="py-4 border-t border-gray-200">
+    <div className="py-4 border-t border-border-subtle">
       <div 
         style={{
           overflowX: 'auto',
@@ -44,7 +44,7 @@ export const CardFilter = ({ cards, selectedCardId, onSelectCard, leadingSlot }:
               <div className="flex-shrink-0 whitespace-nowrap">
                 {leadingSlot}
               </div>
-              <div className="w-px h-5 bg-gray-300" aria-hidden="true" />
+              <div className="w-px h-5 bg-border-subtle" aria-hidden="true" />
             </div>
           )}
           <motion.div

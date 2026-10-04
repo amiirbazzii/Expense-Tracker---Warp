@@ -10,7 +10,7 @@ import { Calendar, Filter as FilterIcon, ChevronDown, Tag, Users } from "lucide-
 // One heading treatment for every section, so the sheet reads as a single list
 // of filters rather than three differently-styled blocks.
 const SECTION_LABEL =
-  "flex items-center gap-2 text-sm font-medium text-gray-900 mb-3";
+  "flex items-center gap-2 text-sm font-medium text-ink-primary mb-3";
 
 export type DatePreset = "thisMonth" | "lastMonth" | "last7Days" | "custom";
 
@@ -82,7 +82,7 @@ export function DashboardFilterSheet({ open, onClose, title = "Filters", categor
                 type="button"
                 aria-pressed={datePreset === key}
                 onClick={() => setDatePreset(key)}
-                className={`text-sm rounded-full border px-3 py-2 transition-colors ${datePreset === key ? "bg-black text-white border-black" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"}`}
+                className={`text-sm rounded-full border px-3 py-2 transition-colors ${datePreset === key ? "bg-accent text-accent-foreground border-accent" : "bg-surface-raised text-ink-secondary border-border-default hover:bg-surface-hover hover:text-ink-primary"}`}
               >
                 {label}
               </button>
@@ -124,18 +124,18 @@ export function DashboardFilterSheet({ open, onClose, title = "Filters", categor
           </label>
           <InputContainer
             rightAdornment={(
-              <ChevronDown className="text-gray-500" size={18} />
+              <ChevronDown className="text-ink-secondary" size={18} />
             )}
           >
             <select
               id="filter-category"
-              className="w-full bg-transparent outline-none text-black placeholder:text-gray-500 py-1 px-0 appearance-none"
+              className="w-full bg-transparent outline-none text-ink-primary placeholder:text-ink-secondary py-1 px-0 appearance-none"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
             >
-              <option value="">All categories</option>
+              <option value="" className="bg-surface-raised text-ink-primary">All categories</option>
               {categoriesSuggestions.map((c, i) => (
-                <option key={`${c}-${i}`} value={c}>{c}</option>
+                <option key={`${c}-${i}`} value={c} className="bg-surface-raised text-ink-primary">{c}</option>
               ))}
             </select>
           </InputContainer>
@@ -149,18 +149,18 @@ export function DashboardFilterSheet({ open, onClose, title = "Filters", categor
             </label>
             <InputContainer
               rightAdornment={(
-                <ChevronDown className="text-gray-500" size={18} />
+                <ChevronDown className="text-ink-secondary" size={18} />
               )}
             >
               <select
                 id="filter-for"
-                className="w-full bg-transparent outline-none text-black placeholder:text-gray-500 py-1 px-0 appearance-none"
+                className="w-full bg-transparent outline-none text-ink-primary placeholder:text-ink-secondary py-1 px-0 appearance-none"
                 value={forValue}
                 onChange={(e) => setForValue(e.target.value)}
               >
-                <option value="">All</option>
+                <option value="" className="bg-surface-raised text-ink-primary">All</option>
                 {forSuggestions.map((f, i) => (
-                  <option key={`${f}-${i}`} value={f}>{f}</option>
+                  <option key={`${f}-${i}`} value={f} className="bg-surface-raised text-ink-primary">{f}</option>
                 ))}
               </select>
             </InputContainer>
@@ -172,7 +172,7 @@ export function DashboardFilterSheet({ open, onClose, title = "Filters", categor
             between them. Reset is the secondary action, so it reads as one:
             the row is now a single full-width unit with Apply given the
             greater weight. */}
-        <div className="flex items-stretch gap-3 pt-4 border-t border-gray-200">
+        <div className="flex items-stretch gap-3 pt-4 border-t border-border-subtle">
           <Button
             variant="secondary"
             size="medium"

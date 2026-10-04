@@ -19,12 +19,12 @@ export function SummaryCards({ totalIncome, totalExpenses, isLoading }: SummaryC
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center space-x-2">
-              <div className="px-2 py-4 bg-gray-50 rounded-lg">
-                <TrendingUp className="text-green-600" size={24} />
+              <div className="px-2 py-4 bg-surface-sunken rounded-lg">
+                <TrendingUp className="text-sync-synced" size={24} />
               </div>
               <div>
-                <span className="text-sm font-medium text-gray-700">Total Income</span>
-                <div className="text-lg font-bold text-gray-900">
+                <span className="text-sm font-medium text-ink-secondary">Total Income</span>
+                <div className="text-lg font-bold text-ink-primary">
                   {settings ? formatCurrency(totalIncome, settings.currency) : `$${totalIncome.toFixed(2)}`}
                 </div>
               </div>
@@ -37,12 +37,12 @@ export function SummaryCards({ totalIncome, totalExpenses, isLoading }: SummaryC
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center space-x-2">
-              <div className="px-2 py-4 bg-gray-50 rounded-lg">
-                <TrendingDown className="text-red-600" size={24} />
+              <div className="px-2 py-4 bg-surface-sunken rounded-lg">
+                <TrendingDown className="text-danger-text" size={24} />
               </div>
               <div>
-                <span className="text-sm font-medium text-gray-700">Total Expenses</span>
-                <div className="text-lg font-bold text-gray-900">
+                <span className="text-sm font-medium text-ink-secondary">Total Expenses</span>
+                <div className="text-lg font-bold text-ink-primary">
                 {settings ? formatCurrency(totalExpenses, settings.currency) : `$${totalExpenses.toFixed(2)}`}
                 </div>
               </div>

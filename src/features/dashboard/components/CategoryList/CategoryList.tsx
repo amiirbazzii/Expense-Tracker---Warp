@@ -102,12 +102,12 @@ export function CategoryList({ categoryTotals, expenses = [], income = [], mode 
               key={`cat-${category}`}
               type="button"
               onClick={() => setOpenCategory(category)}
-              className="w-full flex items-center justify-between p-4 bg-white rounded-lg shadow-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 active:scale-[0.99] transition"
+              className="w-full flex items-center justify-between p-4 bg-surface-raised rounded-lg shadow-sm border border-border-default focus:outline-none focus:ring-2 focus:ring-accent/40 active:scale-[0.99] transition"
             >
-              <span className="inline-flex items-center px-3 py-1 rounded-md bg-gray-100 text-gray-800 text-sm font-medium">
+              <span className="inline-flex items-center px-3 py-1 rounded-md bg-surface-sunken text-ink-primary text-sm font-medium">
                 {category}
               </span>
-              <span className="text-base font-semibold text-gray-900">
+              <span className="text-base font-semibold text-ink-primary">
                 {settings ? formatCurrency(amount, settings.currency) : `$${amount.toFixed(2)}`}
               </span>
             </button>
@@ -143,7 +143,7 @@ export function CategoryList({ categoryTotals, expenses = [], income = [], mode 
                   />
                 ))}
             {isEmpty && (
-              <p className="text-sm text-gray-500 text-center py-6">No items in this category.</p>
+              <p className="text-sm text-ink-secondary text-center py-6">No items in this category.</p>
             )}
           </div>
         )}

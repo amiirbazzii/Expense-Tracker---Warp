@@ -89,66 +89,66 @@ export default function TestPWAPage() {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-surface-page text-ink-primary flex items-center justify-center">
         <div className="text-2xl">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white p-6">
+    <div className="min-h-screen bg-surface-page text-ink-primary p-6">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-4xl font-bold mb-2">PWA Test Dashboard</h1>
-        <p className="text-gray-400 mb-8">Check your Progressive Web App status</p>
+        <p className="text-ink-secondary mb-8">Check your Progressive Web App status</p>
 
         {/* Status Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           {/* Online Status */}
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6">
+          <div className="bg-surface-raised border border-border-subtle rounded-xl p-6 shadow-card">
             <div className="flex items-center gap-3 mb-2">
-              <div className={`w-4 h-4 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
+              <div className={`w-4 h-4 rounded-full ${isOnline ? 'bg-sync-synced' : 'bg-sync-attention'} animate-pulse`} />
               <h2 className="text-xl font-semibold">Connection Status</h2>
             </div>
             <p className="text-2xl font-bold">{isOnline ? "Online" : "Offline"}</p>
-            <p className="text-sm text-gray-400 mt-2">
+            <p className="text-sm text-ink-secondary mt-2">
               {isOnline ? "Connected to the internet" : "No internet connection"}
             </p>
           </div>
 
           {/* Installation Status */}
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6">
+          <div className="bg-surface-raised border border-border-subtle rounded-xl p-6 shadow-card">
             <div className="flex items-center gap-3 mb-2">
-              <div className={`w-4 h-4 rounded-full ${isInstalled ? 'bg-green-500' : 'bg-yellow-500'}`} />
+              <div className={`w-4 h-4 rounded-full ${isInstalled ? 'bg-sync-synced' : 'bg-sync-syncing'}`} />
               <h2 className="text-xl font-semibold">Installation</h2>
             </div>
             <p className="text-2xl font-bold">{isInstalled ? "Installed" : "Browser"}</p>
-            <p className="text-sm text-gray-400 mt-2">
+            <p className="text-sm text-ink-secondary mt-2">
               {isInstalled ? "Running as standalone app" : "Running in browser"}
             </p>
           </div>
 
           {/* Service Worker Status */}
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6">
+          <div className="bg-surface-raised border border-border-subtle rounded-xl p-6 shadow-card">
             <div className="flex items-center gap-3 mb-2">
-              <div className={`w-4 h-4 rounded-full ${swRegistered ? 'bg-green-500' : 'bg-red-500'}`} />
+              <div className={`w-4 h-4 rounded-full ${swRegistered ? 'bg-sync-synced' : 'bg-sync-attention'}`} />
               <h2 className="text-xl font-semibold">Service Worker</h2>
             </div>
             <p className="text-lg font-bold">{swRegistered ? "Registered" : "Not Registered"}</p>
-            <p className="text-sm text-gray-400 mt-2">{swStatus}</p>
+            <p className="text-sm text-ink-secondary mt-2">{swStatus}</p>
           </div>
 
           {/* Cache Status */}
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6">
+          <div className="bg-surface-raised border border-border-subtle rounded-xl p-6 shadow-card">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-4 h-4 rounded-full bg-blue-500" />
+              <div className="w-4 h-4 rounded-full bg-accent" />
               <h2 className="text-xl font-semibold">Cache Storage</h2>
             </div>
-            <p className="text-sm text-gray-300 mt-2 break-words">{cacheStatus}</p>
+            <p className="text-sm text-ink-secondary mt-2 break-words">{cacheStatus}</p>
           </div>
         </div>
 
         {/* Feature Checklist */}
-        <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6 mb-8">
+        <div className="bg-surface-raised border border-border-subtle rounded-xl p-6 mb-8 shadow-card">
           <h2 className="text-2xl font-semibold mb-4">PWA Features</h2>
           <div className="space-y-3">
             <FeatureItem 
@@ -179,30 +179,30 @@ export default function TestPWAPage() {
         </div>
 
         {/* Actions */}
-        <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6">
+        <div className="bg-surface-raised border border-border-subtle rounded-xl p-6 shadow-card">
           <h2 className="text-2xl font-semibold mb-4">Actions</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <button
               onClick={clearCaches}
-              className="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+              className="bg-danger hover:bg-danger-active text-ink-inverse font-semibold py-3 px-6 rounded-lg transition-colors cursor-pointer"
             >
               Clear All Caches
             </button>
             <button
               onClick={unregisterSW}
-              className="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+              className="bg-sync-syncing hover:opacity-90 text-ink-inverse font-semibold py-3 px-6 rounded-lg transition-colors cursor-pointer"
             >
               Unregister Service Worker
             </button>
             <button
               onClick={() => window.location.reload()}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+              className="bg-accent hover:bg-accent-hover text-accent-foreground font-semibold py-3 px-6 rounded-lg transition-colors cursor-pointer"
             >
               Reload Page
             </button>
             <button
               onClick={() => window.location.href = '/'}
-              className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+              className="bg-sync-synced hover:opacity-90 text-ink-inverse font-semibold py-3 px-6 rounded-lg transition-colors cursor-pointer"
             >
               Go to Home
             </button>
@@ -210,9 +210,9 @@ export default function TestPWAPage() {
         </div>
 
         {/* Instructions */}
-        <div className="mt-8 bg-blue-900/20 border border-blue-700 rounded-xl p-6">
+        <div className="mt-8 bg-surface-app border border-border-subtle rounded-xl p-6">
           <h3 className="text-xl font-semibold mb-3">🧪 How to Test Offline Mode</h3>
-          <ol className="space-y-2 text-gray-300">
+          <ol className="space-y-2 text-ink-secondary">
             <li>1. Make sure Service Worker is registered (green status above)</li>
             <li>2. Navigate to a few pages (dashboard, expenses, etc.)</li>
             <li>3. Open DevTools (F12) → Network tab</li>
@@ -229,12 +229,12 @@ export default function TestPWAPage() {
 function FeatureItem({ enabled, label }: { enabled: boolean; label: string }) {
   return (
     <div className="flex items-center gap-3">
-      <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-        enabled ? 'bg-green-500' : 'bg-gray-600'
+      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+        enabled ? 'bg-sync-synced text-ink-inverse' : 'bg-surface-sunken text-ink-disabled'
       }`}>
         {enabled ? '✓' : '✗'}
       </div>
-      <span className={enabled ? 'text-white' : 'text-gray-500'}>{label}</span>
+      <span className={enabled ? 'text-ink-primary' : 'text-ink-disabled'}>{label}</span>
     </div>
   );
 }

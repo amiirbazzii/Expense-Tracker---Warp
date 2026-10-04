@@ -266,11 +266,42 @@ body {
   width: 36px;
   transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
   font-family: inherit;
+  color: var(--ink-primary);
+}
+
+.rmdp-custom .rmdp-day:not(.rmdp-disabled):not(.rmdp-day-hidden) span:hover {
+  background-color: var(--surface-hover) !important;
+  color: var(--ink-primary) !important;
+}
+
+.rmdp-custom .rmdp-day.rmdp-selected,
+.rmdp-custom .rmdp-day.rmdp-selected span:not(.highlight) {
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+  box-shadow: none !important;
+}
+
+.rmdp-custom .rmdp-day.rmdp-today:not(.rmdp-selected) {
+  background-color: var(--surface-hover) !important;
+  color: var(--ink-primary) !important;
+}
+
+.rmdp-custom .rmdp-day.rmdp-today span {
+  border: 1px solid var(--accent) !important;
+}
+
+.rmdp-custom .rmdp-day.rmdp-today.rmdp-selected span {
+  border: none !important;
+}
+
+.rmdp-custom .rmdp-day.rmdp-deactive,
+.rmdp-custom .rmdp-day.rmdp-deactive span {
+  color: var(--ink-disabled) !important;
 }
 
 .rmdp-custom .rmdp-week-day {
   font-size: 11px;
-  color: #9ca3af;
+  color: var(--ink-tertiary);
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -296,6 +327,19 @@ body {
   font-size: 14px;
   border-radius: 12px;
   font-family: inherit;
+  color: var(--ink-primary);
+}
+
+.rmdp-custom .rmdp-month-picker .rmdp-day:not(.rmdp-disabled) span:hover,
+.rmdp-custom .rmdp-year-picker .rmdp-day:not(.rmdp-disabled) span:hover {
+  background-color: var(--surface-hover) !important;
+  color: var(--ink-primary) !important;
+}
+
+.rmdp-custom .rmdp-month-picker .rmdp-day.rmdp-selected span:not(.highlight),
+.rmdp-custom .rmdp-year-picker .rmdp-day.rmdp-selected span:not(.highlight) {
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
 }
 
 .persian-datepicker-popover {

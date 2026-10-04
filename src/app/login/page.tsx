@@ -65,26 +65,26 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-surface-page px-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="max-w-md w-full space-y-8"
       >
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-ink-primary">
             Welcome Back
           </h2>
           {!isOnline && (
-            <div className="mt-2 text-center text-sm text-orange-600 bg-orange-50 p-2 rounded">
+            <div className="mt-2 text-center text-sm text-sync-syncing bg-sync-syncing/10 p-2 rounded">
               📱 Offline Mode - Using cached credentials
             </div>
           )}
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="mt-2 text-center text-sm text-ink-secondary">
             New here?{" "}
             <Link
               href="/register"
-              className="font-medium text-blue-600 hover:text-blue-500"
+              className="font-medium text-ink-link hover:text-ink-link-hover"
             >
               Create an account
             </Link>
@@ -101,7 +101,7 @@ export default function LoginPage() {
                 name="username"
                 type="text"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 bg-white rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-border-default placeholder-ink-tertiary text-ink-primary bg-surface-raised rounded-t-md focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent focus:z-10 sm:text-sm"
                 placeholder="Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -117,7 +117,7 @@ export default function LoginPage() {
                 name="password"
                 type="password"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 bg-white rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-border-default placeholder-ink-tertiary text-ink-primary bg-surface-raised rounded-b-md focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent focus:z-10 sm:text-sm"
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -141,7 +141,7 @@ export default function LoginPage() {
           <div className="text-center">
             <Link
               href="/forgot-password"
-              className="font-medium text-blue-600 hover:text-blue-500 text-sm"
+              className="font-medium text-ink-link hover:text-ink-link-hover text-sm"
             >
               Forgot Password?
             </Link>

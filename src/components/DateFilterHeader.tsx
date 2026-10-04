@@ -26,8 +26,8 @@ export function DateFilterHeader({
 }: DateFilterHeaderProps) {
   const containerClasses = "flex items-center justify-between mb-4";
   const titleClasses = isMainTitle
-    ? "text-xl font-bold text-gray-900 text-center"
-    : "text-lg font-semibold text-gray-800 text-center";
+    ? "text-xl font-bold text-ink-primary text-center"
+    : "text-lg font-semibold text-ink-primary text-center";
 
   const MainTitleComponent = isMainTitle ? 'h1' : 'h2';
 
@@ -50,7 +50,7 @@ export function DateFilterHeader({
         <MainTitleComponent className={titleClasses}>
           {formattedDate}
         </MainTitleComponent>
-        {subtitle && <p className="text-sm text-gray-500 text-center">{subtitle}</p>}
+        {subtitle && <p className="text-sm text-ink-secondary text-center">{subtitle}</p>}
       </div>
 
       <Button

@@ -63,23 +63,23 @@ export default function OnboardingPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-surface-page">
         <HeaderRow
-          left={<h1 className="text-xl font-bold text-gray-900">Account Setup</h1>}
+          left={<h1 className="text-xl font-bold text-ink-primary">Account Setup</h1>}
         />
         
         <div className="max-w-md mx-auto p-4 pt-[92px] pb-20">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-lg shadow-sm p-6 mb-6"
+            className="bg-surface-raised border border-border-subtle rounded-lg shadow-card p-6 mb-6"
           >
             <div className="text-center mb-6">
-              <CreditCard className="mx-auto text-blue-600 mb-4" size={48} />
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              <CreditCard className="mx-auto text-accent mb-4" size={48} />
+              <h2 className="text-2xl font-bold text-ink-primary mb-2">
                 Add Your Cards
               </h2>
-              <p className="text-gray-600">
+              <p className="text-ink-secondary">
                 Add the cards you&apos;ll use to track your finances.
               </p>
             </div>
@@ -87,7 +87,7 @@ export default function OnboardingPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Card Input */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-ink-primary mb-2">
                   Card Name
                 </label>
                 <div className="flex space-x-2">
@@ -96,7 +96,7 @@ export default function OnboardingPage() {
                     value={cardName}
                     onChange={(e) => setCardName(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white focus:border-blue-500 min-h-[44px]"
+                    className="flex-1 min-w-0 px-3 py-2 border border-border-default rounded-md focus:outline-none focus:ring-1 focus:ring-accent text-ink-primary bg-surface-raised focus:border-accent min-h-[44px] placeholder-ink-tertiary"
                     placeholder="e.g., Chase Visa, Bank of America"
                   />
                   <Button
@@ -115,7 +115,7 @@ export default function OnboardingPage() {
               {/* Cards List */}
               {cards.length > 0 && (
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-ink-primary">
                     Your Cards ({cards.length})
                   </label>
                   <div className="space-y-2">
@@ -124,17 +124,17 @@ export default function OnboardingPage() {
                         key={index}
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        className="flex items-center justify-between bg-gray-50 p-3 rounded-md"
+                        className="flex items-center justify-between bg-surface-sunken p-3 rounded-md"
                       >
                         <div className="flex items-center space-x-2">
-                          <CreditCard className="text-blue-600" size={20} />
-                          <span className="text-gray-900">{card}</span>
+                          <CreditCard className="text-accent" size={20} />
+                          <span className="text-ink-primary">{card}</span>
                         </div>
                         <motion.button
                           type="button"
                           whileTap={{ scale: 0.95 }}
                           onClick={() => removeCard(index)}
-                          className="text-red-600 hover:text-red-700 p-1"
+                          className="text-danger hover:text-danger-active p-1 cursor-pointer"
                         >
                           <X size={16} />
                         </motion.button>

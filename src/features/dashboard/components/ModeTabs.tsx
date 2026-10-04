@@ -22,7 +22,7 @@ export function ModeTabs({ mode, totalExpenses = 0, totalIncome = 0, onChange, c
 
   return (
     <div className={className}>
-      <div className="relative grid grid-cols-2 border-b border-t border-gray-200 select-none" role="tablist" aria-label="Data mode">
+      <div className="relative grid grid-cols-2 border-b border-t border-border-subtle select-none" role="tablist" aria-label="Data mode">
         {/* Expenses Tab */}
         <button
           type="button"
@@ -33,15 +33,15 @@ export function ModeTabs({ mode, totalExpenses = 0, totalIncome = 0, onChange, c
           role="tab"
         >
           <div className="relative mx-auto flex w-[120px] flex-col items-center">
-            <div className="text-[14px] text-gray-400">Expenses</div>
-            <div className="text-[16px] font-medium text-gray-900 tracking-tight">
+            <div className="text-[14px] text-ink-secondary">Expenses</div>
+            <div className="text-[16px] font-medium text-ink-primary tracking-tight">
               {fmt(totalExpenses)}
             </div>
           </div>
         </button>
 
         {/* Vertical divider */}
-        <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gray-200 pointer-events-none" aria-hidden="true" />
+        <div className="absolute left-1/2 top-0 bottom-0 w-px bg-border-subtle pointer-events-none" aria-hidden="true" />
 
         {/* Income Tab */}
         <button
@@ -52,8 +52,8 @@ export function ModeTabs({ mode, totalExpenses = 0, totalIncome = 0, onChange, c
           role="tab"
         >
           <div className="relative mx-auto flex w-[120px] flex-col items-center">
-            <div className="text-[14px] text-gray-400">Income</div>
-            <div className="text-[16px] font-medium text-gray-900 tracking-tight">{fmt(totalIncome)}</div>
+            <div className="text-[14px] text-ink-secondary">Income</div>
+            <div className="text-[16px] font-medium text-ink-primary tracking-tight">{fmt(totalIncome)}</div>
           </div>
         </button>
 
@@ -62,7 +62,7 @@ export function ModeTabs({ mode, totalExpenses = 0, totalIncome = 0, onChange, c
           initial={false}
           animate={{ left: mode === 'expenses' ? 'calc(25% - 60px)' : 'calc(75% - 60px)' }}
           transition={{ type: 'spring', stiffness: 600, damping: 32 }}
-          className="absolute -bottom-[0px] w-[120px] h-[4px] bg-black rounded-tl-full rounded-tr-full rounded-br-none rounded-bl-none"
+          className="absolute -bottom-[0px] w-[120px] h-[4px] bg-accent rounded-tl-full rounded-tr-full rounded-br-none rounded-bl-none"
           aria-hidden="true"
         />
       </div>

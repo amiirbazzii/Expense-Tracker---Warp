@@ -27,12 +27,12 @@ export function TotalBalanceCard({ className }: TotalBalanceCardProps) {
   const content = (
     <div className="w-full flex items-center justify-between gap-3">
       <div className="flex items-center gap-4">
-        <div className="inline-flex items-center justify-center text-gray-500">
+        <div className="inline-flex items-center justify-center text-ink-secondary">
           <CreditCard size={32} />
         </div>
         <div className="flex flex-col items-start leading-tight">
-          <h2 className="text-sm font-light text-gray-900">Total Balance</h2>
-          <p className={`text-lg font-bold ${totalBalance !== undefined && totalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <h2 className="text-sm font-light text-ink-primary">Total Balance</h2>
+          <p className={`text-lg font-bold ${totalBalance !== undefined && totalBalance >= 0 ? 'text-sync-synced' : 'text-danger-text'}`}>
             {totalBalance === undefined
               ? '—'
               : (settings ? formatCurrency(totalBalance, settings.currency) : `$${totalBalance.toFixed(2)}`)}
@@ -44,7 +44,7 @@ export function TotalBalanceCard({ className }: TotalBalanceCardProps) {
         <Chip>
           {`${cardsLabel} cards`}
         </Chip>
-        <ChevronRight className="text-gray-600" size={20} />
+        <ChevronRight className="text-ink-secondary" size={20} />
       </div>
     </div>
   );

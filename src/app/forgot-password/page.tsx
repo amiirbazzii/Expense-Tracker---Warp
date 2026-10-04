@@ -49,25 +49,25 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-surface-page flex items-center justify-center px-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="max-w-md w-full space-y-8"
       >
         <div className="text-center">
-          <Shield className="mx-auto mb-4 text-blue-600" size={48} />
-          <h2 className="text-3xl font-extrabold text-gray-900">
+          <Shield className="mx-auto mb-4 text-accent" size={48} />
+          <h2 className="text-3xl font-extrabold text-ink-primary">
             Forgot Password?
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-ink-secondary">
             Enter your recovery code to reset your password
           </p>
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="recoveryCode" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="recoveryCode" className="block text-sm font-medium text-ink-primary mb-2">
               Recovery Code
             </label>
             <input
@@ -76,13 +76,13 @@ export default function ForgotPasswordPage() {
               type="text"
               required
               placeholder="AB12-CD34-EF"
-              className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm font-mono"
+              className="appearance-none rounded-md relative block w-full px-3 py-2 border border-border-default placeholder-ink-tertiary text-ink-primary bg-surface-raised focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent sm:text-sm font-mono"
               value={recoveryCode}
               onChange={(e) => setRecoveryCode(e.target.value.toUpperCase())}
               disabled={isLoading}
               maxLength={12}
             />
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-ink-tertiary">
               Enter the 10-character recovery code from your settings
             </p>
           </div>
@@ -91,7 +91,7 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 min-h-[44px]"
+              className="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-accent-foreground bg-accent hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent disabled:opacity-50 min-h-[44px] cursor-pointer"
             >
               {isLoading ? "Verifying..." : "Verify Recovery Code"}
             </button>
@@ -101,13 +101,13 @@ export default function ForgotPasswordPage() {
         <div className="text-center space-y-2">
           <Link
             href="/login"
-            className="inline-flex items-center space-x-2 font-medium text-blue-600 hover:text-blue-500 text-sm"
+            className="inline-flex items-center space-x-2 font-medium text-ink-link hover:text-ink-link-hover text-sm"
           >
             <ArrowLeft size={16} />
             <span>Back to Login</span>
           </Link>
           
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-ink-tertiary">
             Don&apos;t have a recovery code? Contact support or access Settings from a logged-in device.
           </div>
         </div>

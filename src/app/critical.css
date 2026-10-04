@@ -3,8 +3,28 @@ body {
   font-family: 'Poppins', system-ui, -apple-system, sans-serif;
   margin: 0;
   padding: 0;
-  background-color: #f9fafb;
+  background-color: var(--surface-page);
+  color: var(--ink-primary);
   line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: var(--surface-page);
+    color: var(--ink-primary);
+  }
+}
+
+[data-theme="dark"] body,
+html[data-theme="dark"] body {
+  background-color: var(--surface-page);
+  color: var(--ink-primary);
+}
+
+[data-theme="light"] body,
+html[data-theme="light"] body {
+  background-color: var(--surface-page);
+  color: var(--ink-primary);
 }
 
 .min-h-screen {
@@ -45,12 +65,12 @@ body {
   font-weight: 500;
 }
 
-.text-gray-900 {
-  color: #111827;
+.text-ink-primary {
+  color: var(--ink-primary);
 }
 
-.text-gray-600 {
-  color: #4b5563;
+.text-ink-secondary {
+  color: var(--ink-secondary);
 }
 
 .text-sm {
@@ -58,8 +78,8 @@ body {
   line-height: 1.25rem;
 }
 
-.bg-gray-50 {
-  background-color: #f9fafb;
+.bg-surface-page {
+  background-color: var(--surface-page);
 }
 
 .inline-block {
@@ -86,8 +106,8 @@ body {
   border-style: solid;
 }
 
-.border-blue-600 {
-  border-color: #2563eb;
+.border-accent {
+  border-color: var(--accent);
 }
 
 .border-r-transparent {

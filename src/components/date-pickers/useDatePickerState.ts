@@ -216,8 +216,8 @@ export function useDatePickerState(
       return {
         className: [
           `relative !h-9 !w-9 !flex !items-center !justify-center !rounded-xl ${config.fontClassName}`,
-          isSelected ? "!bg-black !text-white !font-medium" : "",
-          !isSelected && isToday ? "!bg-gray-100 !text-gray-800" : "",
+          isSelected ? "!bg-accent !text-accent-foreground !font-medium" : "",
+          !isSelected && isToday ? "!bg-surface-hover !text-ink-primary" : "",
           !isInCurrentMonth && viewModeRef.current === "day" ? "!opacity-30" : "",
         ]
           .filter(Boolean)

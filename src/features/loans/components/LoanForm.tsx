@@ -164,7 +164,7 @@ export function LoanForm({ open, onClose, onSubmit, editingLoan }: LoanFormProps
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          <div className="text-sm text-danger bg-danger-subtle border border-danger-subtle rounded-lg px-3 py-2">
             {error}
           </div>
         )}
@@ -217,7 +217,7 @@ export function LoanForm({ open, onClose, onSubmit, editingLoan }: LoanFormProps
             type="number"
             value={form.monthlyPaymentDay}
             onChange={(e) => setForm({ ...form, monthlyPaymentDay: e.target.value })}
-            className="w-full bg-transparent outline-none text-black placeholder:text-gray-500"
+            className="w-full bg-transparent outline-none text-ink-primary placeholder:text-ink-tertiary"
             placeholder="Monthly payment day (1-31)"
             min="1"
             max="31"
@@ -227,7 +227,7 @@ export function LoanForm({ open, onClose, onSubmit, editingLoan }: LoanFormProps
 
         {editingLoan && (
           <div className="grid grid-cols-2 gap-3">
-            <label className="text-xs text-gray-500">
+            <label className="text-xs text-ink-secondary">
               Start month (1-12) — {loanCalendar}
               <Input
                 type="number"
@@ -241,7 +241,7 @@ export function LoanForm({ open, onClose, onSubmit, editingLoan }: LoanFormProps
                 required
               />
             </label>
-            <label className="text-xs text-gray-500">
+            <label className="text-xs text-ink-secondary">
               Start year — {loanCalendar}
               <Input
                 type="number"

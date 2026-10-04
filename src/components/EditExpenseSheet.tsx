@@ -166,9 +166,9 @@ export function EditExpenseSheet({
               onChange={(e) =>
                 setFormData({ ...formData, title: e.target.value })
               }
-              className={`w-full bg-transparent outline-none placeholder:text-gray-500 ${formData.title
-                  ? "font-medium text-gray-900"
-                  : "font-normal text-gray-900"
+              className={`w-full bg-transparent outline-none placeholder:text-ink-tertiary ${formData.title
+                  ? "font-medium text-ink-primary"
+                  : "font-normal text-ink-primary"
                 }`}
               placeholder="Lunch, Gas, etc."
               required
@@ -181,7 +181,7 @@ export function EditExpenseSheet({
             leftIcon={CreditCard}
             rightAdornment={
               <svg
-                className="size-5 text-gray-500"
+                className="size-5 text-ink-secondary"
                 viewBox="0 0 24 24"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
@@ -202,14 +202,14 @@ export function EditExpenseSheet({
               onChange={(e) =>
                 setFormData({ ...formData, cardId: e.target.value })
               }
-              className="w-full bg-transparent outline-none text-black placeholder:text-gray-500 py-1 px-0 appearance-none"
+              className="w-full bg-transparent outline-none text-ink-primary placeholder:text-ink-tertiary py-1 px-0 appearance-none font-normal"
               required
             >
-              <option value="" disabled>
+              <option value="" disabled className="bg-surface-raised text-ink-primary">
                 Select a card
               </option>
               {cards?.map((card) => (
-                <option key={card._id} value={card._id}>
+                <option key={card._id} value={card._id} className="bg-surface-raised text-ink-primary">
                   {card.name}
                 </option>
               ))}

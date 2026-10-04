@@ -11,8 +11,8 @@ export default function IncomeRedirect() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center">
-      <div className="text-gray-500">Redirecting to Add Transaction...</div>
+    <div className="min-h-screen bg-surface-page flex items-center justify-center">
+      <div className="text-ink-secondary">Redirecting to Add Transaction...</div>
     </div>
   );
 }

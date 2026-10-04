@@ -33,11 +33,11 @@ export function AddCardForm({ onAddCard, isSubmitting }: AddCardFormProps) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-xl border border-gray-200 bg-[#F9F9F9] p-4 mb-4"
+      className="rounded-xl border border-border-subtle bg-surface-app p-4 mb-4"
     >
       <div className="mb-2">
-        <h2 className="text-lg font-semibold text-gray-900">Add New Card</h2>
-        <p className="text-sm text-gray-600">
+        <h2 className="text-lg font-semibold text-ink-primary">Add New Card</h2>
+        <p className="text-sm text-ink-secondary">
           Enter a name for your new card
         </p>
       </div>
@@ -53,7 +53,7 @@ export function AddCardForm({ onAddCard, isSubmitting }: AddCardFormProps) {
             onChange={(e) => setCardName(e.target.value)}
             onKeyDown={handleKeyPress}
             placeholder="Card name ..."
-            className="w-full bg-transparent outline-none border-0 text-gray-900 placeholder:text-[#707070]"
+            className="w-full bg-transparent outline-none border-0 text-ink-primary placeholder:text-ink-secondary"
           />
         </InputContainer>
         <Button

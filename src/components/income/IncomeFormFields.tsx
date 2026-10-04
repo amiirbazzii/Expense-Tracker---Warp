@@ -51,7 +51,7 @@ export function IncomeFormFields({
           type="text"
           value={form.source}
           onChange={(e) => setField("source", e.target.value)}
-          className={`w-full bg-transparent outline-none placeholder:text-gray-500 ${form.source ? 'font-medium text-gray-900' : 'font-normal text-gray-900'}`}
+          className={`w-full bg-transparent outline-none placeholder:text-ink-secondary ${form.source ? 'font-medium text-ink-primary' : 'font-normal text-ink-primary'}`}
           placeholder="Salary, Freelance, etc."
           required
         />
@@ -75,7 +75,7 @@ export function IncomeFormFields({
             <button
               type="button"
               onClick={onManageCategories}
-              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              className="p-1.5 rounded-lg text-ink-tertiary hover:text-ink-primary hover:bg-surface-hover transition-colors"
               aria-label="Manage categories"
             >
               <Settings2 size={16} />
@@ -88,12 +88,12 @@ export function IncomeFormFields({
         value={format(form.date, "yyyy-MM-dd")}
         onChange={onDateChange}
       />
-      <div className="rounded-[10px] border border-[#D3D3D3] bg-[#f8f8f8] focus-within:border-black focus-within:shadow-[inset_0px_0px_0px_1px_#000]">
+      <div className="rounded-field border border-border-default bg-surface-field focus-within:shadow-focus-field transition-shadow">
         <div className="px-4 py-3">
           <textarea
             value={form.notes}
             onChange={(e) => setField("notes", e.target.value)}
-            className={`w-full bg-transparent outline-none placeholder:text-gray-500 resize-none min-h-[88px] text-sm ${form.notes ? "font-medium text-gray-900" : "font-normal text-gray-900"}`}
+            className={`w-full bg-transparent outline-none placeholder:text-ink-secondary resize-none min-h-[88px] text-sm ${form.notes ? "font-medium text-ink-primary" : "font-normal text-ink-primary"}`}
             placeholder="Notes (Optional)"
           />
         </div>

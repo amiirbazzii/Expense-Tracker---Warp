@@ -62,7 +62,7 @@ function OfflineBanner() {
     <motion.div
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="p-3 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-700 font-medium"
+      className="p-3 bg-sync-syncing/15 border border-sync-syncing/30 rounded-lg text-sm text-sync-syncing font-medium"
     >
       Viewing Offline Backup Data
     </motion.div>
@@ -228,7 +228,7 @@ function AddTransactionContent() {
   const [categorySheetType, setCategorySheetType] = useState<"expense" | "income" | null>(null);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-surface-page">
       <AppHeader />
       <div className="max-w-lg mx-auto py-4 pt-[68px] pb-24">
         <Tabs
@@ -359,8 +359,8 @@ function ExpenseTab({
         transition={{ duration: 0.3 }}
       >
         <div className="mb-4">
-          <h2 className="text-2xl font-medium text-gray-900">Add New Expense</h2>
-          <p className="mt-1 text-sm font-light leading-5 text-gray-900">
+          <h2 className="text-2xl font-medium text-ink-primary">Add New Expense</h2>
+          <p className="mt-1 text-sm font-light leading-5 text-ink-secondary">
             Fill in the details below to track your expense
           </p>
         </div>
@@ -398,7 +398,7 @@ function ExpenseTab({
               <button
                 type="button"
                 onClick={onManageCategories}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                className="p-1.5 rounded-lg text-ink-tertiary hover:text-ink-primary hover:bg-surface-hover transition-colors"
                 aria-label="Manage categories"
               >
                 <Settings2 size={16} />
@@ -434,7 +434,7 @@ function ExpenseTab({
         </form>
       </motion.div>
       {offline && <OfflineBanner />}
-      <div className="rounded-xl border border-gray-200 bg-[#F9F9F9] p-4">
+      <div className="rounded-xl border border-border-subtle bg-surface-app p-4">
         <DateFilterHeader
           monthName={month}
           year={year}
@@ -458,8 +458,8 @@ function ExpenseTab({
           </div>
         ) : (
           <div className="text-center py-12">
-            <Receipt className="mx-auto text-gray-400 mb-4" size={48} />
-            <p className="text-gray-500">You have no expenses recorded for this month.</p>
+            <Receipt className="mx-auto text-ink-tertiary mb-4" size={48} />
+            <p className="text-ink-secondary">You have no expenses recorded for this month.</p>
           </div>
         )}
       </div>
@@ -515,8 +515,8 @@ function IncomeTab({
         transition={{ duration: 0.3 }}
       >
         <div className="mb-4">
-          <h2 className="text-2xl font-medium text-gray-900">Add New Income</h2>
-          <p className="mt-1 text-sm font-light leading-5 text-gray-900">
+          <h2 className="text-2xl font-medium text-ink-primary">Add New Income</h2>
+          <p className="mt-1 text-sm font-light leading-5 text-ink-secondary">
             Fill in the details below to track your income
           </p>
         </div>
@@ -554,7 +554,7 @@ function IncomeTab({
               <button
                 type="button"
                 onClick={onManageCategories}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                className="p-1.5 rounded-lg text-ink-tertiary hover:text-ink-primary hover:bg-surface-hover transition-colors"
                 aria-label="Manage categories"
               >
                 <Settings2 size={16} />
@@ -566,12 +566,12 @@ function IncomeTab({
             value={format(form.date, "yyyy-MM-dd")}
             onChange={onDateChange}
           />
-          <div className="rounded-[10px] border border-[#D3D3D3] bg-[#f8f8f8] focus-within:border-black focus-within:shadow-[inset_0px_0px_0px_1px_#000]">
+          <div className="rounded-field border border-border-default bg-surface-field focus-within:shadow-focus-field transition-shadow">
             <div className="px-4 py-3">
               <textarea
                 value={form.notes}
                 onChange={(e) => setField("notes", e.target.value)}
-                className={`w-full bg-transparent outline-none placeholder:text-gray-500 resize-none min-h-[88px] text-sm ${form.notes ? "font-medium text-gray-900" : "font-normal text-gray-900"}`}
+                className={`w-full bg-transparent outline-none placeholder:text-ink-secondary resize-none min-h-[88px] text-sm ${form.notes ? "font-medium text-ink-primary" : "font-normal text-ink-primary"}`}
                 placeholder="Notes (Optional)"
               />
             </div>
@@ -587,7 +587,7 @@ function IncomeTab({
         </form>
       </motion.div>
       {offline && <OfflineBanner />}
-      <div className="rounded-xl border border-gray-200 bg-[#F9F9F9] p-4">
+      <div className="rounded-xl border border-border-subtle bg-surface-app p-4">
         <DateFilterHeader
           monthName={month}
           year={year}
@@ -611,8 +611,8 @@ function IncomeTab({
           </div>
         ) : (
           <div className="text-center py-12">
-            <TrendingUp className="mx-auto text-gray-400 mb-4" size={48} />
-            <p className="text-gray-500">You have no income recorded for this month.</p>
+            <TrendingUp className="mx-auto text-ink-tertiary mb-4" size={48} />
+            <p className="text-ink-secondary">You have no income recorded for this month.</p>
           </div>
         )}
       </div>
@@ -623,7 +623,7 @@ function IncomeTab({
 export default function AddTransactionPage() {
   return (
     <ProtectedRoute>
-      <Suspense fallback={<div className="min-h-screen bg-white" />}>
+      <Suspense fallback={<div className="min-h-screen bg-surface-page" />}>
         <AddTransactionContent />
       </Suspense>
     </ProtectedRoute>

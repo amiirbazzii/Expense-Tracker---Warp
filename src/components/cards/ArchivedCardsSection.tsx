@@ -24,19 +24,19 @@ export function ArchivedCardsSection({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.15 }}
-      className="rounded-xl border border-gray-200 bg-[#F9F9F9] overflow-hidden mb-4"
+      className="rounded-xl border border-border-subtle bg-surface-app overflow-hidden mb-4"
     >
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors min-h-[44px]"
+        className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-ink-secondary hover:text-ink-primary hover:bg-surface-hover transition-colors min-h-[44px]"
         aria-expanded={isOpen}
         aria-label={isOpen ? "Hide archived cards" : "View archived cards"}
       >
         <span>View Archived Cards ({cards.length})</span>
         {isOpen ? (
-          <ChevronUp className="h-4 w-4 text-gray-500" />
+          <ChevronUp className="h-4 w-4 text-ink-tertiary" />
         ) : (
-          <ChevronDown className="h-4 w-4 text-gray-500" />
+          <ChevronDown className="h-4 w-4 text-ink-tertiary" />
         )}
       </button>
       <AnimatePresence initial={false}>
@@ -49,13 +49,13 @@ export function ArchivedCardsSection({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="border-t border-gray-200 divide-y divide-gray-200">
+            <div className="border-t border-border-subtle divide-y divide-border-subtle">
               {cards.map((card) => (
                 <div
                   key={card.cardId}
                   className="flex items-center justify-between px-4 py-3"
                 >
-                  <div className="font-medium text-gray-900 text-sm">
+                  <div className="font-medium text-ink-primary text-sm">
                     {card.cardName}
                   </div>
                   <Button

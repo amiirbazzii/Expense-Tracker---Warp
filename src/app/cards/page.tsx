@@ -51,7 +51,7 @@ export default function CardsPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-surface-page">
         <AppHeader title="Manage Cards" />
 
         <div className="max-w-md mx-auto p-4 pt-[92px] pb-20">
@@ -71,9 +71,9 @@ export default function CardsPage() {
             }
           />
 
-          <div className="rounded-xl border border-gray-200 bg-[#F9F9F9] p-4 mb-4">
+          <div className="rounded-xl border border-border-subtle bg-surface-app p-4 mb-4">
             <div className="mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold text-ink-primary">
                 Your Cards ({activeCards.length || 0})
               </h2>
             </div>

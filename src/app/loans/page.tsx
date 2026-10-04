@@ -176,7 +176,7 @@ export default function LoansPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-surface-page">
         <AppHeader
           right={
             hasLoans ? (
@@ -205,7 +205,7 @@ export default function LoansPage() {
           )}
 
           {/* Date Filter Header */}
-          <div className="rounded-xl border border-gray-200 bg-[#F9F9F9] p-4">
+          <div className="rounded-xl border border-border-subtle bg-surface-app p-4">
             <DateFilterHeader
               monthName={monthName}
               year={displayYear}
@@ -230,7 +230,7 @@ export default function LoansPage() {
                     />
                   ))
                 ) : (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-8 text-ink-secondary">
                     <p className="text-sm">No installments due this month</p>
                   </div>
                 )}
@@ -244,22 +244,22 @@ export default function LoansPage() {
                   setEditingLoan(null);
                   setShowForm(true);
                 }}
-                className="w-full mt-4 flex items-center justify-between p-4 rounded-xl border border-gray-200 bg-white shadow-sm transition-colors active:bg-gray-50"
+                className="w-full mt-4 flex items-center justify-between p-4 rounded-xl border border-border-subtle bg-surface-raised shadow-card transition-colors active:bg-surface-hover"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-indigo-50 text-indigo-600">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-accent/10 text-accent">
                     <Plus size={20} />
                   </div>
                   <div className="text-left">
-                    <p className="text-sm font-semibold text-gray-900">
+                    <p className="text-sm font-semibold text-ink-primary">
                       Add your first loan
                     </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="text-xs text-ink-secondary mt-0.5">
                       Track installments easily
                     </p>
                   </div>
                 </div>
-                <ChevronRight size={20} className="text-gray-400" />
+                <ChevronRight size={20} className="text-ink-tertiary" />
               </motion.button>
             )}
           </div>

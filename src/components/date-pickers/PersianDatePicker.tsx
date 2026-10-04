@@ -23,7 +23,7 @@ const PERSIAN_CONFIG: DatePickerConfig = {
   displayFormat: "YYYY/MM/DD",
   monthFormat: "MMMM",
   isRtl: true,
-  popoverClassName: "bg-white rounded-2xl shadow-xl border border-gray-200/60 overflow-hidden persian-datepicker-popover",
+  popoverClassName: "bg-surface-raised rounded-2xl shadow-raised border border-border-default overflow-hidden persian-datepicker-popover",
   calendarClassName: "rmdp-custom rmdp-rtl",
 };
 

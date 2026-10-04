@@ -128,7 +128,7 @@ export default function SettingsPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-surface-page">
         <AppHeader />
 
         <div className="max-w-md mx-auto px-6 pt-[92px] pb-28">
@@ -148,7 +148,7 @@ export default function SettingsPage() {
             {failedMutations.length > 0 && (
               <SettingsCard title="Needs attention">
                 <div className="px-4 py-2 flex flex-col gap-3">
-                  <p className="text-sm text-black">
+                  <p className="text-sm text-ink-primary">
                     {failedMutations.length === 1
                       ? "1 change was rejected by the server and is not saved online."
                       : `${failedMutations.length} changes were rejected by the server and are not saved online.`}{" "}
@@ -158,10 +158,10 @@ export default function SettingsPage() {
                   <ul className="flex flex-col gap-1">
                     {failedMutations.map((m) => (
                       <li key={m.id} className="text-sm">
-                        <span className="font-medium text-black">
+                        <span className="font-medium text-ink-primary">
                           {ACTION_LABELS[m.action] ?? m.action}
                         </span>
-                        <span className="text-[#707070]"> — {rejectionReason(m.lastError)}</span>
+                        <span className="text-ink-secondary"> — {rejectionReason(m.lastError)}</span>
                       </li>
                     ))}
                   </ul>
@@ -204,7 +204,7 @@ export default function SettingsPage() {
               />
 
               {/* Divider */}
-              <div className="w-full border-t border-[#e4e4e4] my-1" />
+              <div className="w-full border-t border-border-subtle my-1" />
 
               {/* Calendar Preference */}
               <PreferenceSelect
@@ -245,7 +245,7 @@ export default function SettingsPage() {
               />
 
               {/* Divider */}
-              <div className="w-full border-t border-[#e4e4e4] my-1" />
+              <div className="w-full border-t border-border-subtle my-1" />
 
               {/* Export as Excel */}
               <ExportButton
@@ -260,22 +260,22 @@ export default function SettingsPage() {
             {/* Actions Card */}
             <SettingsCard title="Actions">
               {/* Logout Row */}
-              <div className="w-full flex items-center justify-between px-4 py-2 drop-shadow-[0px_3px_2px_rgba(0,0,0,0.03)]">
-                <p className="font-medium text-[16px] text-black">Logout</p>
+              <div className="w-full flex items-center justify-between px-4 py-2">
+                <p className="font-medium text-[16px] text-ink-primary">Logout</p>
 
                 <button
                   onClick={handleLogout}
                   type="button"
-                  className="border-2 border-[#c15959] bg-[#e99c9c] text-black p-[10px] rounded-[12px] shadow-[inset_0px_2px_2px_0px_rgba(255,255,255,0.5),0px_2px_6px_0px_rgba(0,0,0,0.15)] hover:bg-[#e48b8b] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center shrink-0 w-10 h-10 cursor-pointer"
+                  className="border-2 border-danger-border bg-danger-surface text-ink-primary p-[10px] rounded-[12px] shadow-neumo hover:bg-danger-active hover:border-danger-active-border disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center shrink-0 w-10 h-10 cursor-pointer"
                   aria-label="Logout"
                 >
-                  <LogOut size={16} className="text-black" />
+                  <LogOut size={16} className="text-ink-primary" />
                 </button>
               </div>
             </SettingsCard>
 
             {/* App Version */}
-            <p className="text-center text-xs text-[#707070] mt-4">
+            <p className="text-center text-xs text-ink-secondary mt-4">
               v{process.env.NEXT_PUBLIC_APP_VERSION || "0.1.4"}
               {updateAvailable && (
                 <>
@@ -283,7 +283,7 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     onClick={applyUpdate}
-                    className="text-[#3b6fd4] underline underline-offset-2 hover:text-[#2f59aa] cursor-pointer"
+                    className="text-ink-link underline underline-offset-2 hover:text-ink-link-hover cursor-pointer"
                   >
                     Update
                   </button>

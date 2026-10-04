@@ -30,7 +30,7 @@ function DetailRow({
   icon: Icon,
   label,
   value,
-  valueClassName = "text-gray-900",
+  valueClassName = "text-ink-primary",
 }: {
   icon: React.ComponentType<{ size?: number; className?: string }>;
   label: string;
@@ -39,8 +39,8 @@ function DetailRow({
 }) {
   return (
     <div className="flex items-center justify-between py-3">
-      <div className="flex items-center gap-2 text-gray-500">
-        <Icon size={16} className="text-gray-400" />
+      <div className="flex items-center gap-2 text-ink-secondary">
+        <Icon size={16} className="text-ink-tertiary" />
         <span className="text-sm">{label}</span>
       </div>
       <span className={`text-sm font-medium ${valueClassName}`}>{value}</span>
@@ -90,7 +90,7 @@ export function LoanDetailsSheet({
 
   return (
     <BottomSheet open={open} onClose={onClose} title={loan.name}>
-      <div className="divide-y divide-gray-100">
+      <div className="divide-y divide-border-subtle">
         <DetailRow
           icon={Landmark}
           label="Total loan amount"
@@ -100,7 +100,7 @@ export function LoanDetailsSheet({
           icon={Wallet}
           label="Paid so far"
           value={fmt(paidAmount)}
-          valueClassName="text-green-600"
+          valueClassName="text-sync-synced"
         />
         <DetailRow
           icon={PiggyBank}
@@ -117,14 +117,14 @@ export function LoanDetailsSheet({
           label="Paid installments"
           value={`${loan.paidInstallments} of ${loan.totalInstallments}`}
           valueClassName={
-            loan.paidInstallments > 0 ? "text-green-600" : "text-gray-900"
+            loan.paidInstallments > 0 ? "text-sync-synced" : "text-ink-primary"
           }
         />
         <DetailRow
           icon={CreditCard}
           label="Payment card"
           value={paymentCardName ?? "—"}
-          valueClassName={paymentCardName ? "text-gray-900" : "text-gray-400"}
+          valueClassName={paymentCardName ? "text-ink-primary" : "text-ink-tertiary"}
         />
         <DetailRow
           icon={CalendarIcon}

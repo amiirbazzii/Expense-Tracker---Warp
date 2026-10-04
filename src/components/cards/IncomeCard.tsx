@@ -75,7 +75,7 @@ export function IncomeCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="group relative cursor-pointer rounded-lg bg-white border border-gray-200 [box-shadow:0px_4px_12px_rgba(16,24,40,0.05)] p-3"
+      className="group relative cursor-pointer rounded-lg bg-surface-raised border border-border-subtle shadow-neumo p-3"
       onClick={() => setIsMenuOpen(!isMenuOpen)}
     >
       <div className="flex items-start justify-between gap-3">
@@ -83,21 +83,21 @@ export function IncomeCard({
           {/* Title row with price at the end */}
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0 flex-1">
-              <h3 className="text-base leading-6 font-semibold text-gray-900 truncate pr-2">
+              <h3 className="text-base leading-6 font-semibold text-ink-primary truncate pr-2">
                 {income.source}
               </h3>
               {status && (
                 <span
                   className={`px-2 py-0.5 text-xs font-medium rounded ${status === "pending"
-                      ? "bg-yellow-100 text-yellow-800"
-                      : "bg-red-100 text-red-800"
+                      ? "bg-sync-syncing/20 text-sync-syncing"
+                      : "bg-danger-surface text-danger-text"
                     }`}
                 >
                   {status}
                 </span>
               )}
             </div>
-            <p className="text-[16px] leading-5 font-semibold text-green-600 whitespace-nowrap">
+            <p className="text-[16px] leading-5 font-semibold text-sync-synced whitespace-nowrap">
               +
               {settings
                 ? formatCurrency(income.amount, settings.currency)
@@ -105,13 +105,13 @@ export function IncomeCard({
             </p>
           </div>
           {/* Info row */}
-          <div className="mt-1.5 flex items-center gap-4 text-[13px] leading-5 text-gray-600">
+          <div className="mt-1.5 flex items-center gap-4 text-[13px] leading-5 text-ink-secondary">
             <span className="inline-flex items-center min-w-0">
-              <CreditCard className="w-[14px] h-[14px] mr-1.5 text-gray-400" />
+              <CreditCard className="w-[14px] h-[14px] mr-1.5 text-ink-tertiary" />
               <span className="truncate">{cardName}</span>
             </span>
             <span className="inline-flex items-center">
-              <Calendar className="w-[14px] h-[14px] mr-1.5 text-gray-400" />
+              <Calendar className="w-[14px] h-[14px] mr-1.5 text-ink-tertiary" />
               <span>
                 {settings
                   ? formatDate(income.date, settings.calendar, "yyyy ,d MMM")
@@ -122,20 +122,20 @@ export function IncomeCard({
           {/* Divider above tags */}
           {!hideTags && (
             <>
-              <div className="mt-2 -mx-4 h-px bg-[#ECECEC]" />
+              <div className="mt-2 -mx-4 h-px bg-border-subtle" />
               {/* Tags */}
               <div className="mt-3 flex flex-wrap gap-2">
                 {Array.isArray((income as any).category)
                   ? (income as any).category.map((cat: string) => (
                     <span
                       key={cat}
-                      className="px-3 py-1 text-[12px] leading-5 font-medium rounded-lg bg-[#EEEEEE] text-[#434343]"
+                      className="px-3 py-1 text-[12px] leading-5 font-medium rounded-lg bg-surface-sunken text-ink-secondary"
                     >
                       {cat}
                     </span>
                   ))
                   : income.category && (
-                    <span className="px-3 py-1 text-[12px] leading-5 font-medium rounded-lg bg-[#EEEEEE] text-[#434343]">
+                    <span className="px-3 py-1 text-[12px] leading-5 font-medium rounded-lg bg-surface-sunken text-ink-secondary">
                       {income.category as unknown as string}
                     </span>
                   )}
@@ -146,8 +146,8 @@ export function IncomeCard({
           {hasNotes && (
             <>
               {/* Divider above note */}
-              <div className="mt-3 -mx-4 h-px bg-[#ECECEC]" />
-              <p className="mt-3 text-[13px] leading-5 text-gray-400 truncate">
+              <div className="mt-3 -mx-4 h-px bg-border-subtle" />
+              <p className="mt-3 text-[13px] leading-5 text-ink-tertiary truncate">
                 {income.notes}
               </p>
             </>
@@ -161,7 +161,7 @@ export function IncomeCard({
               e.stopPropagation();
               onRetry(income._id);
             }}
-            className="flex items-center w-full px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 text-left"
+            className="flex items-center w-full px-4 py-2 text-sm text-ink-link hover:bg-surface-hover text-left"
           >
             <svg
               className="w-3.5 h-3.5 mr-2"
@@ -183,7 +183,7 @@ export function IncomeCard({
         {status !== "failed" && (
           <button
             onClick={handleEdit}
-            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
+            className="flex items-center w-full px-4 py-2 text-sm text-ink-primary hover:bg-surface-hover text-left"
           >
             <Edit size={14} className="mr-2" />
             Edit
@@ -191,7 +191,7 @@ export function IncomeCard({
         )}
         <button
           onClick={handleDelete}
-          className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
+          className="flex items-center w-full px-4 py-2 text-sm text-danger-text hover:bg-surface-hover text-left"
         >
           <Trash2 size={14} className="mr-2" />
           Delete

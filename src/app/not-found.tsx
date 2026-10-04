@@ -17,21 +17,21 @@ export default function NotFound() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen bg-surface-page flex items-center justify-center">
       <div className="text-center">
-        <h1 className="text-6xl font-bold text-gray-400 mb-4">404</h1>
-        <div className="mt-4 text-lg font-medium text-gray-900">Page Not Found</div>
-        <div className="mt-2 text-sm text-gray-600">The page you&apos;re looking for doesn&apos;t exist.</div>
+        <h1 className="text-6xl font-bold text-ink-tertiary mb-4">404</h1>
+        <div className="mt-4 text-lg font-medium text-ink-primary">Page Not Found</div>
+        <div className="mt-2 text-sm text-ink-secondary">The page you&apos;re looking for doesn&apos;t exist.</div>
         <div className="mt-6 space-x-4">
           <button 
             onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="px-4 py-2 bg-accent text-accent-foreground rounded-md hover:bg-accent-hover cursor-pointer transition-colors"
           >
             Refresh Page
           </button>
           <button 
             onClick={() => window.location.href = '/'}
-            className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+            className="px-4 py-2 bg-surface-hover text-ink-primary border border-border-subtle rounded-md hover:bg-surface-active cursor-pointer transition-colors"
           >
             Go Home
           </button>

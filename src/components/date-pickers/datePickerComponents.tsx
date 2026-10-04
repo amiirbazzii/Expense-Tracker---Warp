@@ -15,27 +15,27 @@ export const POPOVER_WIDTH = 300;
 
 export const TAB_BASE =
   "flex-1 py-2.5 text-[13px] font-medium text-center transition-all duration-200 select-none";
-export const TAB_ACTIVE = `${TAB_BASE} text-black border-b-2 border-black`;
-export const TAB_INACTIVE = `${TAB_BASE} text-gray-400 hover:text-gray-600 border-b-2 border-transparent`;
+export const TAB_ACTIVE = `${TAB_BASE} text-ink-primary border-b-2 border-accent`;
+export const TAB_INACTIVE = `${TAB_BASE} text-ink-tertiary hover:text-ink-primary border-b-2 border-transparent`;
 
 export const NAV_BUTTON_CLASSES =
-  "p-1.5 rounded-lg hover:bg-gray-100 transition-colors duration-150";
-export const NAV_ICON_CLASSES = "text-gray-600";
+  "p-1.5 rounded-lg hover:bg-surface-hover transition-colors duration-150";
+export const NAV_ICON_CLASSES = "text-ink-secondary";
 
 export const GRID_CLASSES =
   "grid grid-cols-3 gap-3 p-4 text-center animate-fade-in";
 
 export const CELL_BASE =
   "py-2.5 px-2 rounded-xl text-sm font-medium transition-all duration-150 cursor-pointer";
-export const CELL_DEFAULT = `${CELL_BASE} text-gray-900 hover:bg-gray-100`;
-export const CELL_SELECTED = `${CELL_BASE} bg-black text-white shadow-sm`;
+export const CELL_DEFAULT = `${CELL_BASE} text-ink-primary hover:bg-surface-hover`;
+export const CELL_SELECTED = `${CELL_BASE} bg-accent text-accent-foreground shadow-sm`;
 
 export const CONFIRM_BUTTON_CLASSES =
-  "w-full py-2.5 bg-black text-white text-sm font-medium rounded-xl hover:bg-gray-800 active:scale-[0.98] transition-all duration-150";
+  "w-full py-2.5 bg-accent text-accent-foreground text-sm font-medium rounded-xl hover:bg-accent-hover active:scale-[0.98] transition-all duration-150";
 
 export const DROPDOWN_ICON = (
   <svg
-    className="size-5 text-gray-500"
+    className="size-5 text-ink-secondary"
     viewBox="0 0 24 24"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
@@ -74,7 +74,7 @@ export function DatePickerTrigger({
           value={displayValue}
           readOnly
           placeholder={label}
-          className={`w-full bg-transparent outline-none text-black placeholder:text-gray-500 border-0 focus:ring-0 min-h-[24px] p-0 cursor-pointer ${fontClassName}`}
+          className={`w-full bg-transparent outline-none text-ink-primary placeholder:text-ink-secondary border-0 focus:ring-0 min-h-[24px] p-0 cursor-pointer ${fontClassName}`}
         />
       </InputContainer>
     </div>
@@ -143,7 +143,7 @@ export function NavigationHeader({
       >
         <ChevronRight size={18} className={NAV_ICON_CLASSES} />
       </button>
-      <span className={`text-sm font-semibold text-gray-900 ${fontClassName}`}>
+      <span className={`text-sm font-semibold text-ink-primary ${fontClassName}`}>
         {rangeText}
       </span>
       <button
@@ -299,7 +299,7 @@ export function ConfirmFooter({
   onConfirm,
 }: ConfirmFooterProps) {
   return (
-    <div className={`p-3 border-t border-gray-100 ${fontClassName}`}>
+    <div className={`p-3 border-t border-border-subtle ${fontClassName}`}>
       <button
         type="button"
         onClick={onConfirm}

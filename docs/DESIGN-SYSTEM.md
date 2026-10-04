@@ -140,7 +140,15 @@ All tokens are declared as CSS variables in `:root` and mirrored for dark mode i
 
 ---
 
-## 5. Migration Status
 - **Step 1 (Foundation)**: Done. Token foundation declared in `src/styles/tokens.css`, Tailwind `@theme inline` utilities mapped, canvas chart colors extracted to `src/lib/design/chartColors.ts`, and legacy `--background` / `--foreground` aliases established in `src/app/globals.css`.
 - **Step 2 (Primitives & Charts)**: Done. 8 core primitives, 11 supporting components, and both dashboard charts migrated to token utilities. Enforced via `tests/design-tokens.test.ts`.
-- **Step 3 (Full Component Migration)**: Remaining raw-hex values and stock palette utilities across all remaining feature components.
+- **Step 3 (Full Application & Route Migration)**: Done. All pages, feature components, forms, bottom sheets, modals, and system fallbacks migrated to design tokens across 7 structured batches:
+  - Batch 1: Shared transaction primitives (`ExpenseCard`, `IncomeCard`, `SmartSelectInput`, `CardSelect`, `date-pickers/*`, `/add`).
+  - Batch 2: Card Management (`/cards`, `AddCardForm`, `TransferForm`, `CardList`, `ArchivedCardsSection`).
+  - Batch 3: Standalone Expense/Income Routes (`/expenses`, `/expenses/edit`, `ExpenseFormFields`, `/income`, `/income/edit`, `IncomeFormFields`).
+  - Batch 4: Loans (`/loans`, `LoanCard`, `LoanSummaryCards`, `LoanForm`, `LoanDetailsSheet`, `PayInstallmentSheet`).
+  - Batch 5: Settings, Profile & Security (`/settings`, `SettingsCard`, `UserProfileSection`, `PreferenceSelect`, `ExportButton`, `BackupBanner`, `RecoveryCodeCard`).
+  - Batch 6: Auth, Onboarding & Fallbacks (`/login`, `/register`, `/forgot-password`, `/reset-password`, `/onboarding`, `/offline`, `/not-found`, `/global-error`, `critical.css`, `LazyComponents`).
+  - Batch 7: Application Sweep (`EditExpenseSheet`, `EditIncomeSheet`, `useDatePickerState`, `/test-pwa`).
+  - Automated Coverage: 81 files strictly tested and guarded in `tests/design-tokens.test.ts` against raw hex values, `rgba()`, arbitrary Tailwind hex classes, and stock palette classes.
+

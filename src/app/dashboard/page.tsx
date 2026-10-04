@@ -139,7 +139,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-surface-page">
         <AppHeader />
 
         <div className="max-w-md mx-auto p-4 pt-[92px] pb-20">
@@ -147,7 +147,7 @@ export default function DashboardPage() {
 
           <motion.div
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-xl border border-gray-200 bg-[#F9F9F9] mb-6 overflow-hidden"
+            className="rounded-xl border border-border-subtle bg-surface-app mb-6 overflow-hidden"
           >
             <div className="px-4 pt-4">
               <DateFilterHeader
@@ -222,17 +222,17 @@ export default function DashboardPage() {
               // whenever a filter matched nothing, which reads as the screen
               // being broken rather than as an empty result.
               <div className="px-4 py-10 text-center">
-                <p className="text-sm font-medium text-gray-900">
+                <p className="text-sm font-medium text-ink-primary">
                   No {mode === "income" ? "income" : "expenses"} match these
                   filters
                 </p>
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="mt-1 text-sm text-ink-secondary">
                   Try a different category or time period.
                 </p>
                 <button
                   type="button"
                   onClick={clearFilters}
-                  className="mt-4 text-sm font-medium text-indigo-600 underline underline-offset-4 hover:text-indigo-700"
+                  className="mt-4 text-sm font-medium text-ink-link underline underline-offset-4 hover:text-ink-link-hover"
                 >
                   Clear filters
                 </button>

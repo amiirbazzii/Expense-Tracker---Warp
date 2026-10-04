@@ -74,7 +74,7 @@ export function CategoryManagementSheet({
     >
       <div className="space-y-1">
         {active.length === 0 && archived.length === 0 && (
-          <p className="text-center text-sm text-gray-500 py-8">
+          <p className="text-center text-sm text-ink-secondary py-8">
             No categories yet. They are created automatically when you add transactions.
           </p>
         )}
@@ -93,7 +93,7 @@ export function CategoryManagementSheet({
           <div className="mt-3">
             <button
               onClick={() => setArchivedOpen(!archivedOpen)}
-              className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-ink-secondary hover:text-ink-primary rounded-lg hover:bg-surface-hover transition-colors"
             >
               <span>Archived ({archived.length})</span>
               {archivedOpen ? (
@@ -156,16 +156,16 @@ function CategoryRow({
         category.isArchived ? "opacity-60" : ""
       }`}
     >
-      <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#f0f0f0] shrink-0">
-        <Tag size={16} className="text-gray-600" />
+      <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-surface-sunken shrink-0">
+        <Tag size={16} className="text-ink-secondary" />
       </div>
 
       <div className="flex-1 min-w-0">
-        <span className="text-sm font-medium text-gray-900 truncate block">
+        <span className="text-sm font-medium text-ink-primary truncate block">
           {category.name}
         </span>
         {usageCount > 0 && (
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-ink-tertiary">
             Used in {usageCount} transaction{usageCount !== 1 ? "s" : ""}
           </span>
         )}
@@ -174,7 +174,7 @@ function CategoryRow({
       <div className="flex items-center gap-1.5 shrink-0">
         <button
           onClick={onArchive}
-          className="p-2 rounded-lg text-gray-500 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+          className="p-2 rounded-lg text-ink-secondary hover:text-sync-syncing hover:bg-surface-hover transition-colors"
           aria-label={category.isArchived ? "Unarchive" : "Archive"}
           title={category.isArchived ? "Unarchive" : "Archive"}
         >
@@ -188,7 +188,7 @@ function CategoryRow({
         {canDelete && (
           <button
             onClick={onDelete}
-            className="p-2 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+            className="p-2 rounded-lg text-ink-secondary hover:text-danger-text hover:bg-surface-hover transition-colors"
             aria-label="Delete"
             title="Delete (not used in any transactions)"
           >

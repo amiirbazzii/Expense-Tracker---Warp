@@ -13,8 +13,8 @@ export function ExpenseList({ expenses, onEdit, onDelete }: ExpenseListProps) {
   if (expenses.length === 0) {
     return (
       <div className="text-center py-8">
-        <Receipt className="mx-auto text-gray-400 mb-4" size={48} />
-        <p className="text-gray-500">No expenses recorded for this period</p>
+        <Receipt className="mx-auto text-ink-tertiary mb-4" size={48} />
+        <p className="text-ink-secondary">No expenses recorded for this period</p>
       </div>
     );
   }

@@ -46,20 +46,20 @@ function EditIncomeContent() {
     });
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-surface-page">
       <AppHeader title="Edit Income" />
 
       <div className="max-w-md mx-auto p-4 pt-[92px] pb-20">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl border border-gray-200 bg-[#F9F9F9] p-4 mb-4"
+          className="rounded-xl border border-border-subtle bg-surface-app p-4 mb-4"
         >
           <div className="mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-semibold text-ink-primary">
               Edit Income Details
             </h2>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-ink-secondary">
               Make changes to your income record below.
             </p>
           </div>
@@ -84,7 +84,7 @@ export default function EditIncomePage() {
     <ProtectedRoute>
       {/* useSearchParams requires a Suspense boundary to keep the route
           statically prerenderable. */}
-      <Suspense fallback={<div className="min-h-screen bg-white" />}>
+      <Suspense fallback={<div className="min-h-screen bg-surface-page" />}>
         <EditIncomeContent />
       </Suspense>
     </ProtectedRoute>

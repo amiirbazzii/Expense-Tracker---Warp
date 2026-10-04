@@ -11,7 +11,7 @@ const RecoveryCodeActions = memo(({ onGenerate, isLoading }: { onGenerate: () =>
   <button
     onClick={onGenerate}
     disabled={isLoading}
-    className="px-6 h-[40px] bg-[#e1e1e1] text-black border-2 border-[#cacaca] rounded-[12px] font-medium text-[14px] shadow-[inset_0px_2px_2px_0px_rgba(255,255,255,0.5),0px_2px_6px_0px_rgba(0,0,0,0.15)] hover:bg-[#d5d5d5] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center cursor-pointer"
+    className="px-6 h-[40px] bg-surface-hover text-ink-primary border-2 border-border-default rounded-[12px] font-medium text-[14px] shadow-neumo hover:bg-surface-active disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center cursor-pointer"
   >
     {isLoading ? "Generating..." : "Generate"}
   </button>
@@ -21,7 +21,7 @@ RecoveryCodeActions.displayName = 'RecoveryCodeActions';
 const CodeVisibilityToggle = memo(({ isVisible, onToggle }: { isVisible: boolean; onToggle: () => void }) => (
   <button
     onClick={onToggle}
-    className="flex items-center space-x-2 px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm transition-colors"
+    className="flex items-center space-x-2 px-3 py-2 bg-surface-hover text-ink-primary rounded-md hover:bg-surface-active border border-border-subtle text-sm transition-colors cursor-pointer"
     type="button"
   >
     {isVisible ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -33,7 +33,7 @@ CodeVisibilityToggle.displayName = 'CodeVisibilityToggle';
 const CopyButton = memo(({ onCopy, isCopied }: { onCopy: () => void; isCopied: boolean }) => (
   <button
     onClick={onCopy}
-    className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm transition-colors"
+    className="flex items-center space-x-2 px-3 py-2 bg-accent text-accent-foreground rounded-md hover:bg-accent-hover text-sm transition-colors cursor-pointer"
     type="button"
   >
     {isCopied ? <CheckCircle size={16} /> : <Copy size={16} />}
@@ -63,12 +63,12 @@ export const RecoveryCodeCard = memo(() => {
     <>
       <SettingsCard title="Security">
         {/* Recovery Code row */}
-        <div className="w-full flex items-center justify-between px-4 py-3 drop-shadow-[0px_3px_2px_rgba(0,0,0,0.03)] gap-4">
+        <div className="w-full flex items-center justify-between px-4 py-3 gap-4">
           <div className="flex flex-col items-start justify-center">
-            <p className="font-medium text-[16px] text-black whitespace-nowrap">
+            <p className="font-medium text-[16px] text-ink-primary whitespace-nowrap">
               Recovery Code
             </p>
-            <p className="font-normal text-[#707070] text-[12px] mt-0.5 leading-tight">
+            <p className="font-normal text-ink-secondary text-[12px] mt-0.5 leading-tight">
               {statusText}
             </p>
           </div>
@@ -89,29 +89,29 @@ export const RecoveryCodeCard = memo(() => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+            className="fixed inset-0 bg-surface-overlay flex items-center justify-center p-4 z-50 backdrop-blur-xs"
             onClick={closeModal}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-lg p-6 max-w-md w-full"
+              className="bg-surface-raised border border-border-subtle rounded-lg p-6 max-w-md w-full shadow-raised"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="text-center mb-6">
-                <Shield className="mx-auto mb-4 text-green-600" size={48} />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                <Shield className="mx-auto mb-4 text-sync-synced" size={48} />
+                <h3 className="text-xl font-semibold text-ink-primary mb-2">
                   Recovery Code Generated
                 </h3>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-ink-secondary">
                   Save this code in a safe place. It will not be shown again.
                 </p>
               </div>
 
               <div className="mb-6">
                 <div className="relative">
-                  <div className="bg-gray-100 p-4 rounded-lg font-mono text-lg text-center border-2 border-dashed border-gray-300 text-gray-900">
+                  <div className="bg-surface-sunken p-4 rounded-lg font-mono text-lg text-center border-2 border-dashed border-border-default text-ink-primary">
                     {maskedCode}
                   </div>
                   
@@ -129,8 +129,8 @@ export const RecoveryCodeCard = memo(() => {
                 </div>
               </div>
 
-              <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-6">
-                <div className="text-sm text-yellow-800">
+              <div className="bg-sync-syncing/10 border border-sync-syncing/30 p-4 rounded-lg mb-6">
+                <div className="text-sm text-sync-syncing">
                   <strong>Important:</strong> This recovery code allows anyone to reset your password. 
                   Store it securely and never share it with others.
                 </div>
@@ -138,7 +138,7 @@ export const RecoveryCodeCard = memo(() => {
 
               <button
                 onClick={closeModal}
-                className="w-full py-3 bg-gray-900 text-white rounded-md hover:bg-gray-800"
+                className="w-full py-3 bg-accent text-accent-foreground font-medium rounded-md hover:bg-accent-hover cursor-pointer"
               >
                 I&apos;ve Saved It Safely
               </button>

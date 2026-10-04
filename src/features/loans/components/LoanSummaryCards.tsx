@@ -28,30 +28,30 @@ export function LoanSummaryCards({ summary }: LoanSummaryCardsProps) {
     <div className="flex items-center justify-center py-6">
       {/* Active Loans */}
       <div className="text-left px-2">
-        <p className="text-sm text-gray-500">Active</p>
-        <p className="text-base font-medium text-black whitespace-nowrap">
+        <p className="text-sm text-ink-secondary">Active</p>
+        <p className="text-base font-medium text-ink-primary whitespace-nowrap">
           {getDisplayValue("active")}
         </p>
       </div>
 
       {/* Divider */}
-      <div className="h-10 w-[1px] bg-gray-200 mx-2" />
+      <div className="h-10 w-[1px] bg-border-subtle mx-2" />
 
       {/* Total Amount */}
       <div className="text-left px-2">
-        <p className="text-sm text-gray-500">Total</p>
-        <p className="text-base font-medium text-black whitespace-nowrap">
+        <p className="text-sm text-ink-secondary">Total</p>
+        <p className="text-base font-medium text-ink-primary whitespace-nowrap">
           {getDisplayValue("totalAmount")}
         </p>
       </div>
 
       {/* Divider */}
-      <div className="h-10 w-[1px] bg-gray-200 mx-2" />
+      <div className="h-10 w-[1px] bg-border-subtle mx-2" />
 
       {/* Remaining Balance */}
       <div className="text-left px-2">
-        <p className="text-sm text-gray-500">Remaining</p>
-        <p className="text-base font-medium text-black whitespace-nowrap">
+        <p className="text-sm text-ink-secondary">Remaining</p>
+        <p className="text-base font-medium text-ink-primary whitespace-nowrap">
           {getDisplayValue("remainingBalance")}
         </p>
       </div>

@@ -166,7 +166,7 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
     return (
       <>
         {start}
-        <span className="font-bold text-blue-600">{match}</span>
+        <span className="font-bold text-ink-link">{match}</span>
         {end}
       </>
     );
@@ -179,7 +179,7 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
         rightAdornment={
           rightText || rightIcon ? (
             <div className="flex items-center gap-1">
-              {rightText && <span className="text-gray-400 whitespace-nowrap">{rightText}</span>}
+              {rightText && <span className="text-ink-tertiary whitespace-nowrap">{rightText}</span>}
               {rightIcon}
             </div>
           ) : undefined
@@ -189,10 +189,10 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
       >
         <div className="flex w-full gap-2 flex-wrap items-center" onClick={() => inputRef.current?.focus()}>
           {value.map((item, i) => (
-            <span key={`${name}-chip-${item}-${i}`} className="flex items-center gap-1.5 max-w-full bg-[#e9e9e9] text-gray-800 text-sm font-medium px-2 py-1 rounded-md">
+            <span key={`${name}-chip-${item}-${i}`} className="flex items-center gap-1.5 max-w-full bg-surface-hover text-ink-primary text-sm font-medium px-2 py-1 rounded-md">
               <span className="min-w-0 break-words">{item}</span>
               {multiple && (
-                <button type="button" onClick={() => handleRemove(item)} className="shrink-0 text-gray-500 hover:text-gray-800">
+                <button type="button" onClick={() => handleRemove(item)} className="shrink-0 text-ink-tertiary hover:text-ink-primary">
                   <X size={14} />
                 </button>
               )}
@@ -210,7 +210,7 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
             onFocus={() => setDropdownVisible(true)}
             onKeyDown={handleKeyDown}
             size={1}
-            className={`flex-1 basis-0 min-w-[5rem] bg-transparent outline-none placeholder:text-gray-500 ${value.length > 0 || inputValue ? 'font-medium text-gray-900' : 'font-normal text-gray-900'}`}
+            className={`flex-1 basis-0 min-w-[5rem] bg-transparent outline-none placeholder:text-ink-secondary ${value.length > 0 || inputValue ? 'font-medium text-ink-primary' : 'font-normal text-ink-primary'}`}
             placeholder={value.length === 0 ? placeholder : ''}
             autoComplete="off"
             aria-label={label}
@@ -223,15 +223,15 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#D3D3D3] rounded-lg shadow-md z-20 max-h-60 overflow-y-auto"
+            className="absolute top-full left-0 right-0 mt-1 bg-surface-raised border border-border-default rounded-lg shadow-raised z-20 max-h-60 overflow-y-auto"
           >
-            {isLoading && <div className="px-3 py-2 text-sm text-gray-500">Loading...</div>}
+            {isLoading && <div className="px-3 py-2 text-sm text-ink-secondary">Loading...</div>}
             {!isLoading && suggestions.map((s, i) => (
               <button
                 key={`${name}-suggestion-${s}-${i}`}
                 type="button"
                 onClick={() => handleSelect(s)}
-                className={`w-full text-left px-3 py-2 text-sm ${activeIndex === i ? 'bg-gray-100 text-gray-900' : 'text-gray-900 hover:bg-gray-50'}`}
+                className={`w-full text-left px-3 py-2 text-sm ${activeIndex === i ? 'bg-surface-hover text-ink-primary' : 'text-ink-primary hover:bg-surface-hover'}`}
               >
                 {renderSuggestionHighlight(s)}
               </button>
@@ -240,7 +240,7 @@ export const SmartSelectInput: React.FC<SmartSelectInputProps> = ({
               <button
                 type="button"
                 onClick={handleCreateNew}
-                className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 ${activeIndex === suggestions.length ? 'bg-gray-100 text-gray-900' : 'text-gray-700 hover:bg-gray-50'}`}
+                className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 ${activeIndex === suggestions.length ? 'bg-surface-hover text-ink-primary' : 'text-ink-primary hover:bg-surface-hover'}`}
               >
                 <PlusCircle size={16} />
                 <span>Add &apos;<b>{inputValue}</b>&apos;</span>

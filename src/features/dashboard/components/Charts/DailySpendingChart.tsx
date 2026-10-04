@@ -94,7 +94,11 @@ export function DailySpendingChart({ dailyTotals, mode = 'expenses', title, _col
           if (!chartArea) return CHART_MUTED;
           const gradient = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
           gradient.addColorStop(0, `${CHART_MUTED}66`);
-          gradient.addColorStop(1, CHART_GRADIENT_END);
+          const gradientEnd =
+            typeof window !== "undefined"
+              ? getComputedStyle(c.canvas).getPropertyValue("--surface-app").trim() || CHART_GRADIENT_END
+              : CHART_GRADIENT_END;
+          gradient.addColorStop(1, gradientEnd);
           return gradient;
         },
       },
