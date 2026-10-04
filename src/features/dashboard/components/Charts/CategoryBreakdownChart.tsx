@@ -4,24 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, animate, useMotionValue } from "framer-motion";
 import { useSettings } from "@/contexts/SettingsContext";
 import { formatCurrency } from "@/lib/formatters";
+import { CHART_COLORS } from "@/lib/design/chartColors";
 
 interface CategoryBreakdownChartProps {
   categoryTotals: Record<string, number>;
   title?: string; // optional custom title inside the capsule
 }
-
-// A friendly palette aligned with the Figma example
-const DEFAULT_COLORS = [
-  "#E58C17", // (orange-brown)
-  "#6B74F6", // (indigo)
-  "#DAB500", // (yellow)
-  "#5B8DDF", // (blue)
-  "#5A5A5A", // (gray)
-  "#35A3C8", // (teal)
-  "#E25555", // (red)
-  "#58C46B", // (green)
-  "#E07AD9", // (pink)
-];
 
 export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakdownChartProps) {
   const { settings } = useSettings();
@@ -47,7 +35,7 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
     return sortedEntries.map(([label, value], i) => ({
       label,
       value,
-      color: DEFAULT_COLORS[i % DEFAULT_COLORS.length],
+      color: CHART_COLORS[i % CHART_COLORS.length],
     }));
   }, [entries]);
 
@@ -158,7 +146,7 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1 }}
-      className="p-6 border-b border-gray-200"
+      className="p-6 border-b border-border-subtle"
     >
       {/* Capsule Chart */}
       <div className="w-full flex flex-col items-center">
@@ -170,7 +158,7 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
           <path ref={pathRef} d={d} fill="none" stroke="transparent" strokeWidth={strokeWidth} />
 
           {/* Background track */}
-          <path d={d} fill="none" stroke="#F1F5F9" strokeWidth={strokeWidth} />
+          <path d={d} fill="none" stroke="var(--border-subtle)" strokeWidth={strokeWidth} />
 
           {/* Segments */}
           {segments.map((seg, idx) => {
@@ -216,7 +204,7 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
               x={width / 2}
               y={y + h / 2 - 16}
               textAnchor="middle"
-              style={{ fill: "#111827", fontSize: 26, fontWeight: 300 }}
+              style={{ fill: "var(--ink-primary)", fontSize: 26, fontWeight: 300 }}
             >
               {centerTitle}
             </text>
@@ -224,7 +212,7 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
               x={width / 2}
               y={y + h / 2 + 24 + 4}
               textAnchor="middle"
-              style={{ fill: "#D02E2E", fontSize: 34, fontWeight: 800 }}
+              style={{ fill: "var(--danger-text)", fontSize: 34, fontWeight: 800 }}
             >
               {settings ? formatCurrency(centerValue, settings.currency) : centerValue.toLocaleString()}
             </text>
@@ -249,7 +237,7 @@ export function CategoryBreakdownChart({ categoryTotals, title }: CategoryBreakd
                   <svg width={14} height={6} className="shrink-0" aria-hidden="true" focusable="false" style={{ opacity: isOtherSelected ? 0.35 : 1 }}>
                     <rect x={0} y={0} width={14} height={6} rx={3} ry={3} fill={item.color} />
                   </svg>
-                  <span className={`text-[12px] font-medium leading-none transition-colors ${isSelected ? 'text-black font-bold' : isOtherSelected ? 'text-gray-400' : 'text-black'
+                  <span className={`text-[12px] font-medium leading-none transition-colors ${isSelected ? 'text-ink-primary font-bold' : isOtherSelected ? 'text-ink-tertiary' : 'text-ink-primary'
                     }`}>{item.label}</span>
                 </button>
               );

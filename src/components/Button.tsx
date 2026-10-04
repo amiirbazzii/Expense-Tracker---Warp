@@ -4,19 +4,19 @@ import React from 'react';
 
 const variantStyles = {
   default: {
-    base: 'bg-[#e1e1e1] border-2 border-solid border-[#cacaca] text-black [box-shadow:0px_2px_6px_0px_rgba(0,0,0,0.15),0px_2px_2px_0px_rgba(255,255,255,0.5)_inset]',
-    hover: 'hover:bg-[#e1e1e1] hover:border-[#cacaca] hover:[box-shadow:0px_4px_10px_0px_rgba(0,0,0,0.17),0px_2px_2px_0px_rgba(255,255,255,0.5)_inset]',
-    active: 'active:bg-[#e1e1e1] active:border-[#b1b1b1] active:[box-shadow:0px_1px_3px_0px_rgba(0,0,0,0.15),0px_0px_5px_0px_rgba(101,101,101,0.5)_inset]',
+    base: 'bg-surface-hover border-2 border-solid border-border-default text-ink-primary shadow-neumo',
+    hover: 'hover:shadow-neumo-hover',
+    active: 'active:shadow-neumo-active active:border-border-strong',
   },
   secondary: {
-    base: 'bg-[#F4F4F4] text-black border-0 shadow-none',
-    hover: 'hover:bg-[#e8e8e8]',
-    active: 'active:bg-[#dcdcdc]',
+    base: 'bg-surface-sunken text-ink-primary border-0 shadow-none',
+    hover: 'hover:bg-surface-hover',
+    active: 'active:bg-surface-active',
   },
   danger: {
-    base: 'bg-[#E99C9C] border-2 border-solid border-[#C15959] text-black [box-shadow:0px_2px_6px_0px_rgba(0,0,0,0.15),0px_2px_2px_0px_rgba(255,255,255,0.5)_inset]',
-    hover: 'hover:bg-[#E99C9C] hover:border-[#C15959] hover:[box-shadow:0px_4px_10px_0px_rgba(0,0,0,0.17),0px_2px_2px_0px_rgba(255,255,255,0.5)_inset]',
-    active: 'active:bg-[#d98c8c] active:border-[#b14f4f] active:[box-shadow:0px_1px_3px_0px_rgba(0,0,0,0.15),0px_0px_5px_0px_rgba(101,101,101,0.5)_inset]',
+    base: 'bg-danger-surface border-2 border-solid border-danger-border text-ink-primary shadow-neumo',
+    hover: 'hover:shadow-neumo-hover',
+    active: 'active:bg-danger-active active:border-danger-active-border',
   },
 } as const;
 
@@ -52,6 +52,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   buttonType?: 'text' | 'icon';
   size?: 'large' | 'medium' | 'small';
   disabled?: boolean;
+  disabledLabel?: string;
   loading?: boolean;
   icon?: React.ReactNode;
   children?: React.ReactNode;
@@ -64,6 +65,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     buttonType = 'text',
     size = 'large',
     disabled = false,
+    disabledLabel,
     loading = false,
     icon,
     children,
@@ -84,7 +86,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const stateClasses = loading
       ? 'animate-pulse'
       : disabled
-        ? 'bg-[#e1e1e1] border-[#cacaca] text-[#a7a7a7] opacity-50 cursor-not-allowed'
+        ? 'bg-surface-hover border-border-default text-ink-disabled opacity-50 cursor-not-allowed'
         : '';
 
     const classes = [baseStyles, interactiveClasses, sizing, fontWeightClass, stateClasses, className]
@@ -107,7 +109,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       >
         {/* content stays in DOM (invisible) while loading so button keeps its size */}
         <span className={`inline-flex items-center justify-center w-full${loading ? ' invisible' : ''}`} aria-hidden={loading}>
-          {buttonType === 'icon' ? iconElement : (disabled && !loading) ? 'Fill the information' : children}
+          {buttonType === 'icon' ? iconElement : (disabled && !loading) ? (disabledLabel ?? children) : children}
         </span>
         {loading && <LucideLoaderCircle size={iconSizeMap[size]} />}
       </button>

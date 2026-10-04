@@ -6,6 +6,7 @@ import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement
 import { motion } from "framer-motion";
 import { useSettings } from "@/contexts/SettingsContext";
 import { formatCurrency, formatDate } from "@/lib/formatters";
+import { CHART_AXIS, CHART_MUTED, CHART_GRADIENT_END } from "@/lib/design/chartColors";
 
 // Dynamically import Line to disable SSR for Chart.js components
 const Line = dynamic(() => import('react-chartjs-2').then(m => m.Line), { ssr: false });
@@ -72,7 +73,7 @@ export function DailySpendingChart({ dailyTotals, mode = 'expenses', title, _col
   }
 
   if (!isMounted) {
-    return <div className="py-6 border-b border-gray-200 h-40 animate-pulse" />;
+    return <div className="py-6 border-b border-border-subtle h-40 animate-pulse" />;
   }
 
   const chartData = {
@@ -81,7 +82,7 @@ export function DailySpendingChart({ dailyTotals, mode = 'expenses', title, _col
       {
         label: mode === 'income' ? 'Daily Income' : 'Daily Expenses',
         data: values,
-        borderColor: '#6B7280',
+        borderColor: CHART_AXIS,
         borderWidth: 3,
         pointRadius: 0,
         pointHoverRadius: 0,
@@ -90,10 +91,10 @@ export function DailySpendingChart({ dailyTotals, mode = 'expenses', title, _col
         fill: true,
         backgroundColor: (ctx: { chart: Chart }) => {
           const { ctx: c, chartArea } = ctx.chart;
-          if (!chartArea) return '#9CA3AF';
+          if (!chartArea) return CHART_MUTED;
           const gradient = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-          gradient.addColorStop(0, '#9CA3AF66');
-          gradient.addColorStop(1, '#F9F9F9');
+          gradient.addColorStop(0, `${CHART_MUTED}66`);
+          gradient.addColorStop(1, CHART_GRADIENT_END);
           return gradient;
         },
       },
@@ -123,7 +124,7 @@ export function DailySpendingChart({ dailyTotals, mode = 'expenses', title, _col
 
       // Dashed guideline
       ctx.setLineDash([4, 4]);
-      ctx.strokeStyle = '#9CA3AF';
+      ctx.strokeStyle = CHART_MUTED;
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(x, chartArea.top);
@@ -132,7 +133,7 @@ export function DailySpendingChart({ dailyTotals, mode = 'expenses', title, _col
       ctx.setLineDash([]);
 
       // Dot
-      ctx.fillStyle = '#6B7280';
+      ctx.fillStyle = CHART_AXIS;
       ctx.beginPath();
       ctx.arc(x, y, 4, 0, Math.PI * 2);
       ctx.fill();
@@ -154,7 +155,7 @@ export function DailySpendingChart({ dailyTotals, mode = 'expenses', title, _col
         tooltipEl.style.cssText = 'position:absolute;pointer-events:none;opacity:0;transition:opacity 0.15s;z-index:10;';
         const inner = document.createElement('div');
         inner.className = 'tooltip-inner';
-        inner.style.cssText = 'background:#4B5563;color:white;padding:4px 12px;border-radius:6px;font-size:12px;font-weight:500;box-shadow:0 2px 8px rgba(0,0,0,0.15);white-space:nowrap;';
+        inner.style.cssText = 'background:var(--accent);color:var(--accent-foreground);padding:4px 12px;border-radius:6px;font-size:12px;font-weight:500;box-shadow:var(--shadow-neumo);white-space:nowrap;';
         tooltipEl.appendChild(inner);
         parent.appendChild(tooltipEl);
       }
@@ -191,7 +192,7 @@ export function DailySpendingChart({ dailyTotals, mode = 'expenses', title, _col
       inner.textContent = '';
 
       const dateEl = document.createElement('div');
-      dateEl.style.cssText = 'font-size:10px;color:#D1D5DB;margin-bottom:2px;';
+      dateEl.style.cssText = 'font-size:10px;color:var(--ink-tertiary);margin-bottom:2px;';
       dateEl.textContent = String(dateLabel ?? '');
 
       const valueEl = document.createElement('div');
@@ -289,7 +290,7 @@ export function DailySpendingChart({ dailyTotals, mode = 'expenses', title, _col
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 }}
-      className="py-6 border-b border-gray-200"
+      className="py-6 border-b border-border-subtle"
     >
       <div className="relative h-40">
         <Line ref={chartRef} data={chartData} options={options} plugins={[customPlugin, tooltipPlugin]} />

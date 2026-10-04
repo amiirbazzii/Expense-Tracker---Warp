@@ -28,13 +28,13 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     };
     const stateClasses = {
       default:
-        "border border-[#D3D3D3] bg-[#f8f8f8] text-gray-500 placeholder:text-gray-500",
+        "border border-border-default bg-surface-field text-ink-secondary placeholder:text-ink-secondary",
       filled:
-        "border border-[#D3D3D3] bg-[#f8f8f8]",
-      focus: "border border-black bg-[#f8f8f8] shadow-[inset_0px_0px_0px_1px_#000]",
-      error: "border border-red-500 bg-[#f8f8f8] text-red-500 placeholder:text-red-500",
+        "border border-border-default bg-surface-field",
+      focus: "border border-accent bg-surface-field shadow-focus-field",
+      error: "border border-danger-text bg-surface-field text-danger-text placeholder:text-danger-text",
       disabled:
-        "border border-transparent bg-[#f8f8f8] text-gray-400 opacity-50 cursor-not-allowed",
+        "border border-transparent bg-surface-field text-ink-disabled opacity-50 cursor-not-allowed",
     };
 
     const currentState =
@@ -43,12 +43,12 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full">
         <div
-          className={`flex items-center w-full rounded-[10px] transition-all duration-300 ${stateClasses[currentState]} ${className}`}>
+          className={`flex items-center w-full rounded-field transition-all duration-300 ${stateClasses[currentState]} ${className}`}>
           <div className="flex items-center w-full p-4">
-            {Icon && <Icon className="size-4 mr-2 shrink-0 text-[#707070]" />}
+            {Icon && <Icon className="size-4 mr-2 shrink-0 text-ink-secondary" />}
             <input
               type={type}
-              className="w-full bg-transparent outline-none text-black placeholder:text-gray-500"
+              className="w-full bg-transparent outline-none text-ink-primary placeholder:text-ink-secondary"
               ref={ref}
               onFocus={handleFocus}
               onBlur={handleBlur}
@@ -57,14 +57,14 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           </div>
           {rightText && (
             <div className="flex items-center pr-3">
-                <ChevronDown className="size-5 mr-1 text-gray-500" />
-                <span className="text-gray-500 whitespace-nowrap">{rightText}</span>
+                <ChevronDown className="size-5 mr-1 text-ink-secondary" />
+                <span className="text-ink-secondary whitespace-nowrap">{rightText}</span>
             </div>
           )}
         </div>
         {helperText && (
           <p
-            className={`mt-1 text-xs ${error ? "text-red-500" : "text-gray-500"}`}>
+            className={`mt-1 text-xs ${error ? "text-danger-text" : "text-ink-secondary"}`}>
             {helperText}
           </p>
         )}

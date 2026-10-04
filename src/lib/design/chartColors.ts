@@ -21,3 +21,4 @@ export const CHART_COLORS = [
 
 export const CHART_AXIS = '#6B7280';
 export const CHART_MUTED = '#9CA3AF';
+export const CHART_GRADIENT_END = '#F9F9F9';

@@ -31,7 +31,7 @@ export function BottomSheet({
         <>
           {/* Backdrop */}
           <motion.div
-            className="fixed inset-0 z-[60] bg-gradient-to-b from-black/80 to-black"
+            className="fixed inset-0 z-[60] bg-surface-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -46,22 +46,22 @@ export function BottomSheet({
             exit={{ y: "100%" }}
             transition={{ type: "spring", stiffness: 280, damping: 30 }}
           >
-            <div className="mx-auto max-w-md bg-white rounded-t-2xl shadow-xl">
+            <div className="mx-auto max-w-md bg-surface-raised rounded-t-2xl shadow-raised">
               {/* Drag handle */}
               <div className="flex justify-center pt-3 pb-3">
-                <div className="w-16 h-[5px] bg-black rounded-full" />
+                <div className="w-16 h-[5px] bg-accent rounded-full" />
               </div>
 
               {/* Header row */}
               <div className="flex items-center px-4">
                 <div className="flex-1" />
-                <h3 className="text-xl font-medium text-center text-black">
+                <h3 className="text-xl font-medium text-center text-ink-primary">
                   {title}
                 </h3>
                 <div className="flex-1 flex justify-end">
                   <button
                     onClick={onClose}
-                    className="rounded-full p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                    className="rounded-full p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-ink-secondary hover:text-ink-primary hover:bg-surface-hover transition-colors"
                     aria-label="Close"
                   >
                     <svg

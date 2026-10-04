@@ -29,7 +29,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 pt-2 pb-3 md:hidden z-40">
+    <nav className="fixed bottom-0 left-0 right-0 bg-surface-raised border-t border-border-subtle px-4 pt-2 pb-3 md:hidden z-40">
       <div className="flex justify-around">
         {navItems.map((item) => {
           const isActive = pathname === item.href ||
@@ -41,11 +41,11 @@ export function BottomNav() {
               key={item.href}
               href={item.href}
               whileTap={{ scale: 0.95 }}
-              className={`flex flex-col items-center p-2 min-w-[44px] min-h-[44px] justify-center ${isActive ? "text-black" : "text-gray-400"
+              className={`flex flex-col items-center p-2 min-w-[44px] min-h-[44px] justify-center ${isActive ? "text-ink-primary" : "text-ink-tertiary"
                 }`}
             >
               <Icon size={24} className={isActive ? "stroke-[2.5px]" : "stroke-[2px]"} />
-              <span className={`text-xs mt-1 ${isActive ? "font-semibold text-black" : "font-normal text-gray-400"
+              <span className={`text-xs mt-1 ${isActive ? "font-semibold text-ink-primary" : "font-normal text-ink-tertiary"
                 }`}>{item.label}</span>
             </MotionLink>
           );

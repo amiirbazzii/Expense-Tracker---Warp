@@ -47,10 +47,10 @@ export function AppHeader({
     const SyncDot = () => {
       const status = useSyncStatus();
       const look = {
-        synced: { className: "bg-[#10B981]", title: "Synced" },
-        syncing: { className: "bg-[#F59E0B]", title: "Syncing changes…" },
-        offline: { className: "bg-[#9CA3AF]", title: "Offline — changes are saved on this device" },
-        attention: { className: "bg-[#EF4444]", title: "Some changes were rejected — see Settings" },
+        synced: { className: "bg-sync-synced", title: "Synced" },
+        syncing: { className: "bg-sync-syncing", title: "Syncing changes…" },
+        offline: { className: "bg-sync-offline", title: "Offline — changes are saved on this device" },
+        attention: { className: "bg-sync-attention", title: "Some changes were rejected — see Settings" },
       }[status];
 
       return (
@@ -68,11 +68,11 @@ export function AppHeader({
         left={
           <div className="flex items-center">
             {logoError ? (
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-black text-white text-sm font-semibold">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-accent text-accent-foreground text-sm font-semibold">
                 S
               </div>
             ) : (
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg overflow-hidden bg-white">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg overflow-hidden bg-surface-raised">
                 <Image
                   src={usePngFallback ? "/logo.png" : "/logo.webp"}
                   alt="Spendly Logo"
@@ -93,7 +93,7 @@ export function AppHeader({
                 />
               </div>
             )}
-            <h1 className="text-xl font-bold text-gray-900 pr-2">{title}</h1>
+            <h1 className="text-xl font-bold text-ink-primary pr-2">{title}</h1>
             <SyncDot />
           </div>
         }
@@ -109,13 +109,13 @@ export function AppHeader({
         <div className="flex items-center">
           <button
             onClick={() => router.back()}
-            className="p-2 text-gray-700 hover:text-black hover:bg-gray-100 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+            className="p-2 text-ink-secondary hover:text-ink-primary hover:bg-surface-hover rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
             aria-label="Go back"
             title="Go Back"
           >
             <ArrowLeft size={20} />
           </button>
-          <h1 className="text-xl font-bold text-gray-900">{title}</h1>
+          <h1 className="text-xl font-bold text-ink-primary">{title}</h1>
         </div>
       }
       right={right}

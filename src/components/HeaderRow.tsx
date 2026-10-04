@@ -24,7 +24,7 @@ interface HeaderRowProps {
  */
 export const HeaderRow: React.FC<HeaderRowProps> = ({ left, right, className }) => {
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+    <div className="fixed top-0 left-0 right-0 z-50 bg-surface-raised border-b border-border-subtle shadow-sm">
       <div className="max-w-md mx-auto px-4">
         <div className={`h-[68px] flex items-center justify-between ${className ?? ""}`}>
           <div className="flex items-center gap-2">

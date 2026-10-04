@@ -80,13 +80,67 @@ All tokens are declared as CSS variables in `:root` and mirrored for dark mode i
 
 ---
 
-## 3. Deliberate Exceptions
-1. **Canvas Charts**: `CategoryBreakdownChart` and `DailySpendingChart` paint directly onto HTML5 `<canvas>` via Chart.js, requiring JavaScript hex strings. Their palette is managed as constants in `src/lib/design/chartColors.ts` (`CHART_COLORS`, `CHART_AXIS`, `CHART_MUTED`).
+## 3. Component State Contracts (8 Core Primitives)
+
+- **Button (`Button.tsx`)**:
+  - `default`: `bg-surface-hover border-2 border-solid border-border-default text-ink-primary shadow-neumo`, hover `hover:shadow-neumo-hover`, active `active:shadow-neumo-active active:border-border-strong`.
+  - `secondary`: `bg-surface-sunken text-ink-primary border-0 shadow-none`, hover `hover:bg-surface-hover`, active `active:bg-surface-active`.
+  - `danger`: `bg-danger-surface border-2 border-solid border-danger-border text-ink-primary shadow-neumo`, hover `hover:shadow-neumo-hover`, active `active:bg-danger-active active:border-danger-active-border`.
+  - `disabled`: `bg-surface-hover border-border-default text-ink-disabled opacity-50 cursor-not-allowed`.
+  - `loading`: content kept in DOM with `invisible` and `aria-hidden`, spinner centered.
+  - Labels: supports optional `disabledLabel` prop, falling back to `children`.
+
+- **Chip (`Chip.tsx`)**:
+  - `default`: `bg-surface-raised/50 border border-border-default text-ink-secondary`.
+  - `enabled`: `bg-accent text-accent-foreground border-0`.
+  - Layout: `rounded-full py-[6px] px-3 text-xs font-medium`, inner span `px-[4px] py-[2px] leading-none`.
+
+- **Input (`Input.tsx`)**:
+  - Container: `rounded-field bg-surface-field border border-border-default`.
+  - Left icon & placeholder: `text-ink-secondary`.
+  - Focus: `border-accent shadow-focus-field`.
+  - Error: `border-danger-text text-danger-text placeholder:text-danger-text`.
+  - Disabled: `border-transparent text-ink-disabled opacity-50`.
+
+- **InputContainer (`InputContainer.tsx`)**:
+  - Visual container: `rounded-field bg-surface-field border border-border-default`.
+  - Focus state: `focus-within:border-accent focus-within:shadow-focus-field`.
+  - Icons and adornments: `text-ink-secondary`.
+
+- **Tabs (`Tabs.tsx`)**:
+  - Container: `bg-surface-app border-b border-border-subtle`.
+  - Divider: `bg-border-subtle`.
+  - Active: `text-ink-primary font-semibold` with `bg-accent` underline.
+  - Inactive: `text-ink-secondary font-normal`.
+
+- **BottomSheet (`BottomSheet.tsx`)**:
+  - Backdrop: `bg-surface-overlay`.
+  - Panel: `bg-surface-raised rounded-t-2xl shadow-raised`.
+  - Handle: `bg-accent`.
+  - Title: `text-ink-primary`.
+  - Close button: `text-ink-secondary hover:text-ink-primary hover:bg-surface-hover` (min 44px tap target).
+
+- **AppHeader (`AppHeader.tsx`)**:
+  - Title: `text-ink-primary`.
+  - Logo placeholder: `bg-accent text-accent-foreground`.
+  - Sync dot: `bg-sync-synced` / `bg-sync-syncing` / `bg-sync-offline` / `bg-sync-attention`.
+  - Back button: `text-ink-secondary hover:text-ink-primary hover:bg-surface-hover` (min 44px tap target).
+
+- **BottomNav (`BottomNav.tsx`)**:
+  - Container: `bg-surface-raised border-t border-border-subtle`.
+  - Active item: `text-ink-primary font-semibold`.
+  - Inactive item: `text-ink-tertiary font-normal`.
+  - Touch target: minimum 44px height and width preserved with `whileTap`.
+
+---
+
+## 4. Deliberate Exceptions
+1. **Canvas Charts**: `CategoryBreakdownChart` and `DailySpendingChart` paint directly onto HTML5 `<canvas>` via Chart.js, requiring JavaScript hex strings. Their palette is managed as constants in `src/lib/design/chartColors.ts` (`CHART_COLORS`, `CHART_AXIS`, `CHART_MUTED`, `CHART_GRADIENT_END`).
 2. **PWA Browser Chrome**: `themeColor` in `src/app/layout.tsx` configures OS browser chrome / status bar metadata and remains a literal hex.
 
 ---
 
-## 4. Migration Status
+## 5. Migration Status
 - **Step 1 (Foundation)**: Done. Token foundation declared in `src/styles/tokens.css`, Tailwind `@theme inline` utilities mapped, canvas chart colors extracted to `src/lib/design/chartColors.ts`, and legacy `--background` / `--foreground` aliases established in `src/app/globals.css`.
-- **Step 2**: The 8 core primitives + dashboard charts.
-- **Step 3**: Remaining raw-hex values and stock palette utilities across all 31 components.
+- **Step 2 (Primitives & Charts)**: Done. 8 core primitives, 11 supporting components, and both dashboard charts migrated to token utilities. Enforced via `tests/design-tokens.test.ts`.
+- **Step 3 (Full Component Migration)**: Remaining raw-hex values and stock palette utilities across all remaining feature components.
