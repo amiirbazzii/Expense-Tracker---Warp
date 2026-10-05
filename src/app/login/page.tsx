@@ -15,9 +15,14 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const isOnline = useOnlineStatus();
   const { login, user } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -75,7 +80,7 @@ export default function LoginPage() {
           <h2 className="mt-6 text-center text-3xl font-extrabold text-ink-primary">
             Welcome Back
           </h2>
-          {!isOnline && (
+          {mounted && !isOnline && (
             <div className="mt-2 text-center text-sm text-sync-syncing bg-sync-syncing/10 p-2 rounded">
               📱 Offline Mode - Using cached credentials
             </div>

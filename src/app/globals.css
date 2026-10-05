@@ -256,6 +256,19 @@ body {
   width: 36px;
 }
 
+/* Ensure the date-cell container NEVER paints a background, outline, or shadow */
+.rmdp-custom .rmdp-day,
+.rmdp-custom .rmdp-day.rmdp-today,
+.rmdp-custom .rmdp-day.rmdp-selected,
+.rmdp-custom .rmdp-day:hover,
+.rmdp-custom .rmdp-day:focus {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Date visuals (background, border, text color) are strictly painted on the inner span */
 .rmdp-custom .rmdp-day span {
   font-size: 14px;
   border-radius: 12px;
@@ -264,39 +277,60 @@ body {
   justify-content: center;
   height: 36px;
   width: 36px;
-  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
   font-family: inherit;
   color: var(--ink-primary);
-}
-
-.rmdp-custom .rmdp-day:not(.rmdp-disabled):not(.rmdp-day-hidden) span:hover {
-  background-color: var(--surface-hover) !important;
-  color: var(--ink-primary) !important;
-}
-
-.rmdp-custom .rmdp-day.rmdp-selected,
-.rmdp-custom .rmdp-day.rmdp-selected span:not(.highlight) {
-  background-color: var(--accent) !important;
-  color: var(--accent-foreground) !important;
+  background-color: transparent !important;
+  border: 1px solid transparent !important;
+  box-sizing: border-box !important;
   box-shadow: none !important;
 }
 
-.rmdp-custom .rmdp-day.rmdp-today:not(.rmdp-selected) {
+/* Hover and focus on unselected dates */
+.rmdp-custom .rmdp-day:not(.rmdp-selected):not(.rmdp-disabled):not(.rmdp-day-hidden) span:hover,
+.rmdp-custom .rmdp-day:not(.rmdp-selected):not(.rmdp-disabled):not(.rmdp-day-hidden):focus span,
+.rmdp-custom .rmdp-day:not(.rmdp-selected):not(.rmdp-disabled):not(.rmdp-day-hidden) span:focus-visible {
   background-color: var(--surface-hover) !important;
   color: var(--ink-primary) !important;
 }
 
-.rmdp-custom .rmdp-day.rmdp-today span {
+/* Today state (unselected): outlined border only, transparent background */
+.rmdp-custom .rmdp-day.rmdp-today:not(.rmdp-selected) span {
   border: 1px solid var(--accent) !important;
+  background-color: transparent !important;
+  color: var(--ink-primary) !important;
 }
 
-.rmdp-custom .rmdp-day.rmdp-today.rmdp-selected span {
-  border: none !important;
+/* Today state on hover/focus (unselected): surface-hover background, accent outline retained */
+.rmdp-custom .rmdp-day.rmdp-today:not(.rmdp-selected):not(.rmdp-disabled):not(.rmdp-day-hidden) span:hover,
+.rmdp-custom .rmdp-day.rmdp-today:not(.rmdp-selected):not(.rmdp-disabled):not(.rmdp-day-hidden):focus span,
+.rmdp-custom .rmdp-day.rmdp-today:not(.rmdp-selected):not(.rmdp-disabled):not(.rmdp-day-hidden) span:focus-visible {
+  background-color: var(--surface-hover) !important;
+  border: 1px solid var(--accent) !important;
+  color: var(--ink-primary) !important;
 }
 
-.rmdp-custom .rmdp-day.rmdp-deactive,
-.rmdp-custom .rmdp-day.rmdp-deactive span {
+/* Selected state: solid bg-accent with text-accent-foreground on span, no border, today/hover cannot override */
+.rmdp-custom .rmdp-day.rmdp-selected span,
+.rmdp-custom .rmdp-day.rmdp-selected span:not(.highlight),
+.rmdp-custom .rmdp-day.rmdp-selected span:hover,
+.rmdp-custom .rmdp-day.rmdp-selected:hover span,
+.rmdp-custom .rmdp-day.rmdp-selected span:focus,
+.rmdp-custom .rmdp-day.rmdp-selected:focus span,
+.rmdp-custom .rmdp-day.rmdp-selected span:focus-visible,
+.rmdp-custom .rmdp-day.rmdp-today.rmdp-selected span,
+.rmdp-custom .rmdp-day.rmdp-today.rmdp-selected span:hover {
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
+}
+
+.rmdp-custom .rmdp-day.rmdp-deactive span,
+.rmdp-custom .rmdp-day.rmdp-disabled span {
   color: var(--ink-disabled) !important;
+  background-color: transparent !important;
+  border-color: transparent !important;
 }
 
 .rmdp-custom .rmdp-week-day {
@@ -309,15 +343,27 @@ body {
   font-family: inherit;
 }
 
+/* Built-in Month and Year picker overrides */
 .rmdp-custom .rmdp-month-picker,
 .rmdp-custom .rmdp-year-picker {
   padding: 8px 0;
+  background: transparent !important;
 }
 
 .rmdp-custom .rmdp-month-picker .rmdp-day,
-.rmdp-custom .rmdp-year-picker .rmdp-day {
+.rmdp-custom .rmdp-year-picker .rmdp-day,
+.rmdp-custom .rmdp-month-picker .rmdp-day.rmdp-today,
+.rmdp-custom .rmdp-year-picker .rmdp-day.rmdp-today,
+.rmdp-custom .rmdp-month-picker .rmdp-day.rmdp-selected,
+.rmdp-custom .rmdp-year-picker .rmdp-day.rmdp-selected,
+.rmdp-custom .rmdp-month-picker .rmdp-day:hover,
+.rmdp-custom .rmdp-year-picker .rmdp-day:hover {
   height: 44px;
   width: auto;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 .rmdp-custom .rmdp-month-picker .rmdp-day span,
@@ -328,18 +374,38 @@ body {
   border-radius: 12px;
   font-family: inherit;
   color: var(--ink-primary);
+  background-color: transparent !important;
+  border: 1px solid transparent !important;
+  box-sizing: border-box !important;
 }
 
-.rmdp-custom .rmdp-month-picker .rmdp-day:not(.rmdp-disabled) span:hover,
-.rmdp-custom .rmdp-year-picker .rmdp-day:not(.rmdp-disabled) span:hover {
+.rmdp-custom .rmdp-month-picker .rmdp-day:not(.rmdp-selected):not(.rmdp-disabled) span:hover,
+.rmdp-custom .rmdp-year-picker .rmdp-day:not(.rmdp-selected):not(.rmdp-disabled) span:hover,
+.rmdp-custom .rmdp-month-picker .rmdp-day:not(.rmdp-selected):not(.rmdp-disabled):focus span,
+.rmdp-custom .rmdp-year-picker .rmdp-day:not(.rmdp-selected):not(.rmdp-disabled):focus span {
   background-color: var(--surface-hover) !important;
   color: var(--ink-primary) !important;
 }
 
+.rmdp-custom .rmdp-month-picker .rmdp-day.rmdp-today:not(.rmdp-selected) span,
+.rmdp-custom .rmdp-year-picker .rmdp-day.rmdp-today:not(.rmdp-selected) span {
+  border: 1px solid var(--accent) !important;
+  background-color: transparent !important;
+  color: var(--ink-primary) !important;
+}
+
+.rmdp-custom .rmdp-month-picker .rmdp-day.rmdp-selected span,
 .rmdp-custom .rmdp-month-picker .rmdp-day.rmdp-selected span:not(.highlight),
-.rmdp-custom .rmdp-year-picker .rmdp-day.rmdp-selected span:not(.highlight) {
+.rmdp-custom .rmdp-month-picker .rmdp-day.rmdp-selected span:hover,
+.rmdp-custom .rmdp-month-picker .rmdp-day.rmdp-selected:hover span,
+.rmdp-custom .rmdp-year-picker .rmdp-day.rmdp-selected span,
+.rmdp-custom .rmdp-year-picker .rmdp-day.rmdp-selected span:not(.highlight),
+.rmdp-custom .rmdp-year-picker .rmdp-day.rmdp-selected span:hover,
+.rmdp-custom .rmdp-year-picker .rmdp-day.rmdp-selected:hover span {
   background-color: var(--accent) !important;
   color: var(--accent-foreground) !important;
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
 }
 
 .persian-datepicker-popover {

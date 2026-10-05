@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOfflineFirst } from "@/providers/OfflineFirstProvider";
 import { useSettings, Currency, Calendar } from "@/contexts/SettingsContext";
+import { useTheme, ThemeMode } from "@/contexts/ThemeContext";
 
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { BottomNav } from "@/components/BottomNav";
@@ -67,6 +68,7 @@ export default function SettingsPage() {
     updateSettings,
     isLoading: settingsLoading,
   } = useSettings();
+  const { theme, setTheme } = useTheme();
   const {
     exportAsJSON,
     exportAsExcel,
@@ -113,6 +115,12 @@ export default function SettingsPage() {
       toast.error("Failed to logout");
     }
   };
+
+  const THEME_OPTIONS = [
+    { value: "system", label: "System" },
+    { value: "light", label: "Light" },
+    { value: "dark", label: "Dark" },
+  ] as const;
 
   const CURRENCY_OPTIONS = [
     { value: "USD", label: "USD" },
@@ -192,6 +200,20 @@ export default function SettingsPage() {
 
             {/* Preferences Card */}
             <SettingsCard title="Preferences">
+              {/* Theme Preference */}
+              <PreferenceSelect
+                label="Theme"
+                value={theme}
+                onChange={(value) => {
+                  setTheme(value as ThemeMode);
+                  toast.success(`Theme set to ${value.charAt(0).toUpperCase() + value.slice(1)}`);
+                }}
+                options={[...THEME_OPTIONS]}
+              />
+
+              {/* Divider */}
+              <div className="w-full border-t border-border-subtle my-1" />
+
               {/* Currency Preference */}
               <PreferenceSelect
                 label="Currency"

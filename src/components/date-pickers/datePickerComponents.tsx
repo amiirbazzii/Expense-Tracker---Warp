@@ -3,7 +3,7 @@
 import type { Calendar, Locale } from "react-date-object";
 import { Calendar as CalendarGrid, DateObject } from "react-multi-date-picker";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
-import type { HTMLAttributes } from "react";
+import { useMemo, type HTMLAttributes } from "react";
 import InputContainer from "../InputContainer";
 
 type MapDaysResult = HTMLAttributes<HTMLSpanElement> & {
@@ -26,8 +26,9 @@ export const GRID_CLASSES =
   "grid grid-cols-3 gap-3 p-4 text-center animate-fade-in";
 
 export const CELL_BASE =
-  "py-2.5 px-2 rounded-xl text-sm font-medium transition-all duration-150 cursor-pointer";
+  "py-2.5 px-2 rounded-xl text-sm font-medium transition-all duration-150 cursor-pointer border border-transparent";
 export const CELL_DEFAULT = `${CELL_BASE} text-ink-primary hover:bg-surface-hover`;
+export const CELL_TODAY = `${CELL_BASE} text-ink-primary border-accent hover:bg-surface-hover`;
 export const CELL_SELECTED = `${CELL_BASE} bg-accent text-accent-foreground shadow-sm`;
 
 export const CONFIRM_BUTTON_CLASSES =
@@ -221,6 +222,8 @@ export function MonthGrid({
   fontClassName,
   onMonthSelect,
 }: MonthGridProps) {
+  const todayDate = useMemo(() => new DateObject({ calendar, locale }), [calendar, locale]);
+
   return (
     <div key={`month-${currentDate.year}`} className={`${GRID_CLASSES} ${fontClassName}`}>
       {Array.from({ length: 12 }, (_, index) => {
@@ -237,13 +240,21 @@ export function MonthGrid({
           tempDate != null &&
           tempDate.month?.number === monthNumber &&
           tempDate.year === currentDate.year;
+        const isCurrentMonth =
+          todayDate.year === currentDate.year &&
+          todayDate.month.number === monthNumber;
+        const cellClass = isSelected
+          ? CELL_SELECTED
+          : isCurrentMonth
+            ? CELL_TODAY
+            : CELL_DEFAULT;
 
         return (
           <button
             type="button"
             key={monthNumber}
             onClick={() => onMonthSelect(monthNumber)}
-            className={isSelected ? CELL_SELECTED : CELL_DEFAULT}
+            className={cellClass}
           >
             {monthName}
           </button>
@@ -265,19 +276,29 @@ export function YearGrid({
   onYearSelect,
 }: YearGridProps) {
   const decadeStart = Math.floor(currentDate.year / 12) * 12;
+  const todayYear = useMemo(
+    () => new DateObject({ calendar: currentDate.calendar, locale: currentDate.locale }).year,
+    [currentDate.calendar, currentDate.locale],
+  );
 
   return (
     <div key={`year-${decadeStart}`} className={GRID_CLASSES}>
       {Array.from({ length: 12 }, (_, index) => {
         const year = decadeStart + index;
         const isSelected = tempDate?.year === year;
+        const isCurrentYear = year === todayYear;
+        const cellClass = isSelected
+          ? CELL_SELECTED
+          : isCurrentYear
+            ? CELL_TODAY
+            : CELL_DEFAULT;
 
         return (
           <button
             type="button"
             key={year}
             onClick={() => onYearSelect(year)}
-            className={isSelected ? CELL_SELECTED : CELL_DEFAULT}
+            className={cellClass}
           >
             {year}
           </button>

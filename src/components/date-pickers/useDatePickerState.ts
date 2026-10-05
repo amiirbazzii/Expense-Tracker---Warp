@@ -210,14 +210,12 @@ export function useDatePickerState(
       if (!current) return;
 
       const isSelected = temporaryDate != null && isSameDate(date, temporaryDate);
-      const isToday = isSameDate(date, today);
       const isInCurrentMonth = date.month?.number === current.month?.number;
 
       return {
         className: [
           `relative !h-9 !w-9 !flex !items-center !justify-center !rounded-xl ${config.fontClassName}`,
           isSelected ? "!bg-accent !text-accent-foreground !font-medium" : "",
-          !isSelected && isToday ? "!bg-surface-hover !text-ink-primary" : "",
           !isInCurrentMonth && viewModeRef.current === "day" ? "!opacity-30" : "",
         ]
           .filter(Boolean)

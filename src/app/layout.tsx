@@ -6,6 +6,7 @@ import { ConvexProvider } from "@/providers/ConvexProvider";
 import { OfflineFirstWrapper } from "@/providers/OfflineFirstWrapper";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
+import { ThemeProvider, THEME_INIT_SCRIPT } from "@/contexts/ThemeContext";
 
 import {
   LazyToaster,
@@ -117,8 +118,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-scroll-behavior="smooth">
+    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: THEME_INIT_SCRIPT,
+          }}
+        />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"
@@ -158,13 +164,15 @@ export default function RootLayout({
             <AuthProvider>
               <OfflineFirstWrapper>
                 <SettingsProvider>
-                  <LanguageWrapper>
-                    {children}
-                    <div id="modal-root"></div>
-                    <InstallPrompt />
-                    <PwaRegistration />
-                    <LazyToaster position="top-center" />
-                  </LanguageWrapper>
+                  <ThemeProvider>
+                    <LanguageWrapper>
+                      {children}
+                      <div id="modal-root"></div>
+                      <InstallPrompt />
+                      <PwaRegistration />
+                      <LazyToaster position="top-center" />
+                    </LanguageWrapper>
+                  </ThemeProvider>
                 </SettingsProvider>
               </OfflineFirstWrapper>
             </AuthProvider>
