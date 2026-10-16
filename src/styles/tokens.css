@@ -22,6 +22,7 @@
   --ink-inverse: #FFFFFF;
   --ink-link: #3B6FD4;
   --ink-link-hover: #2F59AA;
+  --ink-success: #008f66;
 
   /* Accent */
   --accent: #000000;
@@ -78,6 +79,7 @@
     --ink-inverse: #0A0A0A;
     --ink-link: #6E9BEE;
     --ink-link-hover: #8FB4F2;
+    --ink-success: #10B981;
 
     /* Accent */
     --accent: #FFFFFF;
@@ -134,6 +136,7 @@
   --ink-inverse: #0A0A0A;
   --ink-link: #6E9BEE;
   --ink-link-hover: #8FB4F2;
+  --ink-success: #10B981;
 
   /* Accent */
   --accent: #FFFFFF;
@@ -189,6 +192,7 @@
   --ink-inverse: #FFFFFF;
   --ink-link: #3B6FD4;
   --ink-link-hover: #2F59AA;
+  --ink-success: #008f66;
 
   /* Accent */
   --accent: #000000;
@@ -244,6 +248,7 @@
   --color-ink-inverse: var(--ink-inverse);
   --color-ink-link: var(--ink-link);
   --color-ink-link-hover: var(--ink-link-hover);
+  --color-ink-success: var(--ink-success);
 
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);

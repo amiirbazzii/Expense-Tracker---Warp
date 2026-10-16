@@ -116,6 +116,7 @@ const EXPECTED_TOKENS = [
   '--sync-syncing',
   '--sync-offline',
   '--sync-attention',
+  '--ink-success',
   '--radius-field',
   '--shadow-neumo',
   '--shadow-neumo-hover',
@@ -169,5 +170,81 @@ describe('Design Tokens Refactor (Step 2)', () => {
         expect(tokensContent).toContain(token);
       });
     });
+  });
+});
+
+describe('Ink Success Token (Scoped Light-Theme Green Text Contrast Fix)', () => {
+  const tokensPath = path.resolve(process.cwd(), 'src/styles/tokens.css');
+  const tokensContent = fs.readFileSync(tokensPath, 'utf8');
+
+  function extractToken(tokenName, context) {
+    const escaped = tokenName.replace('--', '\\-\\-');
+    const regex = new RegExp(`${escaped}\\s*:\\s*([^;]+)`);
+    const match = context.match(regex);
+    return match ? match[1].trim() : null;
+  }
+
+  function luminance(hex) {
+    const c = hex.replace('#', '');
+    const r = parseInt(c.slice(0, 2), 16) / 255;
+    const g = parseInt(c.slice(2, 4), 16) / 255;
+    const b = parseInt(c.slice(4, 6), 16) / 255;
+    const srgb = [r, g, b].map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+    return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+  }
+
+  function contrastRatio(fg, bg) {
+    const L1 = luminance(fg);
+    const L2 = luminance(bg);
+    return (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
+  }
+
+  it('defines --ink-success in :root (light default) as #008f66', () => {
+    const rootBlock = tokensContent.split('@media')[0];
+    const value = extractToken('--ink-success', rootBlock);
+    expect(value).toBe('#008f66');
+  });
+
+  it('defines --ink-success in [data-theme="light"] explicitly as #008f66', () => {
+    const lightBlock = tokensContent.split('[data-theme="light"]')[1].split('}')[0];
+    const value = extractToken('--ink-success', lightBlock);
+    expect(value).toBe('#008f66');
+  });
+
+  it('defines --ink-success in [data-theme="dark"] explicitly as #10B981', () => {
+    const darkBlock = tokensContent.split('[data-theme="dark"]')[1].split('}')[0];
+    const value = extractToken('--ink-success', darkBlock);
+    expect(value).toBe('#10B981');
+  });
+
+  it('meets WCAG AA 4.5:1 on light default surface-raised (#FFFFFF)', () => {
+    const ratio = contrastRatio('#008f66', '#FFFFFF');
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('meets WCAG AA 4.5:1 on light surface-hover (#E8E8E8) — TotalBalanceCard button default', () => {
+    const ratio = contrastRatio('#008f66', '#E8E8E8');
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('meets WCAG AA 4.5:1 on light surface-active (#DCDCDC) — TotalBalanceCard button active', () => {
+    const ratio = contrastRatio('#008f66', '#DCDCDC');
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('meets WCAG AA 4.5:1 on light surface-sunken (#F4F4F4) — CardList row hover', () => {
+    const ratio = contrastRatio('#008f66', '#F4F4F4');
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('preserves --sync-synced unchanged at #10B981 for icons/status/bg', () => {
+    const rootBlock = tokensContent.split('@media')[0];
+    const value = extractToken('--sync-synced', rootBlock);
+    expect(value).toBe('#10B981');
+  });
+
+  it('maps --color-ink-success in @theme inline', () => {
+    const themeBlock = tokensContent.split('@theme inline')[1];
+    expect(themeBlock).toContain('--color-ink-success: var(--ink-success)');
   });
 });
