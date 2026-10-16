@@ -84,14 +84,14 @@ export function LoanCard({
         <div className="flex items-center gap-1">
           <h3
             className={`text-base font-medium ${
-            loan.isInstallmentPaid ? "text-sync-synced" : "text-ink-primary"
+            loan.isInstallmentPaid ? "text-ink-success" : "text-ink-primary"
             }`}
           >
             {loan.name}
           </h3>
           {/* لیبل 'Paid' فقط زمانی نمایش داده می‌شود که قسط پرداخت شده باشد */}
           {loan.isInstallmentPaid && (
-            <span className="text-xs font-medium text-sync-synced">| Paid</span>
+            <span className="text-xs font-medium text-ink-success">| Paid</span>
           )}
         </div>
         <div className="flex items-baseline gap-1">
@@ -138,7 +138,7 @@ export function LoanCard({
         </div>
         {/* نمایش تعداد اقساط پرداخت شده و کل اقساط */}
         <div className="text-xs font-medium">
-          <span className="text-sync-synced">{loan.paidInstallments}</span>
+          <span className="text-ink-success">{loan.paidInstallments}</span>
           <span className="text-ink-tertiary">/{loan.totalInstallments}</span>
         </div>
       </div>

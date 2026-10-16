@@ -97,7 +97,7 @@ export function IncomeCard({
                 </span>
               )}
             </div>
-            <p className="text-[16px] leading-5 font-semibold text-sync-synced whitespace-nowrap">
+            <p className="text-[16px] leading-5 font-semibold text-ink-success whitespace-nowrap">
               +
               {settings
                 ? formatCurrency(income.amount, settings.currency)

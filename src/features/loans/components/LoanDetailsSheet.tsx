@@ -100,7 +100,7 @@ export function LoanDetailsSheet({
           icon={Wallet}
           label="Paid so far"
           value={fmt(paidAmount)}
-          valueClassName="text-sync-synced"
+          valueClassName="text-ink-success"
         />
         <DetailRow
           icon={PiggyBank}
@@ -117,7 +117,7 @@ export function LoanDetailsSheet({
           label="Paid installments"
           value={`${loan.paidInstallments} of ${loan.totalInstallments}`}
           valueClassName={
-            loan.paidInstallments > 0 ? "text-sync-synced" : "text-ink-primary"
+            loan.paidInstallments > 0 ? "text-ink-success" : "text-ink-primary"
           }
         />
         <DetailRow

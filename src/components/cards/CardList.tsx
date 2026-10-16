@@ -89,7 +89,7 @@ export function CardList({
                 {card.cardName}
               </div>
               <div
-                className={`text-base font-bold ${card.balance >= 0 ? "text-sync-synced" : "text-danger-text"}`}
+                className={`text-base font-bold ${card.balance >= 0 ? "text-ink-success" : "text-danger-text"}`}
               >
                 {formatCurrency(card.balance, currency)}
               </div>

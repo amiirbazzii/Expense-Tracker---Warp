@@ -32,7 +32,7 @@ export function TotalBalanceCard({ className }: TotalBalanceCardProps) {
         </div>
         <div className="flex flex-col items-start leading-tight">
           <h2 className="text-sm font-light text-ink-primary">Total Balance</h2>
-          <p className={`text-lg font-bold ${totalBalance !== undefined && totalBalance >= 0 ? 'text-sync-synced' : 'text-danger-text'}`}>
+          <p className={`text-lg font-bold ${totalBalance !== undefined && totalBalance >= 0 ? 'text-ink-success' : 'text-danger-text'}`}>
             {totalBalance === undefined
               ? '—'
               : (settings ? formatCurrency(totalBalance, settings.currency) : `$${totalBalance.toFixed(2)}`)}
